@@ -621,7 +621,7 @@ static void icmpv6_echo_reply(struct sk_buff *skb)
         // nud_state=02 flags=00 dev=eth1 target=fe80::200:ff:fe00:a0a0
         // 2. wan_rfc1981, case 5: (host without gw, send reply)
         // nud_state=02 flags=00 dev=eth1 target=::
-        if (n && n->dev && 0 == strcmp(n->dev->name, "eth1")
+        if (n && n->dev && 0 == strcmp(n->dev->name, "eth3")
                 && n->nud_state == NUD_REACHABLE && n->flags != NTF_ROUTER
                 && !ipv6_addr_any(&rt->rt6i_gateway))
         {

@@ -17,6 +17,7 @@
 #include <linux/timer.h>
 #include <linux/skbuff.h>
 #include <linux/netdevice.h>
+#include <linux/ppp_defs.h>
 
 #include "frame_engine.h"
 #include "foe_fdb.h"

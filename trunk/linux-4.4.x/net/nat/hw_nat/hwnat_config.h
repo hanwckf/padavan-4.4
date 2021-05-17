@@ -169,7 +169,7 @@
 #define PACKET_SAMPLING		(0)
 #endif
 
-#ifdef CONFIG_SUPPORT_OPENWRT
+#if 0
 #define HNAT_OPENWRT	BIT(13)
 #else
 #define HNAT_OPENWRT		(0)

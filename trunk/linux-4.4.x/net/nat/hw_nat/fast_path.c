@@ -17,7 +17,7 @@
 #include "ra_nat.h"
 #include "util.h"
 
-#if defined(CONFIG_SUPPORT_OPENWRT)
+#if 0
 #if defined(CONFIG_GE_RGMII_INTERNAL_P4_AN) || defined(CONFIG_GE_RGMII_INTERNAL_P0_AN)
 char *ifname="eth1";
 #else
