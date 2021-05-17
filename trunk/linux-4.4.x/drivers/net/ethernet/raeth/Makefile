@@ -11,6 +11,10 @@ raeth-objs += raether_hwlro.o
 raeth-objs += ra_dbg_hwlro.o
 raeth-objs += ra_dbg_hwioc.o
 
+ifeq ($(CONFIG_RAETH_ESW_CONTROL),y)
+raeth-objs += mtk_esw/ioctl_mt762x.o
+endif
+
 ccflags-y += -Idrivers/net/ethernet/raeth/rtl8367c/include  -D_LITTLE_ENDIAN -DMDC_MDIO_OPERATION
 ccflags-y += -Idrivers/net/ethernet/raeth
 ccflags-y += -Iinclude/linux/

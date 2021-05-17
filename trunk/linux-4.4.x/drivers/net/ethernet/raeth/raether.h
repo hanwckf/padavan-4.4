@@ -127,13 +127,8 @@
 
 #define	MAX_RX_LENGTH	1536
 
-#if defined(CONFIG_SUPPORT_OPENWRT)
-#define DEV_NAME        "eth0"
-#define DEV2_NAME       "eth1"
-#else
 #define DEV_NAME        "eth2"
 #define DEV2_NAME       "eth3"
-#endif
 
 #if defined(CONFIG_MACH_MT7623)
 #define GMAC0_OFFSET    0xE000
@@ -356,6 +351,12 @@ static inline void ei_lro_flush_all(struct net_lro_mgr *lro_mgr)
 #endif
 
 struct net_device_stats *ra_get_stats(struct net_device *dev);
+
+#if defined (CONFIG_RAETH_ESW_CONTROL)
+void esw_ioctl_uninit(void);
+int esw_ioctl_init(void);
+int esw_ioctl_init_post(void);
+#endif
 
 int ei_open(struct net_device *dev);
 int ei_close(struct net_device *dev);

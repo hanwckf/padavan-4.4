@@ -594,8 +594,8 @@ int get_bridge_info(void)
 	else
 		pr_info("br0_in_dev = NULL\n");
 	
-	pr_info("br0Ip = %x\n", br0Ip);
-	pr_info("brNetmask = %x\n", brNetmask);
+	pr_debug("br0Ip = %x\n", br0Ip);
+	pr_debug("brNetmask = %x\n", brNetmask);
 	getBrLan = 1;
 	
 	return 0;

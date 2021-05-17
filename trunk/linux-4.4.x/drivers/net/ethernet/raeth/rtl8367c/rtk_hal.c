@@ -501,10 +501,11 @@ void rtk_hal_qos_get_table2type(struct ra_switch_ioctl_data *data)
 	rtk_api_ret_t ret;
 	rtk_priority_select_t PriDec;
 
-	if (data->qos_table_idx == 0)
+	if (data->qos_table_idx == 0) {
         ret = rtk_qos_priSel_get(PRIDECTBL_IDX0, &PriDec);
-    else
+	} else {
         ret = rtk_qos_priSel_get(PRIDECTBL_IDX1, &PriDec);
+	}
 
 	if (ret != 0)
         printk("rtk_qos_priSel_set failed\n");

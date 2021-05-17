@@ -36,4 +36,33 @@ config  ETH_PAGE_ALLOC_SKB
 
 endchoice
 
+config  RAETH_ESW_CONTROL
+	bool "Embedded (or MT7530) Switch Control Module (VLAN/Isolation/Status)"
+	default y
+
+config  RAETH_ESW_PORT_WAN
+	int "ESW WAN Port ID (0..4)"
+	depends on RAETH_ESW_CONTROL
+	default 4
+
+config  RAETH_ESW_PORT_LAN1
+	int "ESW LAN1 Port ID (0..4)"
+	depends on RAETH_ESW_CONTROL
+	default 0
+
+config  RAETH_ESW_PORT_LAN2
+	int "ESW LAN2 Port ID (0..4)"
+	depends on RAETH_ESW_CONTROL
+	default 1
+
+config  RAETH_ESW_PORT_LAN3
+	int "ESW LAN3 Port ID (0..4)"
+	depends on RAETH_ESW_CONTROL
+	default 2
+
+config  RAETH_ESW_PORT_LAN4
+	int "ESW LAN4 Port ID (0..4)"
+	depends on RAETH_ESW_CONTROL
+	default 3
+
 endif 	# RAETH
