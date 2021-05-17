@@ -569,7 +569,7 @@ int get_bridge_info(void)
 {
 	struct net_device *br0_dev; 
 	struct in_device *br0_in_dev;
-#if defined(CONFIG_SUPPORT_OPENWRT)
+#if 0
 	br0_dev = dev_get_by_name(&init_net,"br-lan");
 #else
 	br0_dev = dev_get_by_name(&init_net,"br0");
@@ -2650,7 +2650,7 @@ defined(CONFIG_MT7610_AP_APCLI) || defined(CONFIG_APCLI_SUPPORT)
 			offset = RTMP_GET_PACKET_IF(skb) + DP_RA0;
 #endif				/* CONFIG_RT2860V2_AP_WDS // */
 	}
-#if defined(CONFIG_SUPPORT_OPENWRT)
+#if 0
 	else if (strncmp(skb->dev->name, "eth0", 4) == 0)
 		offset = DP_GMAC;
 #ifdef CONFIG_RAETH_GMAC2
@@ -2699,21 +2699,31 @@ defined(CONFIG_MT7610_AP_APCLI) || defined(CONFIG_APCLI_SUPPORT)
 
 	if (IS_IPV4_HNAT(entry) || IS_IPV4_HNAPT(entry)) {
 		entry->ipv4_hnapt.act_dp = offset;
+#if defined(CONFIG_ARCH_MT7622)
 		entry->ipv4_hnapt.iblk2.acnt = offset;
+#endif
 	}
 #if defined(CONFIG_RA_HW_NAT_IPV6)
 	else if (IS_IPV4_DSLITE(entry)) {
 		entry->ipv4_dslite.act_dp = offset;
+#if defined(CONFIG_ARCH_MT7622)
 		entry->ipv4_dslite.iblk2.acnt = offset;
+#endif
 	} else if (IS_IPV6_3T_ROUTE(entry)) {
 		entry->ipv6_3t_route.act_dp = offset;
+#if defined(CONFIG_ARCH_MT7622)
 		entry->ipv6_3t_route.iblk2.acnt = offset;
+#endif
 	} else if (IS_IPV6_5T_ROUTE(entry)) {
 		entry->ipv6_5t_route.act_dp = offset;
+#if defined(CONFIG_ARCH_MT7622)
 		entry->ipv6_5t_route.iblk2.acnt = offset;
+#endif
 	} else if (IS_IPV6_6RD(entry)) {
 		entry->ipv6_6rd.act_dp = offset;
+#if defined(CONFIG_ARCH_MT7622)
 		entry->ipv6_6rd.iblk2.acnt = offset;
+#endif
 	} else {
 		return 1;
 	}
@@ -3624,7 +3634,7 @@ defined(CONFIG_MT7610_AP_MESH)
 #if defined(CONFIG_RA_HW_NAT_WIFI_NEW_ARCH)
 		struct net_device *dev;
 		int i;
-#if defined(CONFIG_SUPPORT_OPENWRT)
+#if 0
 		dev = ra_dev_get_by_name("eth0");
 		ppe_dev_reg_handler(dev);
 		for (i = 0; i < MAX_IF_NUM; i++) {
@@ -3669,7 +3679,7 @@ defined(CONFIG_MT7610_AP_MESH)
 #endif
 
 #else
-#if defined(CONFIG_SUPPORT_OPENWRT)
+#if 0
 		dst_port[DP_GMAC] = ra_dev_get_by_name("eth0");
 #ifdef CONFIG_RAETH_GMAC2
 		dst_port[DP_GMAC2] = ra_dev_get_by_name("eth1");
@@ -3950,7 +3960,7 @@ static void set_acl_fwd(uint32_t ebl)
 	unsigned int i, value;
 
 	if (ebl) {
-#if defined(CONFIG_SUPPORT_OPENWRT)
+#if 0
 #if defined(CONFIG_RAETH_SPECIAL_TAG)
 #if defined(CONFIG_WAN_AT_P4)
 		wan_int = ra_dev_get_by_name("eth0.5");

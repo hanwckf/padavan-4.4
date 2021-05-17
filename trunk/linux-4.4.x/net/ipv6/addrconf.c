@@ -3901,12 +3901,12 @@ static void addrconf_dad_run(struct inet6_dev *idev, bool restart)
 		// CE LOGO test lan_rfc4862, The NS of eth0 DAD sometimes send out success, 
 		// but after 5s TN send NS.  At this time, the eth0 was added in br-lan and br-lan was not ready.
 		// eth0 can't response the NS.
-		if (0 == strcmp(idev->dev->name, "eth0")) {
+		if (0 == strcmp(idev->dev->name, "eth2")) {
 			return;
 		}
 		// delay WAN & LAN DAD sending.
-		if (0 == strcmp(idev->dev->name, "eth1")
-				|| 0 == strcmp(idev->dev->name, "br-lan")) {
+		if (0 == strcmp(idev->dev->name, "eth3")
+				|| 0 == strcmp(idev->dev->name, "br0")) {
 			delay = 6000; // ms
 		}
 	}
