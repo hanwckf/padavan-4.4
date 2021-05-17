@@ -1,0 +1,102 @@
+/dts-v1/;
+
+#include "mt7621.dtsi"
+#include <dt-bindings/input/input.h>
+
+/ {
+	compatible = "mediatek,mt7621-rfb-nor", "mediatek,mt7621-soc";
+	model = "MediaTek MT7621 Raeth (SNOR)";
+
+	chosen {
+		bootargs = "console=ttyS0,115200";
+	};
+
+	gpio-keys-polled {
+		compatible = "gpio-keys-polled";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		poll-interval = <20>;
+
+		reset {
+			label = "reset";
+			gpios = <&gpio0 18 1>;
+			linux,code = <KEY_RESTART>;
+		};
+	};
+};
+
+&raeth {
+	mac-address = [00 00 00 00 00 00];
+	wan_at = "p4";
+	gmac1-support = "rgmii-1";
+	rgmii-mode-1 = "force-1000";
+	gmac2-support = "rgmii-2";
+	rgmii-mode-2 = "force-1000";
+	gmac2-phy-address = <0>;
+	gmac1_txq_num = <1>;
+	gmac1_txq_txd_num = <1024>;
+	gmac2_txq_num = <1>;
+	gmac2_txq_txd_num = <1024>;
+	num_rx_desc = <1024>;
+	status = "okay";
+};
+
+&pcie {
+	status = "okay";
+};
+
+&pinctrl {
+	state_default: pinctrl0 {
+		gpio {
+			mtk,group = "i2c", "uart2", "uart3";
+			mtk,function = "gpio";
+		};
+	};
+};
+
+&sdhci {
+	status = "okay";
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&sdhci_pins>;
+};
+
+&spi0 {
+	status = "okay";
+
+	m25p80@0 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "jedec,spi-nor";
+		reg = <0>;
+		spi-max-frequency = <25000000>;
+
+		partition@0 {
+			label = "Bootloader";
+			reg = <0x00000 0x30000>;
+		};
+
+		partition@30000 {
+			label = "Config";
+			reg = <0x30000 0x10000>;
+		};
+
+		partition@40000 {
+			label = "Factory";
+			reg = <0x40000 0x10000>;
+		};
+
+		partition@50000 {
+			label = "firmware";
+			reg = <0x50000 0xfb0000>;
+		};
+	};
+};
+
+&u3phy1 {
+	status = "okay";
+};
+
+&xhci {
+	status = "okay";
+};
