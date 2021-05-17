@@ -1170,25 +1170,7 @@ chip_objs += $(SRC_DIR)/chips/mt7622.o\
 endif
 
 ifeq ($(CONFIG_RTMP_FLASH_SUPPORT)$(CONFIG_MTD),yy)
-ifeq ($(CONFIG_SUPPORT_OPENWRT),y)
-ifeq ($(CONFIG_MTD_SPI_NOR),y)
 EXTRA_CFLAGS += -DCONFIG_WIFI_MTD
-else
-ifeq ($(CONFIG_MTD_NAND),y)
-EXTRA_CFLAGS += -DCONFIG_WIFI_MTD
-endif
-endif
-else
-ifeq ($(CONFIG_DEFAULTS_KERNEL_4_4),y)
-ifeq ($(CONFIG_MTD_SPI_NOR),y)
-EXTRA_CFLAGS += -DCONFIG_WIFI_MTD
-else
-ifeq ($(CONFIG_MTD_NAND),y)
-EXTRA_CFLAGS += -DCONFIG_WIFI_MTD
-endif
-endif
-endif
-endif
 endif
 
 ifeq ($(CONFIG_DEFAULTS_MEDIATEK_MT7622),y)
