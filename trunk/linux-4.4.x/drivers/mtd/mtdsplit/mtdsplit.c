@@ -88,6 +88,8 @@ int mtd_check_rootfs_magic(struct mtd_info *mtd, size_t offset,
 	if (ret)
 		return ret;
 
+	printk("%s: magic: 0x%x, offset 0x%x\n", __func__, magic, offset);
+
 	if (retlen != sizeof(magic))
 		return -EIO;
 

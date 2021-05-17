@@ -34,6 +34,20 @@
 #define IH_TYPE_KERNEL		2	/* OS Kernel Image		*/
 #define IH_TYPE_FILESYSTEM	7	/* Filesystem Image		*/
 
+#define MAX_STRING 23	// 24-1, for sub_fs 
+
+typedef struct {
+	uint8_t major;
+	uint8_t minor; 
+} version_t;
+
+typedef struct {
+	version_t kernel;
+	version_t fs;
+	char	  productid[MAX_STRING];
+	uint8_t   sub_fs;	// a - z, A - Z
+} TAIL;
+
 /*
  * Legacy format image header,
  * all data in network byte order (aka natural aka bigendian).
@@ -50,7 +64,9 @@ struct uimage_header {
 	uint8_t		ih_arch;	/* CPU architecture		*/
 	uint8_t		ih_type;	/* Image Type			*/
 	uint8_t		ih_comp;	/* Compression Type		*/
-	uint8_t		ih_name[IH_NMLEN];	/* Image Name		*/
+//	uint8_t		ih_name[IH_NMLEN];	/* Image Name		*/
+	TAIL		tail;		/* ASUS firmware infomation	*/
+	uint32_t	ih_ksz;		/* Kernel Part Size		*/
 };
 
 static int
@@ -126,7 +142,8 @@ static int __mtdsplit_parse_uimage(struct mtd_info *master,
 		}
 		header = (struct uimage_header *)(buf + ret);
 
-		uimage_size = sizeof(*header) + be32_to_cpu(header->ih_size) + ret;
+		uimage_size = be32_to_cpu(header->ih_ksz) + ret;
+//		uimage_size = sizeof(*header) + be32_to_cpu(header->ih_ksz) + ret;
 		if ((offset + uimage_size) > master->size) {
 			pr_debug("uImage exceeds MTD device \"%s\"\n",
 				 master->name);

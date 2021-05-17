@@ -669,7 +669,7 @@ static int mtk_nfc_read_page_hwecc(struct mtd_info *mtd, struct nand_chip *chip,
 				data_ptr(chip, buf, i), oob_ptr(chip, i), i);
 
 			if (rc < 0)
-				bitflips = -ETIMEDOUT;
+				bitflips = -EBADMSG;
 			else if (bitflips >= 0)
 				bitflips += rc;
 		}
