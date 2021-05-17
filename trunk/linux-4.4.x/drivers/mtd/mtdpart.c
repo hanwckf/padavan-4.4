@@ -821,7 +821,7 @@ static void mtd_partition_split(struct mtd_info *master, struct mtd_part *part)
 		return;
 
 	if (!strcmp(part->mtd.name, "rootfs")) {
-		run_parsers_by_type(part, MTD_PARSER_TYPE_ROOTFS);
+	//	run_parsers_by_type(part, MTD_PARSER_TYPE_ROOTFS);
 
 		rootfs_found = 1;
 	}
