@@ -1,0 +1,174 @@
+menuconfig WL_MEDIATEK
+	bool "Mediatek Wireless LAN support"
+	---help---
+	  Enable community drivers for MediaTek WiFi devices.
+	  Those drivers make use of the Linux mac80211 stack.
+
+
+if WL_MEDIATEK
+source "drivers/net/wireless/mediatek/mt7601u/Kconfig"
+
+menuconfig WIFI_DRIVER
+	bool "WiFi Driver Support"
+
+if WIFI_DRIVER
+
+choice
+	prompt "Choose First WiFi Interface"
+	config FIRST_IF_NONE
+	bool "None"
+
+	config FIRST_IF_MT7615E
+	bool "MT7615E"
+	select WIFI_MT_MAC
+	select MT_MAC
+
+	config FIRST_IF_MT7622
+	bool "MT7622"
+	select WIFI_MT_MAC
+	select MT_MAC
+
+	config FIRST_IF_MT7626
+	bool "MT7626"
+	select WIFI_MT_MAC
+	select MT_MAC
+
+	config FIRST_IF_MT7915
+	bool "MT7915"
+	select WIFI_MT_MAC
+	select MT_MAC
+
+endchoice
+
+choice
+	prompt "Choose Second WiFi Interface"
+	config SECOND_IF_NONE
+	bool "None"
+
+	config SECOND_IF_MT7615E
+	bool "MT7615E"
+	select WIFI_MT_MAC
+	select MULTI_INF_SUPPORT
+
+endchoice
+
+choice
+	prompt "Choose Third WiFi Interface"
+	config THIRD_IF_NONE
+	bool "None"
+
+	config THIRD_IF_MT7615E
+	bool "MT7615E"
+	select WIFI_MT_MAC
+	select MULTI_INF_SUPPORT
+
+endchoice
+
+config RT_FIRST_CARD
+	int
+	depends on !FIRST_IF_NONE
+	default 7615 if FIRST_IF_MT7615E
+	default 7622 if FIRST_IF_MT7622
+	default 7622 if FIRST_IF_MT7626
+	default 7915 if FIRST_IF_MT7915
+
+config RT_SECOND_CARD
+	int
+	depends on !SECOND_IF_NONE
+	default 7615 if SECOND_IF_MT7615E
+
+config RT_THIRD_CARD
+	int
+	depends on !THIRD_IF_NONE
+	default 7615 if THIRD_IF_MT7615E
+
+config RT_FIRST_IF_RF_OFFSET
+	hex
+	depends on !FIRST_IF_NONE
+	default 0x0
+
+config RT_SECOND_IF_RF_OFFSET
+	hex
+	depends on !SECOND_IF_NONE
+	default 0x8000
+
+config RT_THIRD_IF_RF_OFFSET
+	hex
+	depends on !THIRD_IF_NONE
+	default 0x10000
+
+if (FIRST_IF_MT7615E || SECOND_IF_MT7615E || FIRST_IF_MT7915)
+menu "MT7615/MT7915 common configs"
+
+choice
+	prompt "PA LNA Type of 1st Card"
+	depends on ! FIRST_IF_NONE
+
+	config FIRST_IF_EPAELNA
+	bool "ePAeLNA"
+	config FIRST_IF_IPAILNA
+	bool "iPAiLNA"		
+	config FIRST_IF_IPAELNA
+	bool "iPAeLNA"
+endchoice
+
+choice
+	prompt "PA LNA Type of 2nd Card"
+	depends on ! SECOND_IF_NONE
+
+	config SECOND_IF_EPAELNA
+	bool "ePAeLNA"
+	config SECOND_IF_IPAILNA
+	bool "iPAiLNA"		
+	config SECOND_IF_IPAELNA
+	bool "iPAeLNA"
+endchoice
+
+choice
+	prompt "PA LNA Type of 3rd Card"
+	depends on ! THIRD_IF_NONE
+
+	config THIRD_IF_EPAELNA
+	bool "ePAeLNA"
+	config THIRD_IF_IPAILNA
+	bool "iPAiLNA"		
+	config THIRD_IF_IPAELNA
+	bool "iPAeLNA"
+endchoice
+
+choice
+	prompt "Main Mode"
+	default WIFI_MODE_AP
+
+	config WIFI_MODE_AP
+	tristate "AP"
+	select MT_AP_SUPPORT
+
+	config WIFI_MODE_STA
+	tristate "STA"
+	select MT_STA_SUPPORT
+
+	config WIFI_MODE_BOTH
+	tristate "APSTA"
+	select MT_AP_SUPPORT
+	select MT_STA_SUPPORT
+endchoice
+endmenu
+endif
+
+if (FIRST_IF_MT7615E || SECOND_IF_MT7615E)
+menu "MediaTek MT7615E PCIe Wireless driver"
+source "drivers/net/wireless/mediatek/mt7615/embedded/Kconfig"
+endmenu
+endif
+
+if (FIRST_IF_MT7915)
+menu "MediaTek MT7915 PCIe Wireless driver"
+source "drivers/net/wireless/mediatek/mt7915/embedded/Kconfig"
+endmenu
+endif
+
+#source "drivers/net/wireless/mediatek/mt_wifi/embedded/Kconfig"
+
+endif # WIFI_DRIVER
+endif # WL_MEDIATEK
