@@ -8,8 +8,4 @@ config SRCARCH
 	string
 	option env="SRCARCH"
 
-config SUPPORT_OPENWRT
-	bool "Support OpenWrt"
-	default n
-
 source "arch/$SRCARCH/Kconfig"
