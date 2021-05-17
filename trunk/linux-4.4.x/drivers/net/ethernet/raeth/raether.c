@@ -1881,6 +1881,12 @@ static int fe_int_enable(struct net_device *dev)
 
 		/* enable switch link change intr */
 		mii_mgr_write(31, 0x7008, 0x1f);
+	} else if (ei_local->chip_name == MT7621_FE) {
+		if (request_threaded_irq(ei_local->esw_irq, gsw_interrupt, NULL, 0,
+					 "gsw", NULL))
+			pr_err("fail to request irq\n");
+
+		mii_mgr_write(31, 0x7008, 0x1f);
 	}
 
 	if (ei_local->architecture & RAETH_ESW) {
@@ -2034,7 +2040,7 @@ static int fe_int_disable(struct net_device *dev)
 		free_irq(ei_local->irq2, dev);
 	}
 
-	if (ei_local->architecture & RAETH_ESW)
+	if (ei_local->architecture & RAETH_ESW || ei_local->chip_name == MT7621_FE)
 		free_irq(ei_local->esw_irq, dev);
 
 	if (ei_local->features & (FE_RSS_4RING | FE_RSS_2RING))
@@ -2545,12 +2551,15 @@ int ei_open(struct net_device *dev)
 	}
 
 	/* initialize fe and switch register */
-	if (ei_local->chip_name != LEOPARD_FE)
+	if (ei_local->chip_name == MT7622_FE)
 		fe_sw_preinit(ei_local);
 
 	if (ei_local->features & FE_SW_LRO)
 		fe_set_sw_lro_my_ip(ei_local->lan_ip4_addr);
 
+#if defined (CONFIG_RAETH_ESW_CONTROL)
+	esw_ioctl_init_post();
+#endif
 	forward_config(dev);
 
 	if ((ei_local->chip_name == MT7623_FE) &&
@@ -2616,7 +2625,7 @@ int ei_close(struct net_device *dev)
 
 	ei_deinit_dma(dev);
 
-	if (ei_local->chip_name != LEOPARD_FE)
+	if (ei_local->chip_name == MT7622_FE)
 		fe_sw_deinit(ei_local);
 
 	module_put(THIS_MODULE);
@@ -3275,6 +3284,8 @@ static int rather_probe(struct platform_device *pdev)
 		else if (ei_local->architecture & LEOPARD_EPHY)
 			ei_local->esw_irq = platform_get_irq(pdev, 4);
 		pr_info("ei_local->esw_irq = %d\n", ei_local->esw_irq);
+	} else if (ei_local->chip_name == MT7621_FE) {
+		ei_local->esw_irq = platform_get_irq(pdev, 1);
 	}
 
 	ei_clock_enable(ei_local);
@@ -3326,7 +3337,9 @@ static int rather_probe(struct platform_device *pdev)
 		else
 			virtualif_open(ei_local->pseudo_dev);
 	}
-
+#if defined (CONFIG_RAETH_ESW_CONTROL)
+	esw_ioctl_init();
+#endif
 	return 0;
 
 err_free_dev:
@@ -3337,7 +3350,9 @@ err_free_dev:
 static int raether_remove(struct platform_device *pdev)
 {
 	struct END_DEVICE *ei_local = netdev_priv(dev_raether);
-
+#if defined (CONFIG_RAETH_ESW_CONTROL)
+	esw_ioctl_uninit();
+#endif
 	if (ei_local->features & FE_QDMA_FQOS)
 		if (ei_local->qdma_pdev)
 			ei_local->qdma_pdev->dev.release

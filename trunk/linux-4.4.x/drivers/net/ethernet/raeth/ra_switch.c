@@ -2791,6 +2791,7 @@ void trgmii_set_7530(void)
 	pr_info("trgmii_set_7530 Completed!!\n");
 }
 
+#if !defined (CONFIG_RAETH_ESW_CONTROL)
 static void is_switch_vlan_table_busy(void)
 {
 	int j = 0;
@@ -2873,6 +2874,7 @@ static void lan_wan_partition(void)
 		is_switch_vlan_table_busy();
 	}
 }
+#endif
 
 static void mt7530_phy_setting(void)
 {
@@ -3093,7 +3095,9 @@ static void setup_internal_gsw(void)
 		sys_reg_write(ETHDMASYS_ETH_SW_BASE + 0x0378, 0x855);
 	}
 
+#if !defined (CONFIG_RAETH_ESW_CONTROL)
 	lan_wan_partition();
+#endif
 	mt7530_phy_setting();
 	for (i = 0; i <= 4; i++) {
 		/*turn on PHY */
@@ -3939,16 +3943,17 @@ void fe_sw_deinit(struct END_DEVICE *ei_local)
 	}
 }
 
+void (*esw_link_status_hook)(u32 port_id, int port_link) = NULL;
+EXPORT_SYMBOL(esw_link_status_hook);
+
 static void esw_link_status_changed(int port_no, void *dev_id)
 {
 	unsigned int reg_val;
 
 	mii_mgr_read(31, (0x3008 + (port_no * 0x100)), &reg_val);
-	if (reg_val & 0x1)
-		pr_info("ESW: Link Status Changed - Port%d Link UP\n", port_no);
-	else
-		pr_info("ESW: Link Status Changed - Port%d Link Down\n",
-			port_no);
+
+	if (esw_link_status_hook)
+		esw_link_status_hook(port_no, reg_val & 0x1);
 }
 
 irqreturn_t gsw_interrupt(int irq, void *resv)
