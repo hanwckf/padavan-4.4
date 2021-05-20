@@ -27,6 +27,8 @@
 #include "xhci.h"
 #include "xhci-trace.h"
 
+extern int usb3_disable;
+
 #define	PORT_WAKE_BITS	(PORT_WKOC_E | PORT_WKDISC_E | PORT_WKCONN_E)
 #define	PORT_RWC_BITS	(PORT_CSC | PORT_PEC | PORT_WRC | PORT_OCC | \
 			 PORT_RC | PORT_PLC | PORT_PE)
@@ -1211,7 +1213,10 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 			 * However, hub_wq will ignore the roothub events until
 			 * the roothub is registered.
 			 */
-			writel(temp | PORT_POWER, port_array[wIndex]);
+			if (usb3_disable && hcd->speed == HCD_USB3)
+				writel(temp & ~PORT_POWER, port_array[wIndex]);
+			else
+				writel(temp | PORT_POWER, port_array[wIndex]);
 
 			temp = readl(port_array[wIndex]);
 			xhci_dbg(xhci, "set port power, actual port %d status  = 0x%x\n", wIndex, temp);

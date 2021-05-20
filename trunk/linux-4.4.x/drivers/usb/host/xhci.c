@@ -48,6 +48,10 @@ static unsigned int quirks;
 module_param(quirks, uint, S_IRUGO);
 MODULE_PARM_DESC(quirks, "Bit flags for quirks to be enabled as default");
 
+int usb3_disable = 0;
+module_param(usb3_disable, int, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(usb3_disable, "Disable USB3 interface");
+
 /*
  * xhci_handshake - spin reading hc until handshake completes or fails
  * @ptr: address of hc register to be read
