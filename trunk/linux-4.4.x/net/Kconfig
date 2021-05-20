@@ -414,6 +414,13 @@ source "net/nat/hw_nat/Kconfig"
 
 endif
 
+config SHORTCUT_FE
+	bool "Enables kernel network stack path for Shortcut Forwarding Engine"
+	depends on NF_CONNTRACK && IPV6
+	select NF_CONNTRACK_EVENTS
+	select NF_CONNTRACK_TIMEOUT
+	select NF_CONNTRACK_CHAIN_EVENTS
+
 config DST_CACHE
 	bool
 	default n
