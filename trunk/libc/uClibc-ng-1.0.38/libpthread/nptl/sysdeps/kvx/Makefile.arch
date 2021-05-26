@@ -1,0 +1,9 @@
+# Makefile for uClibc NPTL
+#
+# Copyright (C) 2019 Kalray
+#
+# Licensed under the LGPL v2.1 or later, see the file COPYING.LIB in this tarball.
+#
+
+libc_arch_a_CSRC = unwind-forcedunwind.c libc-tls.c
+CFLAGS-unwind-forcedunwind.c = -fexceptions -fasynchronous-unwind-tables
