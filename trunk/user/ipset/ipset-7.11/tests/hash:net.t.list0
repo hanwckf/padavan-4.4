@@ -1,0 +1,12 @@
+Name: test
+Type: hash:net
+Revision: 7
+Header: family inet hashsize 128 maxelem 65536 timeout 4 bucketsize 12 initval 0xb6f1b3fa
+Size in memory: 848
+References: 0
+Number of entries: 4
+Members:
+1.1.1.1 timeout 3
+192.168.68.64/27 timeout 3
+2.0.0.0/24 timeout 3
+2.0.0.1 timeout 3

@@ -1,0 +1,259 @@
+.EXPORT_ALL_VARIABLES:
+.PHONY: all romfs clean
+
+ifndef ROOTDIR
+ROOTDIR=..
+endif
+ifndef ROMFSDIR
+ROMFSDIR=$(ROOTDIR)/romfs
+endif
+
+UCLINUX_BUILD_LIB=1
+-include $(LINUX_CONFIG)
+include $(PROJECT_CONFIG)
+include $(ARCH_CONFIG)
+
+CFLAGS  += -ffunction-sections -fdata-sections
+LDFLAGS += -Wl,--gc-sections
+
+DESTDIR=$(ROOTDIR)/stage
+
+dir_y =
+dir_n =
+dir_  =
+
+LIBS_INCLUDE_LIBLZO=n
+LIBS_INCLUDE_LIBICONV=n
+LIBS_INCLUDE_LIBUSB_0=n
+LIBS_INCLUDE_LIBUSB_1=n
+LIBS_INCLUDE_LIBJSON_C=n
+LIBS_INCLUDE_LIBPCAP=n
+LIBS_INCLUDE_LIBUV=n
+LIBS_INCLUDE_LIBWEBSOCKETS=n
+LIBS_INCLUDE_MEDIA=n
+LIBS_INCLUDE_CURL=n
+LIBS_INCLUDE_NCURSES=n
+LIBS_INCLUDE_LIBPCRE=n
+LIBS_INCLUDE_LIBEV=n
+LIBS_INCLUDE_LIBSODIUM=n
+LIBS_INCLUDE_LIBUDNS=n
+LIBS_INCLUDE_LIBXML2=n
+LIBS_INCLUDE_MBEDTLS=n
+LIBS_INCLUDE_READLINE=n
+LIBS_INCLUDE_LIBRTLSDR=n
+LIBS_INCLUDE_C_ARES=n
+LIBS_INCLUDE_LIBEVENT=n
+LIBS_INCLUDE_BOOST=n
+STORAGE_ENABLED=n
+
+ifdef CONFIG_MMC_BLOCK
+STORAGE_ENABLED=y
+endif
+ifdef CONFIG_BLK_DEV_SD
+STORAGE_ENABLED=y
+endif
+
+ifeq ($(CONFIG_FIRMWARE_INCLUDE_OPENVPN),y)
+LIBS_INCLUDE_LIBLZO=y
+endif
+ifeq ($(CONFIG_FIRMWARE_INCLUDE_TTYD),y)
+LIBS_INCLUDE_LIBJSON_C=y
+LIBS_INCLUDE_LIBWEBSOCKETS=y
+endif
+ifeq ($(CONFIG_FIRMWARE_INCLUDE_SHADOWSOCKS),y)
+LIBS_INCLUDE_LIBPCRE=y
+LIBS_INCLUDE_LIBEV=y
+LIBS_INCLUDE_LIBSODIUM=y
+LIBS_INCLUDE_LIBUDNS=y
+LIBS_INCLUDE_MBEDTLS=y
+LIBS_INCLUDE_C_ARES=y
+LIBS_INCLUDE_CURL=y
+endif
+ifeq ($(CONFIG_FIRMWARE_INCLUDE_SSSERVER),y)
+LIBS_INCLUDE_LIBPCRE=y
+LIBS_INCLUDE_LIBEV=y
+LIBS_INCLUDE_LIBSODIUM=y
+LIBS_INCLUDE_MBEDTLS=y
+LIBS_INCLUDE_C_ARES=y
+endif
+ifeq ($(STORAGE_ENABLED),y)
+ifeq ($(CONFIG_FIRMWARE_INCLUDE_TRANSMISSION),y)
+LIBS_INCLUDE_CURL=y
+endif
+ifeq ($(CONFIG_FIRMWARE_INCLUDE_ARIA),y)
+LIBS_INCLUDE_LIBXML2=y
+endif
+
+ifeq ($(CONFIG_FIRMWARE_INCLUDE_MINIDLNA),y)
+LIBS_INCLUDE_LIBICONV=y
+LIBS_INCLUDE_MEDIA=y
+endif
+ifeq ($(CONFIG_FIRMWARE_INCLUDE_FIREFLY),y)
+LIBS_BUILD_SHARED=y
+LIBS_INCLUDE_LIBICONV=y
+LIBS_INCLUDE_MEDIA=y
+endif
+endif
+
+ifeq ($(LIBS_INCLUDE_LIBWEBSOCKETS),y)
+LIBS_INCLUDE_LIBUV=y
+endif
+
+ifeq ($(CONFIG_FIRMWARE_INCLUDE_LRZSZ),y)
+LIBS_INCLUDE_LIBICONV=y
+endif
+
+ifeq ($(CONFIG_FIRMWARE_INCLUDE_PARTED),y)
+LIBS_INCLUDE_LIBICONV=y
+endif
+
+ifdef CONFIG_USB_SUPPORT
+LIBS_INCLUDE_LIBUSB_1=y
+ifneq ($(filter y,$(CONFIG_FIRMWARE_INCLUDE_DUMP1090) $(CONFIG_FIRMWARE_INCLUDE_RTL_SDR)),)
+LIBS_INCLUDE_LIBRTLSDR=y
+endif
+ifeq ($(CONFIG_FIRMWARE_INCLUDE_U2EC),y)
+LIBS_INCLUDE_LIBUSB_0=y
+endif
+endif
+
+ifdef CONFIG_MTD_UBI
+LIBS_INCLUDE_LIBLZO=y
+endif
+
+ifeq ($(CONFIG_FIRMWARE_INCLUDE_CURL),y)
+LIBS_INCLUDE_CURL=y
+endif
+
+ifeq ($(CONFIG_FIRMWARE_INCLUDE_HTOP),y)
+LIBS_INCLUDE_NCURSES=y
+endif
+
+ifeq ($(CONFIG_FIRMWARE_INCLUDE_NANO),y)
+LIBS_INCLUDE_NCURSES=y
+endif
+
+ifeq ($(CONFIG_FIRMWARE_INCLUDE_TCPDUMP),y)
+LIBS_INCLUDE_LIBPCAP=y
+endif
+
+ifeq ($(CONFIG_FIRMWARE_INCLUDE_MINIEAP),y)
+LIBS_INCLUDE_LIBICONV=y
+endif
+
+ifeq ($(CONFIG_FIRMWARE_INCLUDE_NJIT_CLIENT),y)
+LIBS_INCLUDE_LIBPCAP=y
+endif
+
+ifeq ($(CONFIG_FIRMWARE_INCLUDE_TRANSMISSION),y)
+LIBS_INCLUDE_LIBEVENT=y
+endif
+
+ifeq ($(CONFIG_FIRMWARE_INCLUDE_REDSOCKS),y)
+LIBS_INCLUDE_LIBEVENT=y
+endif
+
+ifneq ($(filter y,$(CONFIG_FIRMWARE_INCLUDE_SOFTETHERVPN_CLIENT) $(CONFIG_FIRMWARE_INCLUDE_SOFTETHERVPN_CMD) $(CONFIG_FIRMWARE_INCLUDE_SOFTETHERVPN_SERVER)),)
+LIBS_INCLUDE_READLINE=y
+LIBS_INCLUDE_LIBICONV=y
+LIBS_INCLUDE_NCURSES=y
+endif
+
+ifeq ($(CONFIG_FIRMWARE_ENABLE_FAT),y)
+LIBS_INCLUDE_LIBICONV=y
+endif
+
+ifeq ($(CONFIG_FIRMWARE_INCLUDE_MTR),y)
+LIBS_INCLUDE_NCURSES=y
+endif
+
+ifeq ($(CONFIG_FIRMWARE_INCLUDE_MENTOHUST),y)
+LIBS_INCLUDE_LIBPCAP=y
+LIBS_INCLUDE_LIBICONV=y
+endif
+
+ifneq ($(filter y,$(CONFIG_FIRMWARE_INCLUDE_WING) $(CONFIG_FIRMWARE_INCLUDE_TROJAN)),)
+LIBS_INCLUDE_BOOST=y
+endif
+
+dir_y						+= libz
+dir_$(LIBS_INCLUDE_NCURSES)			+= libncurses
+dir_$(LIBS_INCLUDE_LIBLZO)			+= liblzo
+dir_$(LIBS_INCLUDE_LIBICONV)			+= libiconv
+dir_y						+= libssl
+dir_$(LIBS_INCLUDE_LIBUSB_0)			+= libusb
+dir_$(LIBS_INCLUDE_LIBUSB_1)			+= libusb-1.0
+dir_$(LIBS_INCLUDE_LIBRTLSDR)			+= librtlsdr
+dir_$(LIBS_INCLUDE_LIBJSON_C)			+= libjson-c
+dir_$(LIBS_INCLUDE_LIBUV)				+= libuv
+dir_$(LIBS_INCLUDE_LIBWEBSOCKETS)		+= libwebsockets
+dir_$(LIBS_INCLUDE_LIBPCRE)			+= libpcre
+dir_$(LIBS_INCLUDE_LIBEV)			+= libev
+dir_$(LIBS_INCLUDE_LIBSODIUM)			+= libsodium
+dir_$(LIBS_INCLUDE_LIBUDNS)			+= libudns
+dir_$(LIBS_INCLUDE_MBEDTLS)			+= mbedtls
+dir_$(LIBS_INCLUDE_CURL)			+= libcurl
+dir_$(LIBS_INCLUDE_BOOST)			+= boost
+dir_y						+= libnfnetlink
+dir_y						+= libconfuse
+# ipset shared libs
+ifneq ($(CONFIG_WITHOUT_KERNEL),y)
+dir_$(CONFIG_FIRMWARE_INCLUDE_IPSET)		+= libmnl
+endif
+dir_$(LIBS_INCLUDE_LIBPCAP)		+= libpcap
+
+# minidlna and firefly shared libs
+dir_$(LIBS_INCLUDE_MEDIA)			+= libid3tag
+dir_$(LIBS_INCLUDE_MEDIA)			+= libav
+dir_$(CONFIG_FIRMWARE_INCLUDE_MINIDLNA)		+= libexif
+dir_$(CONFIG_FIRMWARE_INCLUDE_MINIDLNA)		+= libjpeg
+dir_$(CONFIG_FIRMWARE_INCLUDE_MINIDLNA)		+= libogg
+dir_$(CONFIG_FIRMWARE_INCLUDE_MINIDLNA)		+= libvorbis
+dir_$(LIBS_INCLUDE_MEDIA)			+= libflac
+dir_$(LIBS_INCLUDE_MEDIA)			+= libsqlite
+dir_$(LIBS_INCLUDE_LIBEVENT)	+= libevent
+
+# aria2 shared libs
+dir_$(LIBS_INCLUDE_LIBXML2)		+= libxml2
+
+dir_$(LIBS_INCLUDE_C_ARES)		+= c-ares
+dir_$(LIBS_INCLUDE_READLINE)		+= readline
+
+ifneq (,$(filter y,$(CONFIG_FIRMWARE_INCLUDE_NFSD) $(CONFIG_FIRMWARE_INCLUDE_NFSC)))
+dir_y						+= libtirpc
+endif
+
+all:
+	for i in $(dir_y) ; do \
+		[ -d $$i ] && \
+		$(MAKE) -j1 -C $$i || \
+		exit $$? ; \
+		if [ ! -f $(DESTDIR)/.installed_$$i ] ; then \
+			$(MAKE) -C $$i install && \
+			touch $(DESTDIR)/.installed_$$i ; \
+		fi ; \
+	done
+
+%_only:
+	$(MAKE) -C $(@:_only=)
+
+%_romfs:
+	$(MAKE) -C $(@:_romfs=) romfs
+
+%_clean:
+	$(MAKE) -C $(@:_clean=) clean
+
+romfs:
+	for i in $(dir_y) ; do \
+		[ -d $$i ] && \
+		$(MAKE) -C $$i romfs ; \
+	done
+
+clean:
+	for i in `ls -d *` ; do \
+		if [ -d $$i ] ; then \
+			$(MAKE) -C $$i clean ; \
+			rm -f $(DESTDIR)/.installed_$$i ; \
+		fi ; \
+	done
+

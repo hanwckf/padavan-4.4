@@ -1,0 +1,15 @@
+xl2tpd (XL2TPDBASEVERSION-0xelerance1) trusty; urgency=low
+
+  * Update to XL2TPDBASEVERSION
+
+  The real changelog is in /usr/share/doc/xl2tpd/changelog.gz
+
+  This package is NOT an official Debian/Ubuntu package. Please do
+  not file any Debian/Ubuntu bug reports for this package but contact
+  <simon@xelerance.com> if you have a problem.
+
+ -- Simon Deziel <simon@xelerance.com>  Tue, 08 Mar 2016 15:51:48 -0500
+
+Local variables:
+mode: debian-changelog
+End:

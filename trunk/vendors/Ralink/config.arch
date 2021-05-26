@@ -1,0 +1,28 @@
+.EXPORT_ALL_VARIABLES:
+
+###########################################################################
+
+ENDIAN = little
+
+CPUFLAGS = -mips32r2 -march=mips32r2
+ifeq ($(CONFIG_PRODUCT),MT7621)
+CPUFLAGS += -mtune=1004kc
+else
+ifeq ($(CONFIG_PRODUCT),RT3883)
+CPUFLAGS += -mtune=74kc
+else
+CPUFLAGS += -mtune=24kec
+endif
+endif
+
+VENDOR_CFLAGS =
+UOPT = -Os
+LOPT = -Os
+HOST_TARGET = mipsel-linux
+
+###########################################################################
+
+include $(ROOTDIR)/vendors/config/mips/config.arch
+
+###########################################################################
+

@@ -1,0 +1,115 @@
+diff -rupw transmission-3.00-orig/libtransmission/port-forwarding.c transmission-3.00/libtransmission/port-forwarding.c
+--- transmission-3.00-orig/libtransmission/port-forwarding.c	2020-05-22 19:04:23.390804854 +0800
++++ transmission-3.00/libtransmission/port-forwarding.c	2020-12-04 09:08:17.352721513 +0800
+@@ -72,6 +72,7 @@ static char const* getNatStateStr(int st
+ 
+ static void natPulse(tr_shared* s, bool do_check)
+ {
++#if 0
+     int oldStatus;
+     int newStatus;
+     tr_port public_peer_port;
+@@ -106,6 +107,9 @@ static void natPulse(tr_shared* s, bool
+         tr_logAddNamedInfo(getKey(), _("State changed from \"%1$s\" to \"%2$s\""), getNatStateStr(oldStatus),
+             getNatStateStr(newStatus));
+     }
++#endif
++    s->natpmpStatus = TR_PORT_UNMAPPED;
++    s->upnpStatus = TR_PORT_UNMAPPED;
+ }
+ 
+ static void set_evtimer_from_status(tr_shared* s)
+@@ -196,12 +200,16 @@ static void stop_forwarding(tr_shared* s
+     tr_logAddNamedInfo(getKey(), "%s", _("Stopped"));
+     natPulse(s, false);
+ 
++#if 0
+     tr_natpmpClose(s->natpmp);
+     s->natpmp = NULL;
++#endif
+     s->natpmpStatus = TR_PORT_UNMAPPED;
+ 
++#if 0
+     tr_upnpClose(s->upnp);
+     s->upnp = NULL;
++#endif
+     s->upnpStatus = TR_PORT_UNMAPPED;
+ 
+     stop_timer(s);
+diff -rupw transmission-3.00-orig/libtransmission/session.c transmission-3.00/libtransmission/session.c
+--- transmission-3.00-orig/libtransmission/session.c	2020-05-22 19:04:23.391804861 +0800
++++ transmission-3.00/libtransmission/session.c	2020-12-04 09:08:48.429388901 +0800
+@@ -355,7 +355,7 @@ void tr_sessionGetDefaultSettings(tr_var
+     tr_variantDictAddInt(d, TR_KEY_peer_port_random_high, 65535);
+     tr_variantDictAddStr(d, TR_KEY_peer_socket_tos, TR_DEFAULT_PEER_SOCKET_TOS_STR);
+     tr_variantDictAddBool(d, TR_KEY_pex_enabled, true);
+-    tr_variantDictAddBool(d, TR_KEY_port_forwarding_enabled, true);
++    tr_variantDictAddBool(d, TR_KEY_port_forwarding_enabled, false);
+     tr_variantDictAddInt(d, TR_KEY_preallocation, TR_PREALLOCATE_SPARSE);
+     tr_variantDictAddBool(d, TR_KEY_prefetch_enabled, DEFAULT_PREFETCH_ENABLED);
+     tr_variantDictAddInt(d, TR_KEY_peer_id_ttl_hours, 6);
+@@ -370,7 +370,7 @@ void tr_sessionGetDefaultSettings(tr_var
+     tr_variantDictAddStr(d, TR_KEY_rpc_password, "");
+     tr_variantDictAddStr(d, TR_KEY_rpc_username, "");
+     tr_variantDictAddStr(d, TR_KEY_rpc_whitelist, TR_DEFAULT_RPC_WHITELIST);
+-    tr_variantDictAddBool(d, TR_KEY_rpc_whitelist_enabled, true);
++    tr_variantDictAddBool(d, TR_KEY_rpc_whitelist_enabled, false);
+     tr_variantDictAddStr(d, TR_KEY_rpc_host_whitelist, TR_DEFAULT_RPC_HOST_WHITELIST);
+     tr_variantDictAddBool(d, TR_KEY_rpc_host_whitelist_enabled, true);
+     tr_variantDictAddInt(d, TR_KEY_rpc_port, atoi(TR_DEFAULT_RPC_PORT_STR));
+diff -rupw transmission-3.00-orig/libtransmission/tr-udp.c transmission-3.00/libtransmission/tr-udp.c
+--- transmission-3.00-orig/libtransmission/tr-udp.c	2020-05-22 19:04:23.393804876 +0800
++++ transmission-3.00/libtransmission/tr-udp.c	2020-12-04 09:09:13.752722795 +0800
+@@ -46,8 +46,8 @@ THE SOFTWARE.
+ /* Since we use a single UDP socket in order to implement multiple
+    uTP sockets, try to set up huge buffers. */
+ 
+-#define RECV_BUFFER_SIZE (4 * 1024 * 1024)
+-#define SEND_BUFFER_SIZE (1 * 1024 * 1024)
++#define RECV_BUFFER_SIZE (2 * 1024 * 1024)
++#define SEND_BUFFER_SIZE (1 * 512 * 1024)
+ #define SMALL_BUFFER_SIZE (32 * 1024)
+ 
+ static void set_socket_buffers(tr_socket_t fd, bool large)
+diff -rupw transmission-3.00-orig/third-party/Makefile.am transmission-3.00/third-party/Makefile.am
+--- transmission-3.00-orig/third-party/Makefile.am	2020-05-22 19:04:23.477805502 +0800
++++ transmission-3.00/third-party/Makefile.am	2020-12-04 09:09:31.999389878 +0800
+@@ -7,12 +7,6 @@ endif
+ if BUILD_UTP
+   UTP_DIR = libutp
+ endif
+-if BUILD_MINIUPNP
+-  MINIUPNP_DIR = miniupnpc
+-endif
+-if BUILD_NATPMP 
+-  NATPMP_DIR = libnatpmp 
+-endif 
+ 
+ SUBDIRS = \
+   $(DHT_DIR) \
+--- transmission-3.00-orig/CMakeLists.txt	2020-05-22 19:04:23.376804750 +0800
++++ transmission-3.00/CMakeLists.txt	2021-03-15 13:16:56.548883000 +0800
+@@ -300,22 +300,8 @@ else()
+                   COMMAND "<SOURCE_DIR>/configure" "--prefix=<INSTALL_DIR>" "--disable-shared" ${EVENT2_CONFIGURE_FLAGS})
+ endif()
+ 
+-tr_add_external_auto_library(NATPMP libnatpmp natpmp)
+-if(NOT USE_SYSTEM_NATPMP)
+-    set(NATPMP_DEFINITIONS -DNATPMP_STATICLIB)
+-endif()
+-
+-tr_add_external_auto_library(MINIUPNPC miniupnpc miniupnpc
+-    CMAKE_ARGS
+-        -DUPNPC_BUILD_STATIC=ON
+-        -DUPNPC_BUILD_SHARED=OFF
+-        -DUPNPC_BUILD_TESTS=OFF)
+-set(MINIUPNPC_DEFINITIONS -DSYSTEM_MINIUPNP)
+-if(NOT USE_SYSTEM_MINIUPNPC)
+-    list(APPEND MINIUPNPC_DEFINITIONS -DMINIUPNP_STATICLIB)
+-    set(MINIUPNPC_VERSION 1.9)
+-    set(MINIUPNPC_API_VERSION 12)
+-endif()
++set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -I${CMAKE_BINARY_DIR}/../third-party/miniupnpc/include/")
++set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -I${CMAKE_BINARY_DIR}/../third-party/libnatpmp/")
+ 
+ tr_add_external_auto_library(DHT dht dht)

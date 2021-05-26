@@ -1,0 +1,42 @@
+diff -rupw curl.orig/Makefile.am curl/Makefile.am
+--- curl.orig/Makefile.am	2020-08-07 23:38:12.000000000 +0800
++++ curl/Makefile.am	2020-08-19 20:57:35.661728998 +0800
+@@ -192,7 +192,7 @@ CLEANFILES = $(VC6_LIBDSP) $(VC6_SRCDSP)
+ bin_SCRIPTS = curl-config
+ 
+ SUBDIRS = lib src
+-DIST_SUBDIRS = $(SUBDIRS) tests packages scripts include docs
++DIST_SUBDIRS = $(SUBDIRS) packages include
+ 
+ pkgconfigdir = $(libdir)/pkgconfig
+ pkgconfig_DATA = libcurl.pc
+@@ -303,8 +303,6 @@ cygwinbin:
+ # We extend the standard install with a custom hook:
+ install-data-hook:
+ 	(cd include && $(MAKE) install)
+-	(cd docs && $(MAKE) install)
+-	(cd docs/libcurl && $(MAKE) install)
+ 
+ # We extend the standard uninstall with a custom hook:
+ uninstall-hook:
+diff -rupw curl.orig/Makefile.in curl/Makefile.in
+--- curl.orig/Makefile.in	2020-08-19 15:38:16.000000000 +0800
++++ curl/Makefile.in	2020-08-19 20:58:06.895062329 +0800
+@@ -692,7 +692,7 @@ CLEANFILES = $(VC6_LIBDSP) $(VC6_SRCDSP)
+ 
+ bin_SCRIPTS = curl-config
+ SUBDIRS = lib src
+-DIST_SUBDIRS = $(SUBDIRS) tests packages scripts include docs
++DIST_SUBDIRS = $(SUBDIRS) packages include
+ pkgconfigdir = $(libdir)/pkgconfig
+ pkgconfig_DATA = libcurl.pc
+ LIB_VAUTH_CFILES = vauth/cleartext.c vauth/cram.c vauth/digest.c             \
+@@ -1516,8 +1516,6 @@ cygwinbin:
+ # We extend the standard install with a custom hook:
+ install-data-hook:
+ 	(cd include && $(MAKE) install)
+-	(cd docs && $(MAKE) install)
+-	(cd docs/libcurl && $(MAKE) install)
+ 
+ # We extend the standard uninstall with a custom hook:
+ uninstall-hook:

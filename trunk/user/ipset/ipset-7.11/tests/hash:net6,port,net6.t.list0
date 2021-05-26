@@ -1,0 +1,12 @@
+Name: test
+Type: hash:net,port,net
+Revision: 3
+Header: family inet6 hashsize 1024 maxelem 65536 bucketsize 12 initval 0x5b5fdcc8
+Size in memory: 2352
+References: 0
+Number of entries: 4
+Members:
+2:1::,tcp:128,::/12
+2:1::1,tcp:128,::/12
+2::,tcp:5,1::/24
+2::1,tcp:5,1::/24

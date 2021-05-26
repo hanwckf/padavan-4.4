@@ -1,0 +1,8 @@
+Name: test
+Type: hash:net,port
+Revision: 8
+Header: family inet hashsize 128 maxelem 65536 timeout 4 bucketsize 12 initval 0xad2d00b2
+Size in memory: 784
+References: 0
+Number of entries: 0
+Members:

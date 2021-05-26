@@ -1,0 +1,10 @@
+Name: test
+Type: hash:mac
+Revision: 1
+Header: hashsize 128 maxelem 65536 timeout 4 bucketsize 12 initval 0x60a630a7
+Size in memory: 464
+References: 0
+Number of entries: 2
+Members:
+00:00:00:00:02:00 timeout 3
+00:0A:00:00:00:00 timeout 0

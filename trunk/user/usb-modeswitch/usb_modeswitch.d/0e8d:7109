@@ -1,0 +1,4 @@
+# MediaTek Wimax USB Card
+TargetVendor=0x0e8d
+TargetProductList="7115,7118"
+StandardEject=1

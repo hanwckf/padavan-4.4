@@ -1,0 +1,11 @@
+Name: a
+Type: hash:ip
+Revision: 5
+Header: family inet6 hashsize 1024 maxelem 65536 bucketsize 12 initval 0xf366ace6
+Size in memory: 536
+References: 0
+Number of entries: 3
+Members:
+3::3
+4::4
+a::a
