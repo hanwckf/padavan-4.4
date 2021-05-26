@@ -1,0 +1,236 @@
+/*
+ * Copyright (c) 2017 MediaTek Inc.
+ * Author: Dehui.Sun <dehui.sun@mediatek.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+#include "mt7629.dtsi"
+#include <dt-bindings/input/input.h>
+
+/ {
+	model = "MediaTek MT7629 RFB1 board";
+	compatible = "mediatek,mt7629-rfb1", "mediatek,mt7629";
+
+	chosen {
+		bootargs = "earlycon=uart8250,mmio32,0x11002000 console=ttyS0,115200n1 \
+loglevel=8";
+	};
+
+	gpio-keys {
+		compatible = "gpio-keys";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		reset {
+			label = "reset";
+			gpios = <&pio 60 1>;
+			linux,code = <KEY_RESTART>;
+		};
+
+		wps {
+			label = "wps";
+			gpios = <&pio 58 1>;
+			linux,code = <KEY_WPS_BUTTON>;
+		};
+	};
+
+	memory {
+		device_type = "memory";
+		reg = <0 0x40000000 0 0x10000000>;
+	};
+};
+
+&raeth {
+	pinctrl-names = "default";
+	pinctrl-0 = <&phy_leds_pins>;
+	mac-address = [00 00 00 00 00 00];
+	gmac1-support = "sgmii-1";
+	sgmii-mode-1 = "force-2500";
+	gmac2-support = "rgmii-2";
+	rgmii-mode-2 = "an";
+	gmac2-phy-address = <0>;
+	gmac1_txq_num = <1>;
+	gmac1_txq_txd_num = <2048>;
+	gmac2_txq_num = <1>;
+	gmac2_txq_txd_num = <1024>;
+	num_rx_desc = <2048>;
+	status = "okay";
+};
+
+&i2c0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c0_pins>;
+	status = "okay";
+};
+
+&nor_flash {
+	status = "okay";
+	flash@0 {
+		compatible = "jedec,spi-nor";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		partition@00000 {
+			label = "Bootloader";
+			reg = <0x00000 0x0060000>;
+		};
+		partition@60000 {
+			label = "Config";
+			reg = <0x60000 0x0010000>;
+		};
+		partition@70000 {
+			label = "Factory";
+			reg = <0x70000 0x0040000>;
+		};
+		partition@b0000 {
+			label = "Kernel";
+			reg = <0xb0000 0xb50000>;
+		};
+	};
+};
+
+&pcie {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_pcie_default>;
+};
+
+&pio {
+	i2c0_pins: i2c0@0 {
+		pins_bus {
+			groups = "i2c_0";
+			function = "i2c";
+			bias-disable;
+			drive-strength = <4>;
+		};
+	};
+
+	nor_flash_pins: nor_flash_pins {
+		pins_bus {
+			groups = "nor_flash_io", "nor_flash_wp", "nor_flash_hold";
+			function = "nor_flash";
+		};
+	};
+
+	phy_leds_pins: leds-pins-0 {
+		mux {
+			function = "led";
+			groups = "gphy_leds_0", "ephy_leds";
+		};
+	};
+
+	pinctrl_wifi_default: wifi-default {
+		mux-wf0_5g {
+			groups = "wf0_5g";
+			function = "wifi";
+			drive-strength = <4>;
+		};
+		mux-wf0_2g {
+			groups = "wf0_2g";
+			function = "wifi";
+			drive-strength = <4>;
+		};
+	};
+
+	pinctrl_pcie_default: pcie-default {
+		mux-pcie_clkreq {
+			groups = "pcie_clkreq";
+			function = "pcie";
+		};
+		mux-pcie_pereset {
+			groups = "pcie_pereset";
+			function = "pcie";
+		};
+		mux-pcie_wake {
+			groups = "pcie_wake";
+			function = "pcie";
+		};
+	};
+
+	pinctrl_snand_default: snand_default {
+		pins_bus {
+			groups = "snfi", "snfi_wp", "snfi_hold";
+			function = "snfi";
+		};
+	};
+
+	pinctrl_spi_default: spi_default {
+		mux_spi {
+			groups = "spi_0";
+			function = "spi";
+			bias-disable;
+		};
+	};
+};
+
+&pwm {
+	status = "okay";
+};
+
+&snand {
+	status = "okay";
+	flash@0 {
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			partition@0 {
+				label = "Bootloader";
+				reg = <0x00000 0x0100000>;
+				read-only;
+			};
+
+			partition@100000 {
+				label = "Config";
+				reg = <0x100000 0x0040000>;
+			};
+
+			partition@140000 {
+				label = "Factory";
+				reg = <0x140000 0x0080000>;
+			};
+
+			partition@1c0000 {
+				label = "Kernel";
+				reg = <0x1c0000 0x1000000>;
+			};
+		};
+	};
+};
+
+&spi {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_spi_default>;
+
+	spidev: spi@0 {
+		compatible = "rohm,dh2228fv";
+		reg = <0>;
+		spi-max-frequency = <1000000>;
+	};
+};
+
+&u3phy1 {
+	status = "okay";
+};
+
+&uart0 {
+	status = "okay";
+};
+
+&wbsys {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_wifi_default>;
+	status = "okay";
+};
+
+&xhci {
+	status = "okay";
+};

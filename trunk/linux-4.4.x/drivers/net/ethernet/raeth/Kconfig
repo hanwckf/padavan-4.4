@@ -1,0 +1,39 @@
+config RAETH
+	tristate "Mediatek Ethernet GMAC"
+	---help---
+	  This driver supports Mediatek gigabit ethernet family of
+	  adapters.
+
+	  Note that the answer to this question doesn't directly affect the
+	  kernel: saying N will just cause the configurator to skip all
+	  the questions about Mediatek Ethernet devices. If you say Y,
+	  you will be asked for your specific card in the following questions.
+
+if RAETH
+
+config  GE1_SGMII_FORCE_2500
+	bool "SGMII_FORCE_2500 (GigaSW)"
+	depends on RAETH
+	---help---
+	  If you want to use sgmii force 2500.
+	  Please enable GE1_SGMII_FORCE_2500.
+          Switch must support SGMII interface.
+	  This config will impact switch app makefile.
+
+config ETH_SKB_ALLOC_SELECT
+	bool "SKB Allocation API Select"
+
+choice
+	prompt "SKB Allocation API Selection"
+	depends on ETH_SKB_ALLOC_SELECT
+	default ETH_PAGE_ALLOC_SKB
+
+config  ETH_SLAB_ALLOC_SKB
+	bool "SLAB skb allocation"
+
+config  ETH_PAGE_ALLOC_SKB
+	bool "Page skb allocation"
+
+endchoice
+
+endif 	# RAETH

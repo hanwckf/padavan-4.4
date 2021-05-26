@@ -1,0 +1,8 @@
+config MMC_MT7621
+	tristate "MT7621 SD/MMC"
+	depends on !MTD_NAND_RALINK && MMC && SOC_MT7621
+	help
+	  This selects the MediaTek(R) Secure digital and Multimedia card Interface.
+	  If you have a machine with a integrated SD/MMC card reader, say Y or M here.
+	  This is needed if support for any SD/SDIO/MMC devices is required.
+	  If unsure, say N.

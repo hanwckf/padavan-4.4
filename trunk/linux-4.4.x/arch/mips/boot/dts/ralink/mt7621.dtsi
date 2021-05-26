@@ -1,0 +1,514 @@
+/*
+ * Device Tree Source for MT7621
+ *
+ * Copyright (C) 2018 OpenWrt
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+#include <dt-bindings/interrupt-controller/mips-gic.h>
+
+/ {
+	#address-cells = <1>;
+	#size-cells = <1>;
+	compatible = "mediatek,mt7621-soc";
+
+	cpus {
+		cpu@0 {
+			compatible = "mips,mips1004Kc";
+		};
+
+		cpu@1 {
+			compatible = "mips,mips1004Kc";
+		};
+	};
+
+	cpuintc: cpuintc@0 {
+		#address-cells = <0>;
+		#interrupt-cells = <1>;
+		interrupt-controller;
+		compatible = "mti,cpu-interrupt-controller";
+	};
+
+	aliases {
+		serial0 = &uartlite;
+	};
+
+	cpuclock: cpuclock@0 {
+		#clock-cells = <0>;
+		compatible = "mtk,mt7621-cpu-clock";
+	};
+
+	sysbusclock: sysbusclock@0 {
+		#clock-cells = <0>;
+		compatible = "mtk,mt7621-sys-bus-clock";
+	};
+
+	apll: apll@0 {
+		#clock-cells = <0>;
+		compatible = "fixed-clock";
+
+		clock-frequency = <270000000>;
+	};
+
+	sysclock50M: sysclock50M@0 {
+		#clock-cells = <0>;
+		compatible = "fixed-clock";
+
+		clock-frequency = <50000000>;
+	};
+
+	sysclock125M: sysclock125M@0 {
+		#clock-cells = <0>;
+		compatible = "fixed-clock";
+
+		clock-frequency = <125000000>;
+	};
+
+	palmbus: palmbus@1e000000 {
+		compatible = "palmbus";
+		reg = <0x1e000000 0x100000>;
+		ranges = <0x0 0x1e000000 0x0fffff>;
+
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		sysc: sysc@0 {
+			compatible = "mtk,mt7621-sysc";
+			reg = <0x0 0x100>;
+		};
+
+		wdt: wdt@100 {
+			compatible = "mtk,mt7621-wdt";
+			reg = <0x100 0x100>;
+		};
+
+		gpio@600 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			compatible = "mtk,mt7621-gpio";
+			reg = <0x600 0x100>;
+
+			gpio0: bank@0 {
+				reg = <0>;
+				compatible = "mtk,mt7621-gpio-bank";
+				gpio-controller;
+				#gpio-cells = <2>;
+			};
+
+			gpio1: bank@1 {
+				reg = <1>;
+				compatible = "mtk,mt7621-gpio-bank";
+				gpio-controller;
+				#gpio-cells = <2>;
+			};
+
+			gpio2: bank@2 {
+				reg = <2>;
+				compatible = "mtk,mt7621-gpio-bank";
+				gpio-controller;
+				#gpio-cells = <2>;
+			};
+		};
+
+		i2c: i2c@900 {
+			compatible = "mediatek,mt7621-i2c";
+			reg = <0x900 0x100>;
+
+			clocks = <&sysclock50M>;
+
+			resets = <&rstctrl 16>;
+			reset-names = "i2c";
+
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			status = "disabled";
+
+			pinctrl-names = "default";
+			pinctrl-0 = <&i2c_pins>;
+		};
+
+		i2s: i2s@a00 {
+			compatible = "mediatek,mt7621-i2s";
+			reg = <0xa00 0x100>;
+
+			clocks = <&apll>;
+
+			resets = <&rstctrl 17>;
+			reset-names = "i2s";
+
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 16 IRQ_TYPE_LEVEL_HIGH>;
+
+			txdma-req = <2>;
+			rxdma-req = <3>;
+
+			dmas = <&gdma 4>,
+				<&gdma 6>;
+			dma-names = "tx", "rx";
+
+			status = "disabled";
+		};
+
+		spi0: spi@b00 {
+			status = "disabled";
+
+			compatible = "mediatek,mt7621-spi";
+			reg = <0xb00 0x100>;
+
+			clocks = <&sysbusclock>;
+
+			resets = <&rstctrl 18>;
+			reset-names = "spi";
+
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			pinctrl-names = "default";
+			pinctrl-0 = <&spi_pins>;
+		};
+
+		uartlite: uartlite@c00 {
+			compatible = "ns16550a";
+			reg = <0xc00 0x100>;
+
+			clocks = <&sysclock50M>;
+			clock-frequency = <50000000>;
+
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 26 IRQ_TYPE_LEVEL_HIGH>;
+
+			reg-shift = <2>;
+			reg-io-width = <4>;
+			no-loopback-test;
+		};
+
+		uartfull1: uartfull@d00 {
+			compatible = "ns16550a";
+			reg = <0xd00 0x100>;
+
+			clocks = <&sysclock50M>;
+			clock-frequency = <50000000>;
+
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 27 IRQ_TYPE_LEVEL_HIGH>;
+
+			reg-shift = <2>;
+			reg-io-width = <4>;
+			no-loopback-test;
+
+			status = "disabled";
+		};
+
+		uartfull2: uartfull@e00 {
+			compatible = "ns16550a";
+			reg = <0xe00 0x100>;
+
+			clocks = <&sysclock50M>;
+			clock-frequency = <50000000>;
+
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 28 IRQ_TYPE_LEVEL_HIGH>;
+
+			reg-shift = <2>;
+			reg-io-width = <4>;
+			no-loopback-test;
+
+			status = "disabled";
+		};
+
+		gdma: gdma@2800 {
+			compatible = "mtk,rt3883-gdma";
+			reg = <0x2800 0x800>;
+
+			resets = <&rstctrl 14>;
+			reset-names = "dma";
+
+			interrupt-parent = <&gic>;
+			interrupts = <0 13 4>;
+
+			#dma-cells = <1>;
+			#dma-channels = <16>;
+			#dma-requests = <16>;
+
+			status = "disabled";
+		};
+
+		nand: nand@3000 {
+			status = "disabled";
+
+			compatible = "mtk,mt7621-nand";
+			bank-width = <2>;
+			reg = <0x3000 0x800
+				0x3800 0x800>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+		};
+
+		memc: memc@5000 {
+			compatible = "mtk,mt7621-memc";
+			reg = <0x5000 0x1000>;
+		};
+
+		hsdma: hsdma@7000 {
+			compatible = "mediatek,mt7621-hsdma";
+			reg = <0x7000 0x1000>;
+
+			resets = <&rstctrl 5>;
+			reset-names = "hsdma";
+
+			interrupt-parent = <&gic>;
+			interrupts = <0 11 4>;
+
+			#dma-cells = <1>;
+			#dma-channels = <1>;
+			#dma-requests = <1>;
+
+			status = "disabled";
+		};
+	};
+
+	rstctrl: rstctrl {
+		compatible = "ralink,rt2880-reset";
+		#reset-cells = <1>;
+	};
+
+	clkctrl: clkctrl {
+		compatible = "ralink,rt2880-clock";
+		#clock-cells = <1>;
+	};
+
+	ethsys: ethsys@1e000000 {
+		compatible = "mediatek,mt7621-ethsys";
+		reg = <0x1e000000 0x8000>;
+	};
+
+	ethernet: ethernet@1e100000 {
+		compatible = "mediatek,mt7621-eth";
+		reg = <0x1e100000 0xE000>;
+
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		resets = <&rstctrl 6 &rstctrl 23>;
+		reset-names = "fe", "eth";
+
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SHARED 3 IRQ_TYPE_LEVEL_HIGH>;
+
+		mediatek,switch = <&gsw>;
+		mediatek,ethsys = <&ethsys>;
+
+		mdio-bus {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			phy1f: ethernet-phy@1f {
+				reg = <0x1f>;
+				phy-mode = "rgmii";
+			};
+		};
+	};
+
+	gsw: gsw@1e110000 {
+		compatible = "mediatek,mt7621-gsw";
+		reg = <0x1e110000 0x8000>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SHARED 23 IRQ_TYPE_LEVEL_HIGH>;
+	};
+
+	sdhci: sdhci@1e130000 {
+		status = "disabled";
+
+		compatible = "ralink,mt7620-sdhci";
+		reg = <0x1e130000 0x4000>;
+
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SHARED 20 IRQ_TYPE_LEVEL_HIGH>;
+	};
+
+	pcie: pcie@1e140000 {
+		compatible = "mediatek,mt7621-pci";
+		reg = <0x1e140000 0x40000>;
+
+		#address-cells = <3>;
+		#size-cells = <2>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&pcie_pins>;
+
+		device_type = "pci";
+
+		bus-range = <0 255>;
+		ranges = <
+			0x02000000 0 0x00000000 0x60000000 0 0x10000000 /* pci memory */
+			0x01000000 0 0x00000000 0x1e160000 0 0x00010000 /* io space */
+		>;
+
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SHARED 4 IRQ_TYPE_LEVEL_HIGH
+				GIC_SHARED 24 IRQ_TYPE_LEVEL_HIGH
+				GIC_SHARED 25 IRQ_TYPE_LEVEL_HIGH>;
+
+		status = "disabled";
+
+		resets = <&rstctrl 24 &rstctrl 25 &rstctrl 26>;
+		reset-names = "pcie0", "pcie1", "pcie2";
+		clocks = <&clkctrl 24 &clkctrl 25 &clkctrl 26>;
+		clock-names = "pcie0", "pcie1", "pcie2";
+
+		reset-gpios = <&gpio0 19 1>, <&gpio0 8 1>, <&gpio0 7 1>;
+		reset-gpio-names = "pcie0", "pcie1", "pcie2";
+
+		pcie0 {
+			reg = <0x0000 0 0 0 0>;
+
+			#address-cells = <3>;
+			#size-cells = <2>;
+
+			device_type = "pci";
+		};
+
+		pcie1 {
+			reg = <0x0800 0 0 0 0>;
+
+			#address-cells = <3>;
+			#size-cells = <2>;
+
+			device_type = "pci";
+		};
+
+		pcie2 {
+			reg = <0x1000 0 0 0 0>;
+
+			#address-cells = <3>;
+			#size-cells = <2>;
+
+			device_type = "pci";
+		};
+	};
+
+	xhci: xhci@1e1c0000 {
+		status = "okay";
+
+		compatible = "mediatek,mt8173-xhci";
+		reg = <0x1e1c0000 0x1000
+		       0x1e1d0700 0x0100>;
+
+		clocks = <&sysclock125M>;
+		clock-names = "sys_ck";
+
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SHARED 22 IRQ_TYPE_LEVEL_HIGH>;
+	};
+
+	gic: interrupt-controller@1fbc0000 {
+		compatible = "mti,gic";
+		reg = <0x1fbc0000 0x2000>;
+
+		interrupt-controller;
+		#interrupt-cells = <3>;
+
+		mti,reserved-cpu-vectors = <7>;
+
+		timer {
+			compatible = "mti,gic-timer";
+			interrupts = <GIC_LOCAL 1 IRQ_TYPE_NONE>;
+			clocks = <&cpuclock>;
+		};
+	};
+
+	pinctrl: pinctrl {
+		compatible = "mtk,mtkmips-pinmux";
+		pinctrl-names = "default";
+		pinctrl-0 = <&state_default>;
+
+		state_default: pinctrl0 {
+		};
+
+		i2c_pins: i2c {
+			i2c {
+				mtk,group = "i2c";
+				mtk,function = "i2c";
+			};
+		};
+
+		mdio_pins: mdio {
+			mdio {
+				mtk,group = "mdio";
+				mtk,function = "mdio";
+			};
+		};
+
+		nand_pins: nand {
+			spi-nand {
+				mtk,group = "spi";
+				mtk,function = "nand1";
+			};
+
+			sdhci-nand {
+				mtk,group = "sdhci";
+				mtk,function = "nand2";
+			};
+		};
+
+		pcie_pins: pcie {
+			pcie {
+				mtk,group = "pcie";
+				mtk,function = "gpio";
+			};
+		};
+
+		rgmii1_pins: rgmii1 {
+			rgmii1 {
+				mtk,group = "rgmii1";
+				mtk,function = "rgmii1";
+			};
+		};
+
+		rgmii2_pins: rgmii2 {
+			rgmii2 {
+				mtk,group = "rgmii2";
+				mtk,function = "rgmii2";
+			};
+		};
+
+		sdhci_pins: sdhci {
+			sdhci {
+				mtk,group = "sdhci";
+				mtk,function = "sdhci";
+			};
+		};
+
+		spi_pins: spi {
+			spi {
+				mtk,group = "spi";
+				mtk,function = "spi";
+			};
+		};
+
+		uart1_pins: uart1 {
+			uart1 {
+				mtk,group = "uart1";
+				mtk,function = "uart1";
+			};
+		};
+
+		uart2_pins: uart2 {
+			uart2 {
+				mtk,group = "uart2";
+				mtk,function = "uart2";
+			};
+		};
+
+		uart3_pins: uart3 {
+			uart3 {
+				mtk,group = "uart3";
+				mtk,function = "uart3";
+			};
+		};
+	};
+};

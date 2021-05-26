@@ -1,0 +1,185 @@
+config SND_SOC_MEDIATEK
+	tristate "Asoc Mediatek"
+	help
+	  This adds ASoC driver for Mediatek.
+	  that should be used for Asoc.
+	  Select Y if you use Asoc.
+	  If unsure select "N".
+
+config SND_SOC_MT2701
+	tristate "ASoC support for Mediatek MT2701 chip"
+	depends on ARCH_MEDIATEK
+	select SND_SOC_MEDIATEK
+	help
+	  This adds ASoC driver for Mediatek MT2701 boards
+	  that can be used with other codecs.
+	  Select Y if you have such device.
+	  If unsure select "N".
+
+config SND_SOC_MT2701_CS42448
+	tristate "ASoc Audio driver for MT2701 with CS42448 codec"
+	depends on SND_SOC_MT2701
+	select SND_SOC_CS42XX8_I2C
+	select SND_SOC_BT_SCO
+	help
+	  This adds ASoC driver for Mediatek MT2701 boards
+	  with the CS42448 codecs.
+	  Select Y if you have such device.
+	  If unsure select "N".
+
+config SND_SOC_MT7622
+	tristate "ASoC support for Mediatek MT7622 chip"
+	help
+	  This adds ASoC driver for Mediatek MT7622 boards
+	  that can be used with other codecs.
+	  Select Y if you have such device.
+	  If unsure select "N".
+
+config SND_SOC_MT7622_DUMMY
+	tristate "ASoc Audio driver for MT7622 with dummy codec"
+	depends on SND_SOC_MT7622
+	help
+	  This adds ASoC driver for Mediatek MT7622 boards
+	  with the dummy codecs.
+	  Select Y if you have such device.
+	  If unsure select "N".
+
+config SND_SOC_MT7622_WM8960
+	tristate "ASoc Audio driver for MT7622 with WM8960 codec"
+	depends on SND_SOC_MT7622
+	select SND_SOC_WM8960
+	help
+	  This adds ASoC driver for Mediatek MT7622 boards
+	  with the WM8960 codecs.
+	  Select Y if you have such device.
+	  If unsure select "N".
+
+config SND_SOC_MT7623_WM8960
+	bool "SND_SOC_MT7623_WM8960"
+	select MT_SND_SOC_8521P
+	select SND_SOC_WM8960
+	help
+	  This adds ASoC driver for Mediatek MT7623 RFB boards
+	  with wolfson WM8960 audio codec.
+	  Select Y if you have such device.
+          If unsure select "N".
+
+config SND_SOC_MT8173
+	tristate "ASoC support for Mediatek MT8173 chip"
+	depends on ARCH_MEDIATEK
+	select SND_SOC_MEDIATEK
+	help
+	  This adds ASoC platform driver support for Mediatek MT8173 chip
+	  that can be used with other codecs.
+	  Select Y if you have such device.
+	  Ex: MT8173
+
+config SND_SOC_MT8173_MAX98090
+	tristate "ASoC Audio driver for MT8173 with MAX98090 codec"
+	depends on SND_SOC_MT8173 && I2C
+	select SND_SOC_MAX98090
+	help
+	  This adds ASoC driver for Mediatek MT8173 boards
+	  with the MAX98090 audio codec.
+	  Select Y if you have such device.
+	  If unsure select "N".
+
+config SND_SOC_MT8173_RT5650
+	tristate "ASoC Audio driver for MT8173 with RT5650 codec"
+	depends on SND_SOC_MT8173 && I2C
+	select SND_SOC_RT5645
+	help
+	  This adds ASoC driver for Mediatek MT8173 boards
+	  with the RT5650 audio codec.
+	  Select Y if you have such device.
+	  If unsure select "N".
+
+config SND_SOC_MT8173_RT5650_RT5514
+	tristate "ASoC Audio driver for MT8173 with RT5650 RT5514 codecs"
+	depends on SND_SOC_MT8173 && I2C
+	select SND_SOC_RT5645
+	select SND_SOC_RT5514
+	help
+	  This adds ASoC driver for Mediatek MT8173 boards
+	  with the RT5650 and RT5514 codecs.
+	  Select Y if you have such device.
+	  If unsure select "N".
+
+config SND_SOC_MT8173_RT5650_RT5676
+	tristate "ASoC Audio driver for MT8173 with RT5650 RT5676 codecs"
+	depends on SND_SOC_MT8173 && I2C
+	select SND_SOC_RT5645
+	select SND_SOC_RT5677
+	select SND_SOC_HDMI_CODEC
+	help
+	  This adds ASoC driver for Mediatek MT8173 boards
+	  with the RT5650 and RT5676 codecs.
+	  Select Y if you have such device.
+	  If unsure select "N".
+
+config MT_SND_SOC_8521P
+	tristate "ASoc support for MT8521P"
+	help
+	  This adds ASoC platform driver support for MT8521P chip
+          that can be used with other codecs.
+          Select Y if you have such device.
+	  If unsure select "N".
+
+config SND_SOC_MT8521P_EVB
+	bool "SND_SOC_MT8521P_EVB"
+	select MT_SND_SOC_8521P
+	help
+	  This adds ASoc driver for Mediatek MT8521P boards
+	  Say Y if you want to use the MT8521P EVB
+	  Audio interfaces for MT8521P.
+	  If unsure seletct "N".
+
+config SND_SOC_MT8521P_RT5640
+	bool "SND_SOC_MT8521P_RT5640"
+	select MT_SND_SOC_8521P
+	select SND_SOC_RT5640
+	help
+	  This adds ASoC driver for Mediatek MT8521P boards
+	  with the RT5640 audio codec.
+	  Select Y if you have such device.
+	  If unsure select "N".
+
+config SND_SOC_MT8521P_CS42448
+	bool "SND_SOC_MT8521P_CS42448"
+	select MT_SND_SOC_8521P
+	select SND_SOC_CS42XX8_I2C
+	help
+	  This adds ASoC driver for Mediatek MT8521P boards
+	  with the CS42448 audio codec.
+	  Select Y if you have such device.
+	  If unsure select "N".
+
+config SND_SOC_MT2712_D1V1
+  tristate "ASoc Audio driver for MT2712 with D1V1 DTB"
+	depends on SND_SOC_MT2701
+	select SND_SOC_BT_SCO
+	help
+	  This adds ASoC driver for Mediatek MT2701 boards
+	  with the MTKD1V1 DTB.
+	  Select Y if you have such device.
+	  If unsure select "N".
+
+config SND_SOC_MT7621
+	tristate "ASoC support for Mediatek MT7621 chip"
+	select SND_SOC_GENERIC_DMAENGINE_PCM
+	select REGMAP_MMIO
+	help
+	  This adds ASoC driver for Mediatek MT7621 boards
+	  that can be used with other codecs.
+	  Select Y if you have such device.
+	  If unsure select "N".
+
+config SND_SOC_MT7621_WM8960
+	tristate "ASoc Audio driver for MT7621 with WM8960 codec"
+	depends on SND_SOC_MT7621
+	select SND_SOC_WM8960
+	help
+	  This adds ASoC driver for Mediatek MT7621 boards
+	  with the WM8960 codecs.
+	  Select Y if you have such device.
+	  If unsure select "N".

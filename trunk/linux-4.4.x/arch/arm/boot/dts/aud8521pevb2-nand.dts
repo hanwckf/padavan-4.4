@@ -1,0 +1,45 @@
+/*
+ * Copyright (c) 2016 MediaTek Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "aud8521pevb2.dts"
+
+/ {
+	chosen {
+		bootargs = "console=ttyS0,921600n1 root=/dev/ram debugshell=1 initrd=0x84000000,0x750000 printk.disable_uart=0 initcall_debug=1";
+	};
+};
+
+&bch {
+	status = "okay";
+};
+
+&mmc0 {
+	status = "disabled";
+};
+
+&mmc1 {
+	status = "disabled";
+};
+
+&nandc {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&nand_pins_default>;
+	nand@0 {
+		reg = <0>;
+		spare_per_sector = <64>;
+		nand-ecc-mode = "hw";
+		nand-ecc-strength = <12>;
+		nand-ecc-step-size = <1024>;
+	};
+};

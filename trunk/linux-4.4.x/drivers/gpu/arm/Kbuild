@@ -1,0 +1,2 @@
+obj-$(CONFIG_MALI450)		+= mali/
+obj-$(CONFIG_MALI_MIDGARD)	+= midgard/

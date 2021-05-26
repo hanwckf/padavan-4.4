@@ -1,0 +1,80 @@
+/*
+ * Device Tree Source for MT7621 RFB
+ *
+ * Copyright (C) 2018 OpenWrt
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+/dts-v1/;
+
+#include "mt7621.dtsi"
+
+/ {
+	compatible = "mediatek,mt7621-ref-board", "mediatek,mt7621-soc";
+	model = "Mediatek MT7621 reference board";
+
+	memory@0 {
+		device_type = "memory";
+		reg = <0x0 0x8000000>;
+	};
+
+	chosen {
+		bootargs = "console=ttyS0,57600";
+	};
+};
+
+&i2c {
+	status = "okay";
+};
+
+&spi0 {
+	status = "okay";
+	m25p80@0 {
+		compatible = "jedec,spi-nor";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		reg = <0>;
+		linux,modalias = "m25p80", "mx25l25635e";
+		spi-max-frequency = <10000000>;
+		m25p,chunked-io = <32>;
+
+		partition@0 {
+			label = "Uboot";
+			reg = <0x00000 0x30000>; /* 192 KB */
+		};
+
+		partition@30000 {
+			label = "Config";
+			reg = <0x30000 0x10000>; /* 64 KB */
+		};
+
+		partition@40000 {
+			label = "Factory";
+			reg = <0x40000 0x10000>; /* 64 KB */
+		};
+
+		partition@50000 {
+			label = "Kernel";
+			reg = <0x50000 0x6c0000>;
+		};
+	};
+};
+
+&sdhci {
+	status = "okay";
+};
+
+&pcie {
+	status = "okay";
+};
+
+&pinctrl {
+	state_default: pinctrl0 {
+		gpio {
+			mtk,group = "uart2", "uart3", "rgmii2", "sdhci";
+			mtk,function = "gpio";
+		};
+	};
+};

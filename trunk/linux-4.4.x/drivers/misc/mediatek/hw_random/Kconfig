@@ -1,0 +1,7 @@
+config MTK_HWRNG
+	bool "Mediatek Hardware Random Generator"
+	default N
+	select MTK_IN_HOUSE_TEE_SUPPORT
+	select HW_RANDOM
+	---help---
+		Hardware random generator support for MediaTek SOC

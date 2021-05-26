@@ -1,0 +1,4 @@
+config MTK_TURNKEY_THERMAL
+	bool "MTK_TURNKEY_THERMAL"
+	help
+	  This is for MTK thermal driver.

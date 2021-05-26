@@ -1,0 +1,181 @@
+/*
+ * Copyright (c) 2016 MediaTek Inc.
+ * Author: Ming.Huang <ming.huang@mediatek.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+
+&clkao {
+	status = "disabled";
+
+	bring-up {
+		compatible = "mediatek,clk-bring-up";
+		clocks =
+			<&apmixedsys CLK_APMIXED_ARMPLL>,
+			<&apmixedsys CLK_APMIXED_MAINPLL>,
+			<&apmixedsys CLK_APMIXED_UNIV2PLL>,
+			<&apmixedsys CLK_APMIXED_ETH1PLL>,
+			<&apmixedsys CLK_APMIXED_ETH2PLL>,
+			<&apmixedsys CLK_APMIXED_AUD1PLL>,
+			<&apmixedsys CLK_APMIXED_AUD2PLL>,
+			<&apmixedsys CLK_APMIXED_TRGPLL>,
+			<&apmixedsys CLK_APMIXED_SGMIPLL>,
+			<&infracfg CLK_INFRA_DBGCLK_PD>,
+			<&infracfg CLK_INFRA_AUDIO_PD>,
+			<&infracfg CLK_INFRA_IRRX_PD>,
+			<&infracfg CLK_INFRA_APXGPT_PD>,
+			<&infracfg CLK_INFRA_PMIC_PD>,
+			<&pericfg CLK_PERI_THERM_PD>,
+			<&pericfg CLK_PERI_PWM1_PD>,
+			<&pericfg CLK_PERI_PWM2_PD>,
+			<&pericfg CLK_PERI_PWM3_PD>,
+			<&pericfg CLK_PERI_PWM4_PD>,
+			<&pericfg CLK_PERI_PWM5_PD>,
+			<&pericfg CLK_PERI_PWM6_PD>,
+			<&pericfg CLK_PERI_PWM7_PD>,
+			<&pericfg CLK_PERI_PWM_PD>,
+			<&pericfg CLK_PERI_AP_DMA_PD>,
+			<&pericfg CLK_PERI_MSDC30_0_PD>,
+			<&pericfg CLK_PERI_MSDC30_1_PD>,
+			<&pericfg CLK_PERI_UART0_PD>,
+			<&pericfg CLK_PERI_UART1_PD>,
+			<&pericfg CLK_PERI_UART2_PD>,
+			<&pericfg CLK_PERI_UART3_PD>,
+			<&pericfg CLK_PERI_UART4_PD>,
+			<&pericfg CLK_PERI_BTIF_PD>,
+			<&pericfg CLK_PERI_I2C0_PD>,
+			<&pericfg CLK_PERI_I2C1_PD>,
+			<&pericfg CLK_PERI_I2C2_PD>,
+			<&pericfg CLK_PERI_SPI1_PD>,
+			<&pericfg CLK_PERI_AUXADC_PD>,
+			<&pericfg CLK_PERI_SPI0_PD>,
+			<&pericfg CLK_PERI_SNFI_PD>,
+			<&pericfg CLK_PERI_NFI_PD>,
+			<&pericfg CLK_PERI_NFIECC_PD>,
+			<&pericfg CLK_PERI_FLASH_PD>,
+			<&pericfg CLK_PERI_IRTX_PD>,
+			<&topckgen CLK_TOP_MSDC50_0_SEL>,
+			<&topckgen CLK_TOP_MSDC30_0_SEL>,
+			<&topckgen CLK_TOP_APLL1_DIV_PD>,
+			<&topckgen CLK_TOP_APLL2_DIV_PD>,
+			<&topckgen CLK_TOP_I2S0_MCK_DIV_PD>,
+			<&topckgen CLK_TOP_I2S1_MCK_DIV_PD>,
+			<&topckgen CLK_TOP_I2S2_MCK_DIV_PD>,
+			<&topckgen CLK_TOP_I2S3_MCK_DIV_PD>,
+			<&topckgen CLK_TOP_A1SYS_HP_DIV_PD>,
+			<&topckgen CLK_TOP_A2SYS_HP_DIV_PD>,
+			<&audiosys CLK_AUDIO_AFE>,
+			<&audiosys CLK_AUDIO_HDMI>,
+			<&audiosys CLK_AUDIO_SPDF>,
+			<&audiosys CLK_AUDIO_APLL>,
+			<&audiosys CLK_AUDIO_I2SIN1>,
+			<&audiosys CLK_AUDIO_I2SIN2>,
+			<&audiosys CLK_AUDIO_I2SIN3>,
+			<&audiosys CLK_AUDIO_I2SIN4>,
+			<&audiosys CLK_AUDIO_I2SO1>,
+			<&audiosys CLK_AUDIO_I2SO2>,
+			<&audiosys CLK_AUDIO_I2SO3>,
+			<&audiosys CLK_AUDIO_I2SO4>,
+			<&audiosys CLK_AUDIO_ASRCI1>,
+			<&audiosys CLK_AUDIO_ASRCI2>,
+			<&audiosys CLK_AUDIO_ASRCO1>,
+			<&audiosys CLK_AUDIO_ASRCO2>,
+			<&audiosys CLK_AUDIO_INTDIR>,
+			<&audiosys CLK_AUDIO_A1SYS>,
+			<&audiosys CLK_AUDIO_A2SYS>,
+			<&audiosys CLK_AUDIO_UL1>,
+			<&audiosys CLK_AUDIO_UL2>,
+			<&audiosys CLK_AUDIO_UL3>,
+			<&audiosys CLK_AUDIO_UL4>,
+			<&audiosys CLK_AUDIO_UL5>,
+			<&audiosys CLK_AUDIO_UL6>,
+			<&audiosys CLK_AUDIO_DL1>,
+			<&audiosys CLK_AUDIO_DL2>,
+			<&audiosys CLK_AUDIO_DL3>,
+			<&audiosys CLK_AUDIO_DL4>,
+			<&audiosys CLK_AUDIO_DL5>,
+			<&audiosys CLK_AUDIO_DL6>,
+			<&audiosys CLK_AUDIO_DLMCH>,
+			<&audiosys CLK_AUDIO_ARB1>,
+			<&audiosys CLK_AUDIO_AWB>,
+			<&audiosys CLK_AUDIO_AWB2>,
+			<&audiosys CLK_AUDIO_DAI>,
+			<&audiosys CLK_AUDIO_MOD>,
+			<&audiosys CLK_AUDIO_ASRCI3>,
+			<&audiosys CLK_AUDIO_ASRCI4>,
+			<&audiosys CLK_AUDIO_ASRCO3>,
+			<&audiosys CLK_AUDIO_ASRCO4>,
+			<&audiosys CLK_AUDIO_MEM_ASRC1>,
+			<&audiosys CLK_AUDIO_MEM_ASRC2>,
+			<&audiosys CLK_AUDIO_MEM_ASRC3>,
+			<&audiosys CLK_AUDIO_MEM_ASRC4>,
+			<&audiosys CLK_AUDIO_MEM_ASRC5>,
+			<&ssusbsys CLK_SSUSB_U2_PHY_1P_EN>,
+			<&ssusbsys CLK_SSUSB_U2_PHY_EN>,
+			<&ssusbsys CLK_SSUSB_REF_EN>,
+			<&ssusbsys CLK_SSUSB_SYS_EN>,
+			<&ssusbsys CLK_SSUSB_MCU_EN>,
+			<&ssusbsys CLK_SSUSB_DMA_EN>,
+			<&pciesys CLK_PCIE_P1_AUX_EN>,
+			<&pciesys CLK_PCIE_P1_OBFF_EN>,
+			<&pciesys CLK_PCIE_P1_AHB_EN>,
+			<&pciesys CLK_PCIE_P1_AXI_EN>,
+			<&pciesys CLK_PCIE_P1_MAC_EN>,
+			<&pciesys CLK_PCIE_P1_PIPE_EN>,
+			<&pciesys CLK_PCIE_P0_AUX_EN>,
+			<&pciesys CLK_PCIE_P0_OBFF_EN>,
+			<&pciesys CLK_PCIE_P0_AHB_EN>,
+			<&pciesys CLK_PCIE_P0_AXI_EN>,
+			<&pciesys CLK_PCIE_P0_MAC_EN>,
+			<&pciesys CLK_PCIE_P0_PIPE_EN>,
+			<&pciesys CLK_SATA_AHB_EN>,
+			<&pciesys CLK_SATA_AXI_EN>,
+			<&pciesys CLK_SATA_ASIC_EN>,
+			<&pciesys CLK_SATA_RBC_EN>,
+			<&pciesys CLK_SATA_PM_EN>,
+			<&ethsys CLK_ETH_HSDMA_EN>,
+			<&ethsys CLK_ETH_ESW_EN>,
+			<&ethsys CLK_ETH_GP2_EN>,
+			<&ethsys CLK_ETH_GP1_EN>,
+			<&ethsys CLK_ETH_GP0_EN>,
+			<&sgmiisys CLK_SGMII_TX250M_EN>,
+			<&sgmiisys CLK_SGMII_RX250M_EN>,
+			<&sgmiisys CLK_SGMII_CDR_REF>,
+			<&sgmiisys CLK_SGMII_CDR_FB>;
+
+		clock-names = "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11",
+		"12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23",
+		"24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35",
+		"36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47",
+		"48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59",
+		"60", "61", "62", "63", "64", "65", "66", "67", "68", "69", "70", "71",
+		"72", "73", "74", "75", "76", "77", "78", "79", "80", "81", "82", "83",
+		"84", "85", "86", "87", "88", "89", "90", "91", "92", "93", "94", "95",
+		"96", "97", "98", "99", "100", "101", "102", "103", "104", "105", "106",
+		"107", "108", "109", "110", "111", "112", "113", "114", "115", "116", "117",
+		"118", "119", "120", "121", "122", "123", "124", "125";
+	};
+
+	bring-up-pd-ethsys {
+		compatible = "mediatek,scpsys-bring-up";
+		power-domains = <&scpsys MT7622_POWER_DOMAIN_ETHSYS>;
+	};
+
+	bring-up-pd-hif0 {
+		compatible = "mediatek,scpsys-bring-up";
+		power-domains = <&scpsys MT7622_POWER_DOMAIN_HIF0>;
+	};
+
+	bring-up-pd-hif1 {
+		compatible = "mediatek,scpsys-bring-up";
+		power-domains = <&scpsys MT7622_POWER_DOMAIN_HIF1>;
+	};
+};

@@ -1,0 +1,11 @@
+Richtek Typec solution
+
+Required properties:
+- compatible: Should be "mediatek,usb_type_c"
+- reg: Based on mt6932 PMIC
+
+Examples:
+
+	typec: typec {
+		compatible = "mediatek,usb_type_c";
+	};

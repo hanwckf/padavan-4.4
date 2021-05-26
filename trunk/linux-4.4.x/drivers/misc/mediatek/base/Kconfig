@@ -1,0 +1,15 @@
+config MTK_BASE_POWER
+    bool "MTK_BASE_POWER"
+    help
+      Enable MTK Power Feature
+
+config MTK_BASE_POWER_MT7622
+    bool "MTK_BASE_POWER_MT7622"
+    select ARM_MTK_MT81XX_CPUIDLE
+    help
+      Enable MTK Power Feature for MT7622
+
+config MTK_BASE_POWER_LEOPARD
+	bool "MTK_BASE_POWER_LEOPARD"
+	help
+	  Enable MTK Power Feature for LEOPARD

@@ -1,0 +1,87 @@
+/*
+ * Copyright (c) 2017 MediaTek Inc.
+ * Author: Sami Lee <sami.lee@mediatek.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+energy-costs {
+	MT2712_CPU_COST_0: mt2712-core-cost0 {
+		busy-cost-data = <
+			219	65
+			257	74
+			290	80
+			328	88
+			366	96
+			405	103
+			438	110
+		>;
+		idle-cost-data = <
+			5
+			5
+			0
+			0
+		>;
+	};
+	MT2712_CPU_COST_1: mt2712-core-cost1 {
+		busy-cost-data = <
+			440	410
+			516	467
+			583	516
+			660	573
+			737	630
+			813	686
+			880	735
+			957	792
+			1024	841
+		>;
+		idle-cost-data = <
+			24
+			24
+			0
+			0
+		>;
+	};
+	MT2712_CLUSTER_COST_0: mt2712-cluster-cost0 {
+		busy-cost-data = <
+			219	91
+			257	97
+			290	105
+			328	113
+			366	120
+			405	129
+			438	136
+		>;
+		idle-cost-data = <
+			8
+			8
+			8
+			0
+		>;
+	};
+	MT2712_CLUSTER_COST_1: mt2712-cluster-cost1 {
+		busy-cost-data = <
+			440	71
+			516	74
+			583	78
+			660	81
+			737	84
+			813	88
+			880	92
+			957	95
+			1024	99
+		>;
+		idle-cost-data = <
+			12
+			12
+			12
+			0
+		>;
+	};
+};
