@@ -1,0 +1,43 @@
+menu "Mediatek Peripherals "
+
+source "drivers/misc/mediatek/usb20/Kconfig"
+source "drivers/misc/mediatek/ice_debug/Kconfig"
+source "drivers/misc/mediatek/trustzone/Kconfig"
+source "drivers/misc/mediatek/ext_gic/Kconfig"
+source "drivers/misc/mediatek/cirq/Kconfig"
+source "drivers/misc/mediatek/mtk_sdio/Kconfig"
+source "drivers/misc/mediatek/ram_console/Kconfig"
+source "drivers/misc/mediatek/aee/Kconfig"
+source "drivers/misc/mediatek/emi/Kconfig"
+source "drivers/misc/mediatek/sched/Kconfig"
+source "drivers/misc/mediatek/base/Kconfig"
+source "drivers/misc/mediatek/freqhopping/Kconfig"
+source "drivers/misc/mediatek/thermal/Kconfig"
+source "drivers/misc/mediatek/secure_efuse/Kconfig"
+source "drivers/misc/mediatek/hw_random/Kconfig"
+source "drivers/misc/mediatek/irrx/Kconfig"
+source "drivers/misc/mediatek/rt-regmap/Kconfig"
+source "drivers/misc/mediatek/usb_c/Kconfig"
+source "drivers/misc/mediatek/udi/Kconfig"
+#source "drivers/misc/mediatek/systimer/Kconfig"
+
+menu "Sensors"
+
+config MTK_SENSOR_SUPPORT
+	bool "MTK SENSOR SUPPORT"
+	help
+	  sensor config to sensor port sensor feature in project.
+
+source "drivers/misc/mediatek/alsps/Kconfig"
+source "drivers/misc/mediatek/hwmon/Kconfig"
+endmenu  # Sensors
+source "drivers/misc/mediatek/btif/Kconfig"
+source "drivers/misc/mediatek/btmtk_btif/Kconfig"
+endmenu  # only USB
+
+menu "Modem & Connectivity related configs"
+
+source "drivers/misc/mediatek/connectivity/Kconfig"
+source "drivers/misc/mediatek/conn_md/Kconfig"
+
+endmenu  # CONN

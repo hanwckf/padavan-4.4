@@ -1,0 +1,138 @@
+#
+# MediaTek USB USB TYPEC Driver
+#
+
+config USB_C_SWITCH
+	bool "USB TYPE-C Driver"
+	default n
+	---help---
+	  Enables to support usb-c. So the usb device and host driver register
+	  the callback func to the usb-c driver. When the usb-c driver detect
+	  a device/host plugged in/out, it will notify the device/host driver
+	  by callback func.
+	  If unsure, say N.
+
+config USB_C_SWITCH_FUSB302
+	bool "MediaTek USB TYPE-C Driver with external solution (FUSB302)"
+	default n
+	select USB_C_SWITCH
+	---help---
+	  Enable to support usb-c.
+	  usb-c is supported by fusb302 and fusb340 and redriver.
+	  Only supports CC detect, without PD.
+	  And support DRP, aka UFP and DFP mode.
+	  If unsure, say N.
+
+config USB_C_SWITCH_SII70XX
+	bool "MediaTek USB TYPE-C Driver with external solution (sii70xx)"
+	default n
+	select USB_C_SWITCH
+	---help---
+	  Enable to support usb-c.
+	  usb-c is supported by Sii7033 and redriver.
+	  Sii7033 supports CC detect, PD and MHL alt mode.
+	  And support DRP, aka UFP and DFP mode.
+	  If unsure, say N.
+
+config USB_C_SWITCH_SII70XX_MHL_MODE
+	bool "MediaTek USB TYPE-C Driver with external solution (sii70xx MHL Mode)"
+	default n
+	---help---
+	  Enable to support usb-c MHL Mode.
+	  usb-c is supported by Sii7033 and redriver.
+	  Sii7033 MHL Mode supports only MHL alt mode.
+	  If unsure, say N.
+
+config USB_C_SWITCH_ANX7418
+	bool "Analogix Type-C interface support"
+	default n
+	select USB_C_SWITCH
+	---help---
+	  Enable to support usb-c.
+	  usb-c is supported by ANX7418.
+	  ANX7418 supports CC detect, PD and DP alt mode.
+	  And support DRP, aka UFP and DFP mode.
+	  If unsure, say N.
+
+config USB_C_SWITCH_MT6336
+	bool "MediaTek USB TYPE-C Driver (MT6336)"
+	default n
+	select USB_C_SWITCH
+	---help---
+	  Enables MT6336 supporting USB TYPE-C & PD.
+	  MT6336 can communicate with the partner
+	  and cable by attached CC pin.
+	  Also can be SRC/SNK and DFP/UFP. It is
+	  a dual role port.
+	  If unsure, say N.
+
+config USB_C_SWITCH_MT6392
+	bool "MediaTek USB TYPE-C Driver (MT6392)"
+	default n
+	select USB_C_SWITCH
+	---help---
+	  Enables MT6392 supporting USB TYPE-C only.
+	  MT6392 can communicate with the partner
+	  and cable by attached CC pin.
+	  Also can be SRC/SNK and DFP/UFP. It is
+	  a dual role port.
+	  If unsure, say N.
+
+config TCPC_CLASS
+	bool "TypeC Port Controller Device Class"
+	help
+	  Say Y to enable
+	  Typec Port
+	  Controller Device
+	  Class
+
+config USB_POWER_DELIVERY
+	bool "Support USB power delivery Function"
+	default n
+	help
+	  Say Y to enable
+	  USB
+	  Power Delivery
+	  support
+
+config TCPC_RT1711
+	bool "Richtek RT1711 TypeC port Controller Driver"
+	depends on TCPC_CLASS
+	default n
+	help
+	  Say Y to enable
+	  Richtek RT1711
+	  TypeC port Controller
+	  Driver
+
+config TCPC_RT1711H
+	bool "Richtek RT1711H TypeC port Controller Driver"
+	depends on TCPC_CLASS
+	select USB_C_SWITCH
+	default n
+	help
+	  Say Y to enable
+	  Richtek RT1711H
+	  TypeC port Controller
+	  Driver
+
+config USB_PD_VBUS_STABLE_TOUT
+	int "PD VBUS Stable Timeout"
+	depends on USB_POWER_DELIVERY
+	range 0 1000                       # >= 0,  <= 1000
+	default 125
+	help
+	  Setup a timeout value (ms)
+	  for
+	  VBUS change
+	  stable
+
+config RT7207_ADAPTER
+	bool "Richtek RT7207 PD Adapter"
+	depends on TCPC_CLASS
+	default n
+	help
+	  Say Y to enable
+	  Richtek RT7207
+	  PD Adapter
+	  Function.

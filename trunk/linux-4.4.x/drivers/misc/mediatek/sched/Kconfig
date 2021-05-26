@@ -1,0 +1,30 @@
+menu "MTK Cluster MultiProcessor Scheduler"
+config MTK_CPU_TOPOLOGY
+        bool "MTK cpu topology infrastructure"
+	depends on (64BIT && OF && SMP) || (ARM_CPU_TOPOLOGY && OF)
+	default n
+        help
+          Say N if you want to build up another wheel
+          sched_init -> cmp_cputopo_domain_seutp()
+          rest_init -> fork kernel_init -> kernel_init_freeable ... -> parse_dt_topology
+          we focus to build up cpu topology and domain before scheduler runs.
+
+endmenu
+
+menu "MTK runqueue statistic calculation"
+config MTK_SCHED_RQAVG_KS
+	bool "Enable runqueue statistic calculation used in kernel space operation"
+	depends on SMP
+	help
+		MTK ruqueue statistic kernel space CPUfreq governors, e.g., hotplug
+		TLP estimation,
+		heavy task detection and
+		per CPU load for kernel space CPUfreq governors
+
+config MTK_SCHED_RQAVG_US
+	bool "Enable runqueue staticsic calculation used in user space operation"
+	depends on SMP && HIGH_RES_TIMERS
+	help
+		TLP estimation for user space CPUfreq governors
+endmenu
+

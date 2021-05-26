@@ -1,0 +1,25 @@
+MIPI DSI Video Mode Panel
+
+Required properties:
+  - compatible: "truly,bd0598u4004"
+  - reg: the virtual channel number of a DSI peripheral
+  - reset-gpios: panel reset gpio
+
+Optional properties:
+  - video port for DSI input
+
+Example:
+
+	panel@0 {
+		compatible = "truly,bd0598u4004";
+		pinctrl-names = "default";
+		pinctrl-0 = <&panel_reset_pin>;
+		reset-gpios = <&pio 83 0>;
+		reg = <0>;
+
+		port {
+			panel_in: endpoint {
+				remote-endpoint = <&dsi_out>;
+			};
+		};
+	};

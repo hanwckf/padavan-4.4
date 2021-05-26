@@ -1,0 +1,213 @@
+/*
+ * Copyright (c) 2017 MediaTek Inc.
+ * Author: Dehui.Sun <dehui.sun@mediatek.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include "skeleton64.dtsi"
+
+/ {
+	compatible = "mediatek,mt7629";
+	interrupt-parent = <&sysirq>;
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		enable-method = "mediatek,leopard-smp";
+
+		cpu@0 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a7";
+			reg = <0x0>;
+			clock-frequency = <1300000000>;
+		};
+
+		cpu@1 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a7";
+			reg = <0x1>;
+			clock-frequency = <1300000000>;
+		};
+	};
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		N9-reserved-memory@41000000 {
+			compatible = "mediatek,leopard-N9-reserved";
+			no-map;
+			reg = <0 0x41000000 0 0x00200000>;
+		};
+	};
+
+	wifi_emi_loader: wifi_emi@0 {
+		compatible = "mediatek,rebb-wifi-emi-loader";
+		op_mode = <1>;
+	};
+
+	apxgpt_clk: dummy12m {
+		compatible = "fixed-clock";
+		clock-frequency = <12000000>;
+		#clock-cells = <0>;
+	};
+
+	uart_clk: dummy12m {
+		compatible = "fixed-clock";
+		clock-frequency = <12000000>;
+		#clock-cells = <0>;
+	};
+
+	flash_top_clk: dummy48m {
+		compatible = "fixed-clocks";
+		clock-frequency = <48000000>;
+		#clock-cells = <0>;
+	};
+
+	ice: ice_debug {
+		compatible ="mediatek,leopard-ice_debug",
+			    "mediatek,mt2701-ice_debug";
+		clocks = <&infracfg CLK_INFRA_DBGCLK_PD>;
+		clock-names = "ice_dbg";
+	};
+
+	timer {
+		compatible = "arm,armv7-timer";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_PPI 13 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_HIGH)>,
+			     <GIC_PPI 14 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_HIGH)>,
+			     <GIC_PPI 11 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_HIGH)>,
+			     <GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_HIGH)>;
+		clock-frequency = <12000000>;
+		arm,cpu-registers-not-fw-configured;
+	};
+
+	timer: apxgpt@10004000 {
+		compatible = "mediatek,mt7629-timer",
+			     "mediatek,mt6577-timer";
+		reg = <0 0x10004000 0 0x80>;
+		interrupts = <GIC_SPI 152 IRQ_TYPE_LEVEL_LOW>;
+		clocks = <&apxgpt_clk>;
+		clock-names = "clk13m";
+	};
+
+	scpsys: scpsys@10006000 {
+		compatible = "mediatek,leopard-scpsys";
+		reg = <0 0x10006000 0 0x1000>;
+	};
+
+	sysirq: interrupt-controller@10200a80 {
+		compatible = "mediatek,mt7622-sysirq",
+			     "mediatek,mt6577-sysirq";
+		interrupt-controller;
+		#interrupt-cells = <3>;
+		interrupt-parent = <&gic>;
+		reg = <0 0x10200a80 0 0x20>;
+	};
+
+	watchdog: watchdog@10212000 {
+		compatible = "mediatek,mt7629-wdt",
+			     "mediatek,mt6589-wdt";
+		reg = <0 0x10212000 0 0x1000>;
+		interrupts = <GIC_SPI 128 IRQ_TYPE_EDGE_FALLING>;
+		#reset-cells = <1>;
+	};
+
+	pio: pinctrl@10217000 {
+		compatible = "mediatek,leopard-pinctrl";
+		reg = <0 0x10217000 0 0x8000>,
+		      <0 0x10005000 0 0x1000>;
+		reg-names = "base", "eint";
+		gpio-controller;
+		#gpio-cells = <2>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
+		interrupts = <GIC_SPI 153 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-parent = <&gic>;
+	};
+
+	gic: interrupt-controller@10300000 {
+		compatible = "arm,gic-400";
+		interrupt-controller;
+		#interrupt-cells = <3>;
+		interrupt-parent = <&gic>;
+		reg = <0 0x10310000 0 0x1000>,
+		      <0 0x10320000 0 0x1000>,
+		      <0 0x10340000 0 0x2000>,
+		      <0 0x10360000 0 0x2000>;
+	};
+
+	uart0: serial@11002000 {
+		compatible = "mediatek,mt7622-uart",
+			     "mediatek,mt6577-uart";
+		reg = <0 0x11002000 0 0x400>;
+		interrupts = <GIC_SPI 91 IRQ_TYPE_LEVEL_LOW>;
+		clocks = <&uart_clk>, <&uart_clk>;
+		clock-names = "baud", "bus";
+		status = "disabled";
+	};
+
+	snand: snfi@1100d000 {
+		compatible = "mediatek,leopard-snand";
+		reg = <0 0x1100d000 0 0x2000>;
+		interrupts = <GIC_SPI 96 IRQ_TYPE_LEVEL_LOW>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "disabled";
+	};
+
+	nor_flash: spi@11014000 {
+		compatible = "mediatek,mt7629-nor",
+			     "mediatek,mt8173-nor";
+		reg = <0 0x11014000 0 0xe0>;
+		clocks = <&flash_top_clk>, <&flash_top_clk>;
+		clock-names = "spi", "sf";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "disabled";
+	};
+
+	wbsys: wbsys@18000000 {
+		compatible = "mediatek,wbsys";
+		reg = <0 0x18000000 0  0x100000>;
+		interrupts = <GIC_SPI 211 IRQ_TYPE_LEVEL_LOW>;
+	};
+
+	ethsys: syscon@1b000000 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "mediatek,leopard-ethsys",
+			     "syscon";
+		reg = <0 0x1b000000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	eth: ethernet@1b100000 {
+		compatible = "mediatek,leopard-eth";
+		reg = <0 0x1b100000 0 0x20000>;
+		interrupts = <GIC_SPI 223 IRQ_TYPE_LEVEL_LOW>,
+			     <GIC_SPI 224 IRQ_TYPE_LEVEL_LOW>,
+			     <GIC_SPI 225 IRQ_TYPE_LEVEL_LOW>,
+			     <GIC_SPI 219 IRQ_TYPE_LEVEL_LOW>,
+			     <GIC_SPI 240 IRQ_TYPE_LEVEL_LOW>;
+		mediatek,ethsys = <&ethsys>;
+		#reset-cells = <1>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "disabled";
+	};
+};
+

@@ -1,0 +1,99 @@
+/*
+ * Copyright (c) 2016 MediaTek Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ */
+
+#ifndef _DT_BINDINGS_RESET_CONTROLLER_MT7626
+#define _DT_BINDINGS_RESET_CONTROLLER_MT7626
+
+/* TOPRGU resets */
+#define MT7626_TOPRGU_INFRASYS_RST		0
+#define MT7626_TOPRGU_ETHDMASYS_RST		1
+#define MT7626_TOPRGU_CONNSYS_RST		9
+#define MT7626_TOPRGU_APMIXED_RST		10
+#define MT7626_TOPRGU_CONNSYS_MCU_RST		12
+
+/* INFRACFG resets */
+#define MT7626_INFRA_EMI_MPU_RST		0
+#define MT7626_INFRA_UART5_RST			2
+#define MT7626_INFRA_CIRQ_EINT_RST		3
+#define MT7626_INFRA_APXGPT_RST			4
+#define MT7626_INFRA_SCPSYS_RST			5
+#define MT7626_INFRA_KP_RST			6
+#define MT7626_INFRA_SPI1_RST			7
+#define MT7626_INFRA_SPI4_RST			8
+#define MT7626_INFRA_SYSTIMER_RST		9
+#define MT7626_INFRA_IRRX_RST			10
+#define MT7626_INFRA_AO_BUS_RST			16
+#define MT7626_INFRA_EMI_RST			32
+#define MT7626_INFRA_APMIXED_RST		35
+#define MT7626_INFRA_MIPI_RST			36
+#define MT7626_INFRA_TRNG_RST			37
+#define MT7626_INFRA_SYSCIRQ_RST		38
+#define MT7626_INFRA_MIPI_CSI_RST		39
+#define MT7626_INFRA_GCE_FAXI_RST		40
+#define MT7626_INFRA_I2C_SRAM_RST		41
+#define MT7626_INFRA_IOMMU_RST			47
+
+/*  PERICFG resets */
+#define MT7626_PERI_UART0_SW_RST		0
+#define MT7626_PERI_UART1_SW_RST		1
+#define MT7626_PERI_UART2_SW_RST		2
+#define MT7626_PERI_BTIF_SW_RST			6
+#define MT7626_PERI_PWN_SW_RST			8
+#define MT7626_PERI_DMA_SW_RST			11
+#define MT7626_PERI_NFI_SW_RST			14
+#define MT7626_PERI_I2C0_SW_RST			22
+#define MT7626_PERI_SPI0_SW_RST			33
+#define MT7626_PERI_SPI1_SW_RST			34
+#define MT7626_PERI_FLASHIF_SW_RST		36
+
+/* PCIe/SATA Subsystem resets */
+#define LEOPARD_SATA_PHY_REG_RST		12
+#define LEOPARD_SATA_PHY_SW_RST			13
+#define LEOPARD_SATA_AXI_BUS_RST		15
+#define LEOPARD_PCIE1_CORE_RST			19
+#define LEOPARD_PCIE1_MMIO_RST			20
+#define LEOPARD_PCIE1_HRST				21
+#define LEOPARD_PCIE1_USER_RST			22
+#define LEOPARD_PCIE1_PIPE_RST			23
+#define LEOPARD_PCIE0_CORE_RST			27
+#define LEOPARD_PCIE0_MMIO_RST			28
+#define LEOPARD_PCIE0_HRST				29
+#define LEOPARD_PCIE0_USER_RST			30
+#define LEOPARD_PCIE0_PIPE_RST			31
+
+/* PCIe/SSUSB PHY resets */
+#define LEOPARD_PCIE1_PHY_RST			3
+#define LEOPARD_SSUSB_PHY_RST			0
+
+/* SSUSB Subsystem resets */
+#define LEOPARD_SSUSB_PHY_PWR_RST		3
+#define LEOPARD_SSUSB_MAC_PWR_RST		4
+
+/* ETHSYS Subsystem resets */
+#define LEOPARD_ETHSYS_SYS_RST			0
+#define LEOPARD_ETHSYS_MCM_RST			2
+#define LEOPARD_ETHSYS_HSDMA_RST		5
+#define LEOPARD_ETHSYS_FE_RST			6
+#define LEOPARD_ETHSYS_ESW_RST			16
+#define LEOPARD_ETHSYS_GMAC_RST			23
+#define LEOPARD_ETHSYS_EPHY_RST			24
+#define LEOPARD_ETHSYS_CRYPTO_RST		29
+#define LEOPARD_ETHSYS_PPE_RST			31
+
+/*SGMII0 Subsys reset*/
+#define LEOPARD_SGMII0_DESIGN_RST		0
+
+/*SGMII1 Subsys reset*/
+#define LEOPARD_SGMII1_DESIGN_RST		0
+
+#endif  /* _DT_BINDINGS_RESET_CONTROLLER_MT7622 */

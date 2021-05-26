@@ -1,0 +1,522 @@
+/*
+ * Copyright (c) 2017 MediaTek Inc.
+ * Author: Ming Huang <ming.huang@mediatek.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+#include "mt7622.dtsi"
+#include "mt6380.dtsi"
+#include <dt-bindings/input/input.h>
+
+/ {
+	model = "MediaTek MT7622 AC4300rfb1 board";
+	compatible = "mediatek,mt7622-ac4300rfb1", "mediatek,mt7622";
+
+	chosen {
+		bootargs = "console=ttyS0,115200n1 root=/dev/mtdblock7 \
+			    initrd=0x44000000,0x615E36 loglevel=8 \
+			    androidboot.hardware=mt7622 swiotlb=512 \
+			    rootfstype=squashfs";
+	};
+
+	mmc_fixed_1v8_io: fixedregulator@0 {
+		compatible = "regulator-fixed";
+		regulator-name = "mmc_io";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-always-on;
+	};
+
+	mmc_fixed_3v3_power: fixedregulator@1 {
+		compatible = "regulator-fixed";
+		regulator-name = "mmc_power";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
+
+	memory {
+		reg = <0 0x40000000 0 0x3F000000>;
+	};
+
+	gpio-keys {
+		compatible = "gpio-keys";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		reset {
+			label = "reset";
+			gpios = <&pio 0 1>;
+			linux,code = <KEY_RESTART>;
+		};
+
+		wps {
+			label = "wps";
+			gpios = <&pio 102 1>;
+			linux,code = <KEY_WPS_BUTTON>;
+		};
+	};
+
+	gsw: gsw@0 {
+		compatible = "mediatek,mt753x";
+		mediatek,ethsys = <&ethsys>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+	};
+
+};
+
+&auxadc {
+	status = "okay";
+};
+
+&bch {
+	status = "disabled";
+};
+
+&cpu0 {
+	proc-supply = <&mt6380_vcpu_reg>;
+	sram-supply = <&mt6380_vm_reg>;
+};
+
+&cpu1 {
+	proc-supply = <&mt6380_vcpu_reg>;
+	sram-supply = <&mt6380_vm_reg>;
+};
+
+&efuse {
+	status = "okay";
+};
+
+&eth {
+	status = "okay";
+	gmac0: mac@0 {
+		compatible = "mediatek,eth-mac";
+		reg = <0>;
+		phy-mode = "sgmii";
+		fixed-link {
+			speed = <1000>;
+			full-duplex;
+			pause;
+		};
+	};
+	gmac1: mac@1 {
+		compatible = "mediatek,eth-mac";
+		reg = <1>;
+		phy-mode = "rgmii";
+		fixed-link {
+			speed = <1000>;
+			full-duplex;
+			pause;
+		};
+	};
+	mdio: mdio-bus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+	};
+};
+
+&gsw {
+	mediatek,mdio = <&mdio>;
+	mediatek,portmap = "llllw";
+	mediatek,mdio_master_pinmux = <0>;
+	reset-gpios = <&pio 54 0>;
+	interrupt-parent = <&pio>;
+	interrupts = <53 IRQ_TYPE_LEVEL_HIGH>;
+	status = "okay";
+
+	port5: port@5 {
+		compatible = "mediatek,mt753x-port";
+		reg = <5>;
+		phy-mode = "rgmii";
+		fixed-link {
+			speed = <1000>;
+			full-duplex;
+		};
+	};
+
+	port6: port@6 {
+		compatible = "mediatek,mt753x-port";
+		reg = <6>;
+		phy-mode = "sgmii";
+		fixed-link {
+			speed = <2500>;
+			full-duplex;
+		};
+	};
+};
+
+&hnat {
+	mtketh-wan = "eth1";
+	mtketh-max-gmac = <2>;
+	status = "okay";
+};
+
+&i2c0 {
+	status = "okay";
+};
+
+&i2c1 {
+	status = "okay";
+};
+
+&i2c2 {
+	status = "okay";
+};
+
+&mmc0 {
+	pinctrl-names = "default", "state_uhs";
+	pinctrl-0 = <&mmc0_pins_default>;
+	pinctrl-1 = <&mmc0_pins_uhs>;
+	status = "okay";
+	bus-width = <8>;
+	max-frequency = <50000000>;
+	cap-mmc-highspeed;
+	mmc-hs200-1_8v;
+	vmmc-supply = <&mmc_fixed_3v3_power>;
+	vqmmc-supply = <&mmc_fixed_1v8_io>;
+	assigned-clocks = <&topckgen CLK_TOP_MSDC30_0_SEL>;
+	assigned-clock-parents = <&topckgen CLK_TOP_UNIV48M>;
+	non-removable;
+};
+
+&mmc1 {
+	pinctrl-names = "default", "state_uhs";
+	pinctrl-0 = <&mmc1_pins_default>;
+	pinctrl-1 = <&mmc1_pins_uhs>;
+	status = "okay";
+	bus-width = <4>;
+	max-frequency = <50000000>;
+	cap-sd-highspeed;
+	r_smpl = <1>;
+	cd-gpios = <&pio 81 0>;
+	vmmc-supply = <&mmc_fixed_3v3_power>;
+	vqmmc-supply = <&mmc_fixed_3v3_power>;
+	assigned-clocks = <&topckgen CLK_TOP_MSDC30_1_SEL>;
+	assigned-clock-parents = <&topckgen CLK_TOP_UNIV48M>;
+};
+
+&nandc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&nand_pins_default>;
+	status = "disabled";
+	flash@0 {
+		reg = <0>;
+		nand-ecc-mode = "hw";
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			partition@0 {
+				label = "Preloader";
+				reg = <0x00000 0x0080000>;
+				read-only;
+			};
+
+			partition@80000 {
+				label = "ATF";
+				reg = <0x80000 0x0040000>;
+			};
+
+			partition@c0000 {
+				label = "Bootloader";
+				reg = <0xc0000 0x0080000>;
+			};
+
+			partition@140000 {
+				label = "Config";
+				reg = <0x140000 0x0080000>;
+			};
+
+			partition@1c0000 {
+				label = "Factory";
+				reg = <0x1c0000 0x0040000>;
+			};
+
+			partition@200000 {
+				label = "Kernel";
+				reg = <0x200000 0x2000000>;
+			};
+
+			partition@2200000 {
+				label = "User_data";
+				reg = <0x2200000 0x4000000>;
+			};
+		};
+	};
+};
+
+&nor_flash {
+	status = "okay";
+	flash@0 {
+		compatible = "jedec,spi-nor";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		partition@00000 {
+			label = "Preloader";
+			reg = <0x00000 0x0040000>;
+		};
+		partition@40000 {
+			label = "ATF";
+			reg = <0x40000 0x0020000>;
+		};
+		partition@60000 {
+			label = "Bootloader";
+			reg = <0x60000 0x0040000>;
+		};
+		partition@A0000 {
+			label = "Config";
+			reg = <0xA0000 0x0020000>;
+		};
+		partition@C0000 {
+			label = "Factory";
+			reg = <0xC0000 0x0020000>;
+		};
+		partition@E0000 {
+			label = "Kernel";
+			reg = <0xE0000 0xF20000>;
+		};
+	};
+};
+
+&pio {
+	pinctrl-names = "default";
+	pinctrl-0 = <&state_default>;
+	state_default:pinconf_default {
+	};
+
+	mmc0_pins_default: mmc0default {
+		pins_cmd_dat {
+			pinmux = <MT7622_PIN_47_NDL0__FUNC_EMMC_DATA0>,
+			       <MT7622_PIN_48_NDL1__FUNC_EMMC_DATA1>,
+			       <MT7622_PIN_49_NDL2__FUNC_EMMC_DATA2>,
+			       <MT7622_PIN_50_NDL3__FUNC_EMMC_DATA3>,
+			       <MT7622_PIN_40_NDL4__FUNC_EMMC_DATA4>,
+			       <MT7622_PIN_41_NDL5__FUNC_EMMC_DATA5>,
+			       <MT7622_PIN_42_NDL6__FUNC_EMMC_DATA6>,
+			       <MT7622_PIN_43_NDL7__FUNC_EMMC_DATA7>,
+			       <MT7622_PIN_44_NRB__FUNC_EMMC_CMD>;
+			input-enable;
+			bias-pull-up;
+		};
+
+		pins_clk {
+			pinmux = <MT7622_PIN_45_NCLE__FUNC_EMMC_CK>;
+			bias-pull-down;
+		};
+	};
+
+	mmc0_pins_uhs: mmc0@0{
+		pins_cmd_dat {
+			pinmux = <MT7622_PIN_47_NDL0__FUNC_EMMC_DATA0>,
+			       <MT7622_PIN_48_NDL1__FUNC_EMMC_DATA1>,
+			       <MT7622_PIN_49_NDL2__FUNC_EMMC_DATA2>,
+			       <MT7622_PIN_50_NDL3__FUNC_EMMC_DATA3>,
+			       <MT7622_PIN_40_NDL4__FUNC_EMMC_DATA4>,
+			       <MT7622_PIN_41_NDL5__FUNC_EMMC_DATA5>,
+			       <MT7622_PIN_42_NDL6__FUNC_EMMC_DATA6>,
+			       <MT7622_PIN_43_NDL7__FUNC_EMMC_DATA7>,
+			       <MT7622_PIN_44_NRB__FUNC_EMMC_CMD>;
+			input-enable;
+			drive-strength = <MTK_DRIVE_4mA>;
+			bias-pull-up = <MTK_PUPD_SET_R1R0_01>;
+		};
+
+		pins_clk {
+			pinmux = <MT7622_PIN_45_NCLE__FUNC_EMMC_CK>;
+			drive-strength = <MTK_DRIVE_4mA>;
+			bias-pull-down = <MTK_PUPD_SET_R1R0_10>;
+		};
+	};
+
+	mmc1_pins_default: mmc1default {
+		pins_cmd_dat {
+			pinmux = <MT7622_PIN_19_I2S2_OUT__FUNC_SD_D0>,
+			       <MT7622_PIN_18_I2S4_IN__FUNC_SD_D1>,
+			       <MT7622_PIN_17_I2S3_IN__FUNC_SD_D2>,
+			       <MT7622_PIN_16_I2S2_IN__FUNC_SD_D3>,
+			       <MT7622_PIN_21_I2S4_OUT__FUNC_SD_CMD>;
+			input-enable;
+			drive-strength = <MTK_DRIVE_8mA>;
+			bias-pull-up = <MTK_PUPD_SET_R1R0_01>;
+		};
+
+		pins_clk {
+			pinmux = <MT7622_PIN_20_I2S3_OUT__FUNC_SD_CLK>;
+			drive-strength = <MTK_DRIVE_12mA>;
+			bias-pull-down = <MTK_PUPD_SET_R1R0_10>;
+		};
+
+		pins_insert {
+			pinmux = <MT7622_PIN_81_TXD3__FUNC_GPIO81>;
+			bias-pull-up;
+		};
+	};
+
+	mmc1_pins_uhs: mmc1@0 {
+		pins_cmd_dat {
+			pinmux = <MT7622_PIN_19_I2S2_OUT__FUNC_SD_D0>,
+			       <MT7622_PIN_18_I2S4_IN__FUNC_SD_D1>,
+			       <MT7622_PIN_17_I2S3_IN__FUNC_SD_D2>,
+			       <MT7622_PIN_16_I2S2_IN__FUNC_SD_D3>,
+			       <MT7622_PIN_21_I2S4_OUT__FUNC_SD_CMD>;
+			input-enable;
+			bias-pull-up = <MTK_PUPD_SET_R1R0_01>;
+		};
+
+		pins_clk {
+			pinmux = <MT7622_PIN_20_I2S3_OUT__FUNC_SD_CLK>;
+			bias-pull-down = <MTK_PUPD_SET_R1R0_10>;
+		};
+	};
+
+	nand_pins_default: nanddefault {
+		pins_dat {
+			pinmux = <MT7622_PIN_37_NCEB__FUNC_ND_CS_N>,
+				 <MT7622_PIN_38_NWEB__FUNC_ND_WE_N>,
+				 <MT7622_PIN_39_NREB__FUNC_ND_RE_N>,
+				 <MT7622_PIN_40_NDL4__FUNC_ND_D4>,
+				 <MT7622_PIN_41_NDL5__FUNC_ND_D5>,
+				 <MT7622_PIN_42_NDL6__FUNC_ND_D6>,
+				 <MT7622_PIN_43_NDL7__FUNC_ND_D7>,
+				 <MT7622_PIN_44_NRB__FUNC_ND_RB_N>,
+				 <MT7622_PIN_45_NCLE__FUNC_ND_CLE>,
+				 <MT7622_PIN_46_NALE__FUNC_ND_ALE>,
+				 <MT7622_PIN_47_NDL0__FUNC_ND_D0>,
+				 <MT7622_PIN_48_NDL1__FUNC_ND_D1>,
+				 <MT7622_PIN_49_NDL2__FUNC_ND_D2>,
+				 <MT7622_PIN_50_NDL3__FUNC_ND_D3>;
+			input-enable;
+			drive-strength = <MTK_DRIVE_8mA>;
+			bias-pull-up;
+		};
+	};
+
+	snand_pins_default: snand@0 {
+		pins_cmd_dat {
+			pinmux = <MT7622_PIN_8_SPI_WP__FUNC_SNFI_WP>,
+				 <MT7622_PIN_9_SPI_HOLD__FUNC_SNFI_HOLD>,
+				 <MT7622_PIN_11_SPI_MOSI__FUNC_SNFI_MOSI>,
+				 <MT7622_PIN_12_SPI_MISO__FUNC_SNFI_MISO>,
+				 <MT7622_PIN_13_SPI_CS__FUNC_SNFI_CS>;
+			input-enable;
+			drive-strength = <MTK_DRIVE_16mA>;
+			bias-pull-up = <MTK_PUPD_SET_R1R0_01>;
+		};
+		pins_clk {
+			pinmux = <MT7622_PIN_10_SPI_CLK__FUNC_SNFI_CLK>;
+			drive-strength = <MTK_DRIVE_16mA>;
+			bias-pull-down = <MTK_PUPD_SET_R1R0_10>;
+		};
+	};
+
+	wbsys_pins_default: wbsysdefault {
+	};
+
+	wbsys_pins_epa: wbsysepa {
+		pins_cmd_dat {
+			pinmux = <MT7622_PIN_91_TXD4__FUNC_ANTSEL0>,
+			       <MT7622_PIN_92_RXD4__FUNC_ANTSEL1>,
+			       <MT7622_PIN_93_RTS4_N__FUNC_ANTSEL2>,
+			       <MT7622_PIN_94_CTS4_N__FUNC_ANTSEL3>,
+			       <MT7622_PIN_95_PWM1__FUNC_ANTSEL4>,
+			       <MT7622_PIN_96_PWM2__FUNC_ANTSEL5>,
+			       <MT7622_PIN_97_PWM3__FUNC_ANTSEL6>,
+			       <MT7622_PIN_98_PWM4__FUNC_ANTSEL7>,
+			       <MT7622_PIN_99_PWM5__FUNC_ANTSEL8>,
+			       <MT7622_PIN_100_PWM6__FUNC_ANTSEL9>,
+			       <MT7622_PIN_73_SPIC1_CLK__FUNC_ANTSEL12>,
+			       <MT7622_PIN_74_SPIC1_MOSI__FUNC_ANTSEL13>,
+			       <MT7622_PIN_75_SPIC1_MISO__FUNC_ANTSEL14>,
+			       <MT7622_PIN_76_SPIC1_CS__FUNC_ANTSEL15>,
+			       <MT7622_PIN_77_GPIO_D__FUNC_ANTSEL16>,
+			       <MT7622_PIN_22_GPIO_B__FUNC_ANTSEL17>;
+		};
+	};
+};
+
+&pwm {
+	status = "okay";
+};
+
+&snand {
+	pinctrl-0 = <&snand_pins_default>;
+	status = "okay";
+	flash@0 {
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			partition@0 {
+				label = "Preloader";
+				reg = <0x00000 0x0080000>;
+				read-only;
+			};
+
+			partition@80000 {
+				label = "ATF";
+				reg = <0x80000 0x0040000>;
+			};
+
+			partition@c0000 {
+				label = "Bootloader";
+				reg = <0xc0000 0x0080000>;
+			};
+
+			partition@140000 {
+				label = "Config";
+				reg = <0x140000 0x0080000>;
+			};
+
+			partition@1c0000 {
+				label = "Factory";
+				reg = <0x1c0000 0x0040000>;
+			};
+
+			partition@200000 {
+				label = "Kernel";
+				reg = <0x200000 0x2000000>;
+			};
+
+			partition@2200000 {
+				label = "User_data";
+				reg = <0x2200000 0x4000000>;
+			};
+		};
+	};
+};
+
+&svs {
+	vproc-supply = <&mt6380_vcpu_reg>;
+};
+
+&u3phy1 {
+	status = "okay";
+};
+
+&uart0 {
+	status = "okay";
+};
+
+&usb1 {
+	status = "okay";
+};
+
+&wbsys {
+	pinctrl-names = "default", "state_epa";
+	pinctrl-0 = <&wbsys_pins_default>;
+	pinctrl-1 = <&wbsys_pins_epa>;
+	status = "okay";
+};
+

@@ -1,0 +1,5 @@
+config MTK_SYSTIMER
+	bool "MTK systimer trigger interrupt support"
+	help
+	  Say y here to select this option to enable the MTK systimer interrupt.
+	  This driver support to trigger interrupt for systimer enabled.

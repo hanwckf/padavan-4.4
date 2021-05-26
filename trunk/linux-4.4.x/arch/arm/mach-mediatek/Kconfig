@@ -1,0 +1,51 @@
+menuconfig ARCH_MEDIATEK
+	bool "Mediatek MT65xx & MT81xx SoC" if ARCH_MULTI_V7
+	select ARM_GIC
+	select PINCTRL
+	select MTK_TIMER
+	select MFD_SYSCON
+	select PCI_DOMAINS if PCI
+	help
+	  Support for Mediatek MT65xx & MT81xx SoCs
+
+if ARCH_MEDIATEK
+
+config MACH_MT2701
+	bool "MediaTek MT2701 SoCs support"
+	default ARCH_MEDIATEK
+
+config MACH_MT6589
+	bool "MediaTek MT6589 SoCs support"
+	default ARCH_MEDIATEK
+
+config MACH_MT6592
+	bool "MediaTek MT6592 SoCs support"
+	default ARCH_MEDIATEK
+
+config MACH_MT8127
+	bool "MediaTek MT8127 SoCs support"
+	default ARCH_MEDIATEK
+
+config MACH_MT8135
+	bool "MediaTek MT8135 SoCs support"
+	default ARCH_MEDIATEK
+
+config MACH_MT8521P
+	bool "MediaTek MT8521p SoCs support"
+	default ARCH_MEDIATEK
+
+config MACH_MT7623
+	bool "MediaTek MT7623 SoCs support"
+	default ARCH_MEDIATEK
+
+config MACH_LEOPARD
+	bool "MediaTek Leopard SoCs support"
+	default ARCH_MEDIATEK
+
+config MACH_MT7622
+	bool "MediaTek MT7622 SoCs support"
+	help
+	  This enables support for MediaTek MT7622
+	  Support for arm Architecture
+
+endif

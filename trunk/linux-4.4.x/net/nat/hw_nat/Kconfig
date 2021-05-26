@@ -1,0 +1,458 @@
+config RA_HW_NAT
+        tristate "Ralink HW NAT(** Work At Module Mode ONLY **)"
+	depends on RA_NAT_HW && RAETH
+	---help---
+	  This driver supports Mediatek HW NAT.
+
+	  Note that the answer to this question doesn't directly affect the
+	  kernel: saying N will just cause the configurator to skip all
+	  the questions about Mediatek Ethernet devices. If you say Y,
+	  you will be asked for your specific card in the following questions.
+
+config  RA_HW_NAT_LAN_VLANID
+        int "VLAN ID of LAN Ports"
+	depends on RA_HW_NAT && !RA_HW_NAT_MANUAL_BIND
+	default 1
+	help
+	please choose any one of your LAN side VLAN IDs if you use different VLAN ID for each LAN port
+
+config  RA_HW_NAT_WAN_VLANID
+        int "VLAN ID of WAN Ports"
+	depends on RA_HW_NAT && !RA_HW_NAT_MANUAL_BIND
+	default 2
+	help
+	please choose any one of your WAN side VLAN IDs if you use different VLAN ID for each WAN port
+
+config  RA_HW_NAT_BINDING_THRESHOLD
+        int "Binding Threshold (Unit:Packet Per Second)"
+	depends on RA_HW_NAT
+	default 30
+	help
+	When flow rate > Binding Threshold  (# Packets Per Second),
+	the state will change to bind state
+
+choice
+        prompt "Foe Table Size"
+	depends on RA_HW_NAT
+	default RA_HW_NAT_TBL_4K
+	help
+	Number of entries in FoE Table
+
+config  RA_HW_NAT_TBL_1K
+        bool "1K"
+	depends on RA_HW_NAT
+
+config  RA_HW_NAT_TBL_2K
+        bool "2K"
+	depends on RA_HW_NAT
+
+config  RA_HW_NAT_TBL_4K
+        bool "4K"
+	depends on RA_HW_NAT
+
+config  RA_HW_NAT_TBL_8K
+        bool "8K"
+	depends on RA_HW_NAT
+
+config  RA_HW_NAT_TBL_16K
+        bool "16K"
+	depends on RA_HW_NAT
+endchoice
+
+config  HNAT_V2
+	bool
+	default y
+	depends on RA_HW_NAT
+
+choice
+	prompt "Hash Algorithm"
+	depends on RA_HW_NAT
+	default RA_HW_NAT_HASH1
+
+config  RA_HW_NAT_HASH0
+        bool "Hash0-Simple"
+	depends on RA_HW_NAT
+
+config  RA_HW_NAT_HASH1
+        bool "Hash1-Complex"
+	depends on RA_HW_NAT
+
+config  RA_HW_NAT_HASH2
+        bool "Hash2-Complex"
+	depends on RA_HW_NAT && HNAT_V2
+
+config  RA_HW_NAT_HASH3
+        bool "Hash3-Complex"
+	depends on RA_HW_NAT && HNAT_V2
+
+config  RA_HW_NAT_HASH_DBG
+        bool "Hash-Debug"
+	depends on RA_HW_NAT && (MACH_MT7623 || MTK_EMI_7622)
+
+endchoice
+
+choice
+        prompt "HW_NAT OP MODE"
+	depends on RA_HW_NAT && (RA_HW_NAT_HASH1 || RA_HW_NAT_HASH2)
+	default HW_NAT_AUTO_MODE
+	help
+	Say Y here if you want to enable HWNAT Operation mode on
+	MT762x series SoCs. There is three type operation mode you can choose.
+
+config  HW_NAT_AUTO_MODE
+        bool "AUTO_MODE"
+	help
+	Say Y here if you want to enable HWNAT Operation auto mode
+	on MT762x series SoCs.
+	There is hwnat auto learn mode, driver fill ppetable,
+	and set entry bind.
+
+config  HW_NAT_SEMI_AUTO_MODE
+        bool "SEMI_AUTO_MODE"
+	help
+	Say Y here if you want to enable HWNAT Operation auto mode on
+	MT762x series SoCs.
+	There is hwnat semi-auto learn mode, driver fill ppetable,
+	but user set entry bind.
+
+config  HW_NAT_MANUAL_MODE
+        bool "MANUAL_MODE"
+	help
+	Say Y here if you want to enable HWNAT Operation auto mode on
+	MT762x series SoCs.
+	There is hwnat manual mode, user fill ppetable,
+	but user set entry bind.
+
+endchoice
+
+choice
+	prompt "Hash DBG Mode"
+	depends on RA_HW_NAT_HASH_DBG
+	default RA_HW_NAT_HASH_DBG_SPORT
+
+config  RA_HW_NAT_HASH_DBG_IPV6_SIP
+        bool "IPv6 source IP[15:0]"
+
+config  RA_HW_NAT_HASH_DBG_IPV4_SIP
+        bool "IPv4 source IP[15:0]"
+
+config  RA_HW_NAT_HASH_DBG_SPORT
+        bool "source port[15:0]"
+
+endchoice
+
+config  RA_HW_NAT_PRE_ACL_SIZE
+        int "Pre ACL Table Size"
+	depends on RA_HW_NAT && !HNAT_V2
+	default 383
+	help
+	Pre ACL + Pre/Post MTR + Pre/Post AC Must less than 512
+
+config  RA_HW_NAT_PRE_MTR_SIZE
+        int "Pre Meter Table Size"
+	depends on RA_HW_NAT && !HNAT_V2
+	default 32
+	help
+	Pre ACL + Pre/Post MTR + Pre/Post AC Must less than 512
+
+config  RA_HW_NAT_PRE_AC_SIZE
+        int "Pre AC Table Size"
+	depends on RA_HW_NAT && !HNAT_V2
+	default 32
+	help
+	Pre ACL + Pre/Post MTR + Pre/Post AC Must less than 512
+
+config  RA_HW_NAT_POST_MTR_SIZE
+        int "Post Meter Table Size"
+	depends on RA_HW_NAT && !HNAT_V2
+	default 32
+	help
+	Pre ACL + Pre/Post MTR + Pre/Post AC Must less than 512
+
+config  RA_HW_NAT_POST_AC_SIZE
+        int "Post AC Table Size"
+	depends on RA_HW_NAT && !HNAT_V2
+	default 32
+	help
+	Pre ACL + Pre/Post MTR + Pre/Post AC Must less than 512
+
+
+config  RA_HW_NAT_TCP_KA
+        int "TCP KeepAlive Interval(Unit:1Sec)"
+	depends on RA_HW_NAT_TBL_1K
+	default 5
+	help
+	HW will duplicate one TCP packet from tcp bind flow to CPU
+	in order to refresh Linux conntrack table.
+
+config  RA_HW_NAT_UDP_KA
+        int "UDP KeepAlive Interval(Unit:1Sec)"
+	depends on RA_HW_NAT_TBL_1K
+	default 5
+	help
+	HW will duplicate one UDP packet from tcp bind flow to CPU
+	in order to refresh Linux conntrack table.
+
+config  RA_HW_NAT_NTU_KA
+        int "Non-TCP/UDP KeepAlive Interval(Unit:1Sec)"
+	depends on RA_HW_NAT_TBL_1K && HNAT_V2
+	default 5
+	help
+	HW will duplicate one packet from tcp bind flow to CPU
+	in order to refresh Linux conntrack table.
+
+config  RA_HW_NAT_TCP_KA
+        int "TCP KeepAlive Interval(Unit:2Sec)"
+	depends on RA_HW_NAT_TBL_2K
+	default 3
+	help
+	HW will duplicate one TCP packet from tcp bind flow to CPU
+	in order to refresh Linux conntrack table.
+
+
+
+config  RA_HW_NAT_UDP_KA
+        int "UDP KeepAlive Interval(Unit:2Sec)"
+	depends on RA_HW_NAT_TBL_2K
+	default 3
+	help
+	HW will duplicate one UDP packet from tcp bind flow to CPU
+	in order to refresh Linux conntrack table.
+
+config  RA_HW_NAT_NTU_KA
+        int "None-TCP/UDP KeepAlive Interval(Unit:2Sec)"
+	depends on RA_HW_NAT_TBL_2K && HNAT_V2
+	default 3
+	help
+	HW will duplicate one packet from tcp bind flow to CPU
+	in order to refresh Linux conntrack table.
+
+config  RA_HW_NAT_TCP_KA
+        int "TCP KeepAlive Interval(Unit:4Sec)"
+	depends on RA_HW_NAT_TBL_4K
+	default 1
+	help
+	HW will duplicate one TCP packet from tcp bind flow to CPU
+	in order to refresh Linux conntrack table.
+
+
+
+config  RA_HW_NAT_UDP_KA
+        int "UDP KeepAlive Interval(Unit:4Sec)"
+	depends on RA_HW_NAT_TBL_4K
+	default 1
+	help
+	HW will duplicate one UDP packet from tcp bind flow to CPU
+	in order to refresh Linux conntrack table.
+
+config  RA_HW_NAT_NTU_KA
+        int "Non-TCP/UDP KeepAlive Interval(Unit:4Sec)"
+	depends on RA_HW_NAT_TBL_4K && HNAT_V2
+	default 1
+	help
+	HW will duplicate one packet from tcp bind flow to CPU
+	in order to refresh Linux conntrack table.
+
+config  RA_HW_NAT_TCP_KA
+        int "TCP KeepAlive Interval(Unit:8Sec)"
+	depends on RA_HW_NAT_TBL_8K
+	default 1
+	help
+	HW will duplicate one TCP packet from tcp bind flow to CPU
+	in order to refresh Linux conntrack table.
+
+
+config  RA_HW_NAT_UDP_KA
+        int "UDP KeepAlive Interval(Unit:8Sec)"
+	depends on RA_HW_NAT_TBL_8K
+	default 1
+	help
+	HW will duplicate one UDP packet from tcp bind flow to CPU
+	in order to refresh Linux conntrack table.
+
+config  RA_HW_NAT_NTU_KA
+        int "None-TCP/UDP KeepAlive Interval(Unit:8Sec)"
+	depends on RA_HW_NAT_TBL_8K && HNAT_V2
+	default 1
+	help
+	HW will duplicate one packet from tcp bind flow to CPU
+	in order to refresh Linux conntrack table.
+
+config  RA_HW_NAT_TCP_KA
+        int "TCP KeepAlive Interval(Unit:16Sec)"
+	depends on RA_HW_NAT_TBL_16K
+	default 1
+	help
+	HW will duplicate one TCP packet from tcp bind flow to CPU
+	in order to refresh Linux conntrack table.
+
+
+config  RA_HW_NAT_UDP_KA
+        int "UDP KeepAlive Interval(Unit:16Sec)"
+	depends on RA_HW_NAT_TBL_16K
+	default 1
+	help
+	HW will duplicate one UDP packet from tcp bind flow to CPU
+	in order to refresh Linux conntrack table.
+
+config  RA_HW_NAT_NTU_KA
+        int "None-TCP/UDP KeepAlive Interval(Unit:16Sec)"
+	depends on RA_HW_NAT_TBL_16K && HNAT_V2
+	default 1
+	help
+	HW will duplicate one packet from tcp bind flow to CPU
+	in order to refresh Linux conntrack table.
+
+config  RA_HW_NAT_ACL_DLTA
+        int "Life time of ACL link to FOE entry(Unit:1Sec)"
+	depends on RA_HW_NAT && !HNAT_V2
+	default 3
+	help
+	Set ageout time for ACL link to FoE entry
+
+config  RA_HW_NAT_UNB_DLTA
+        int "Life time of Unbind entry (Unit:1Sec)"
+	depends on RA_HW_NAT
+	default 3
+	help
+	set ageout time for bind Unbind entry
+
+config  RA_HW_NAT_UNB_MNP
+        int "Min threshold for unbind state(Pkt count)"
+	depends on RA_HW_NAT
+	default 1000
+	help
+	An unbind flow whose pkt counts < Min threshold and idle time > Life time
+	=> This unbind entry would be aged out
+	[Notes: Idle time = current time - last packet receive time]
+
+config  RA_HW_NAT_UDP_DLTA
+        int "Life time of Bind UDP entry (Unit:1Sec)"
+	depends on RA_HW_NAT
+	default 5
+	help
+	Set ageout time for bind UDP entry
+
+config  RA_HW_NAT_TCP_DLTA
+        int "Life time of Bind TCP entry (Unit:1Sec)"
+	depends on RA_HW_NAT
+	default 5
+	help
+	Set ageout time for bind TCP entry
+
+config  RA_HW_NAT_FIN_DLTA
+        int "Life time of Bind FIN entry (Unit:1Sec)"
+	depends on RA_HW_NAT
+	default 5
+	help
+	Set ageout time for FIN entry
+
+config  RA_HW_NAT_NTU_DLTA
+        int "Life time of Non-TCP/UDP entry (Unit:1Sec)"
+	depends on RA_HW_NAT && HNAT_V2
+	default 5
+	help
+	Set ageout time for Non-TCP/UDP entry
+
+config  RA_HW_NAT_IPV6
+        bool "IPv6 Acceleration"
+	depends on RA_HW_NAT
+	default y
+	help
+	"ipv6 routing accelerated by HNAT"
+
+config  RA_HW_NAT_ACL2UP_HELPER
+        bool "ACL -> UP helper"
+	depends on RA_HW_NAT && !HNAT_V2
+	help
+	"use ACL rule to get user priority"
+
+config  RA_HW_NAT_PREBIND
+        bool "Pre-bind support"
+	depends on RA_HW_NAT && (RALINK_MT7621 || MACH_MT7623 || MTK_EMI_7622)
+
+config  RA_HW_NAT_PBND_RD_PRD
+        int "check interval in pause state (us) Max:65535"
+	default 1000
+	depends on RA_HW_NAT_PREBIND
+
+config  RA_HW_NAT_PBND_RD_LMT
+        int "max retyr count"
+	default 10
+	depends on RA_HW_NAT_PREBIND
+
+config  PPE_MCAST
+        bool "PPE built-in multicast table support"
+	depends on RA_HW_NAT && (RALINK_MT7621 || MACH_MT7623 || MTK_EMI_7622)
+
+config  RA_HW_NAT_WIFI
+	bool "WiFi Acceleration"
+	depends on RA_HW_NAT
+	select RA_HW_NAT_WIFI_NEW_ARCH
+
+config  RA_HW_NAT_WIFI_NEW_ARCH
+	bool "WiFi Acceleration New Architecture"
+	depends on RA_HW_NAT_WIFI
+
+config ARCH_MT7622_WIFI_HW_NAT
+	bool "MT7622 WiFi Acceleration"
+	depends on RA_HW_NAT_WIFI && MTK_EMI_7622
+
+config  RA_HW_NAT_NIC_USB
+	bool "PCIe Ethernet NIC/USB Acceleration"
+	depends on RA_HW_NAT
+
+config  RA_HW_NAT_PPTP_L2TP
+	bool "PPTP_L2TP Acceleration"
+	default n
+	depends on RA_HW_NAT
+	help
+	MT7621: RAETHER with PAMA + GMAC1 only (No GMAC2 support).
+
+config  RA_HW_NAT_PACKET_SAMPLING
+	bool "Packet Sampling to CPU"
+	depends on RA_HW_NAT && (MACH_MT7623 || MTK_EMI_7622)
+
+config RA_HW_NAT_ACCNT_MAINTAINER
+	bool "byte/pkt count for LAN/WAN port"
+	depends on RA_HW_NAT && HNAT_V2
+	help
+	"if you need 64bits bytes/pkts counter, and ask HNAT module to get statistic counter periodically, please enable it"
+
+config PPE_MIB
+	bool "byte/pkt count for flow"
+	depends on RA_HW_NAT && HNAT_V2 && MTK_EMI_7622
+	help
+	"if you need bytes/pkts counter per flow entry, and ask HNAT module to get statistic counter periodically, please enable it"
+
+config QDMA_SUPPORT_QOS
+	bool "qdma support qos"
+	depends on RA_HW_NAT
+	default y
+	help
+	Say Y here if you want to enable HWNAT support qos on
+	MT762x series SoCs.
+	HWNAT lan <-> wan will go to qdma schedule.
+	If yoy say Y, short packet cannot wire speed.
+
+config WAN_TO_WLAN_SUPPORT_QOS
+	bool "wan to wlan support qos"
+	depends on RA_HW_NAT
+	select QDMA_SUPPORT_QoS
+	default y
+	help
+	Say Y here if you want to enable HWNAT support qos on
+	MT762x series SoCs.
+	HWNAT lan <-> wan will go to qdma schedule.
+	If yoy say Y, short packet cannot wire speed.
+
+config  SUPPORT_WLAN_OPTIMIZE
+	bool "bridge not binding"
+	depends on RA_HW_NAT
+
+config  HW_NAT_IPI
+        bool "Dispatch packets to CPUs"
+        default n
+        depends on RA_HW_NAT && HNAT_V2
+        help
+	"if you need hwnat ipi, must EXPORT_SYMBOL(get_rps_cpu)(net/core/dev.c)"

@@ -1,0 +1,126 @@
+/*
+ * Copyright (c) 2017 MediaTek Inc.
+ * Author: Dehui.Sun <dehui.sun@mediatek.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+#include "mt7626.dtsi"
+
+/ {
+	model = "MediaTek MT7626 RFB1 board";
+	compatible = "mediatek,mt7626-rfb1", "mediatek,mt7626";
+
+	chosen {
+		bootargs = "earlycon=uart8250,mmio32,0x11002000 console=ttyS0,115200n1 \
+loglevel=8 failsafe=true";
+	};
+
+	memory {
+		device_type = "memory";
+		reg = <0 0x40000000 0 0x02000000>;
+	};
+};
+
+&raeth {
+	pinctrl-names = "default";
+	pinctrl-0 = <&phy_leds_pins>;
+	mac-address = [00 00 00 00 00 00];
+	gmac1-support = "esw";
+	gmac2-support = "rgmii-2";
+	rgmii-mode-2 = "an";
+	gmac2-phy-address = <0>;
+	gmac1_txq_num = <1>;
+	gmac1_txq_txd_num = <2048>;
+	gmac2_txq_num = <1>;
+	gmac2_txq_txd_num = <1024>;
+	num_rx_desc = <256>;
+	status = "okay";
+};
+
+&i2c0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c0_pins>;
+};
+
+&nor_flash {
+	status = "okay";
+	flash@0 {
+		compatible = "jedec,spi-nor";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		partition@00000 {
+			label = "Bootloader";
+			reg = <0x00000 0x0060000>;
+		};
+		partition@60000 {
+			label = "Config";
+			reg = <0x60000 0x0010000>;
+		};
+		partition@70000 {
+			label = "Factory";
+			reg = <0x70000 0x0040000>;
+		};
+		partition@b0000 {
+			label = "Kernel";
+			reg = <0xb0000 0x720000>;
+		};
+	};
+};
+
+&pio {
+	i2c0_pins: i2c0@0 {
+		pins_bus {
+			groups = "i2c_1";
+			function = "i2c";
+			bias-disable;
+			drive-strength = <4>;
+		};
+	};
+
+	phy_leds_pins: leds-pins-0 {
+		mux {
+			function = "led";
+			groups = "gphy_leds_0", "ephy_leds";
+		};
+	};
+
+	pinctrl_wifi_default: wifi-default {
+		mux-wf0_5g {
+			groups = "wf0_5g";
+			function = "wifi";
+			drive-strength = <4>;
+		};
+		mux-wf0_2g {
+			groups = "wf0_2g";
+			function = "wifi";
+			drive-strength = <4>;
+		};
+	};
+};
+
+&pwm {
+	status = "okay";
+};
+
+&uart0 {
+	status = "okay";
+};
+
+&wbsys {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_wifi_default>;
+	status = "okay";
+};
+
+&wifi_emi_loader {
+	board_v11 = <1>;
+};

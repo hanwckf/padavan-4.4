@@ -1,0 +1,8 @@
+config MTK_SECURE_EFUSE
+	bool "Enable MTK secure eFuse support"
+	depends on HAVE_MTK_IN_HOUSE_TEE_SUPPORT
+	default n
+	help
+	  This enables MTK secure eFuse to read efuse
+	  in secure world
+

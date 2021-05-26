@@ -1,0 +1,135 @@
+/*
+ * Copyright (c) 2017 MediaTek Inc.
+ * Author: Dehui.Sun <dehui.sun@mediatek.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+#include "mt7626.dtsi"
+
+/ {
+	model = "MediaTek MT7626 RFB2 board";
+	compatible = "mediatek,mt7626-rfb2", "mediatek,mt7626";
+
+	chosen {
+		bootargs = "earlycon=uart8250,mmio32,0x11002000 \
+console=ttyS0,115200n1 loglevel=8 failsafe=true";
+	};
+
+	gsw: gsw@0 {
+		compatible = "mediatek,mt753x";
+		mediatek,ethsys = <&ethsys>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+	};
+
+	memory {
+		device_type = "memory";
+		reg = <0 0x40000000 0 0x02000000>;
+	};
+};
+
+&eth {
+	status = "okay";
+
+	gmac0: mac@0 {
+		compatible = "mediatek,eth-mac";
+		reg = <0>;
+		phy-mode = "sgmii";
+		fixed-link {
+			speed = <1000>;
+			full-duplex;
+			pause;
+		};
+	};
+
+	mdio: mdio-bus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+	};
+};
+
+&gsw {
+	mediatek,mdio = <&mdio>;
+	mediatek,portmap = "llllw";
+	reset-gpios = <&pio 28 0>;
+	interrupt-parent = <&pio>;
+	interrupts = <6 IRQ_TYPE_LEVEL_HIGH>;
+	status = "okay";
+
+	port6: port@6 {
+		compatible = "mediatek,mt753x-port";
+		reg = <6>;
+		phy-mode = "sgmii";
+		fixed-link {
+			speed = <2500>;
+			full-duplex;
+		};
+	};
+};
+
+&nor_flash {
+	status = "okay";
+	flash@0 {
+		compatible = "jedec,spi-nor";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		partition@00000 {
+			label = "Bootloader";
+			reg = <0x00000 0x0060000>;
+		};
+		partition@60000 {
+			label = "Config";
+			reg = <0x60000 0x0010000>;
+		};
+		partition@70000 {
+			label = "Factory";
+			reg = <0x70000 0x0040000>;
+		};
+		partition@b0000 {
+			label = "Kernel";
+			reg = <0xb0000 0x720000>;
+		};
+	};
+};
+
+&pio {
+	pinctrl_wifi_default: wifi-default {
+		mux-wf0_5g {
+			groups = "wf0_5g";
+			function = "wifi";
+			drive-strength = <4>;
+		};
+		mux-wf0_2g {
+			groups = "wf0_2g";
+			function = "wifi";
+			drive-strength = <4>;
+		};
+	};
+};
+
+&pwm {
+	status = "okay";
+};
+
+&uart0 {
+	status = "okay";
+};
+
+&wbsys {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_wifi_default>;
+	status = "okay";
+};
+
+&wifi_emi_loader {
+	board_v11 = <1>;
+};

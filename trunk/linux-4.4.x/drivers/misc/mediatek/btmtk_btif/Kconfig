@@ -1,0 +1,4 @@
+config MTK_BTMTK_BTIF
+	tristate"MediaTek BT Driver"
+	help
+	  MTK connectivity BT driver for A/D die

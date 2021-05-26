@@ -1,0 +1,445 @@
+/*
+ * Copyright (c) 2016 MediaTek Inc.
+ * Author: Ming.Huang <ming.huang@mediatek.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/reset-controller/mt7622-resets.h>
+#include "mt7622-pinfunc.h"
+
+/ {
+	compatible = "mediatek,mt7622";
+	interrupt-parent = <&sysirq>;
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu@0 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a53";
+			reg = <0x0>;
+			enable-method = "psci";
+		};
+		cpu@1 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a53";
+			reg = <0x1>;
+			enable-method = "psci";
+		};
+	};
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		atf-reserved-memory@43000000 {
+			compatible = "mediatek,mt7622-atf-reserved-memory";
+			no-map;
+			reg = <0 0x43000000 0 0x30000>;
+		};
+	};
+
+	psci {
+		compatible  = "arm,psci-0.2";
+		method      = "smc";
+	};
+
+	clk12m: oscillator@0 {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <12000000>;
+		clock-output-names = "clk12m";
+	};
+
+	flash_peri_clk: dummy133m {
+		compatible = "fixed-clocks";
+		clock-frequency = <133000000>;
+		#clock-cells = <0>;
+	};
+
+	flash_top_clk: dummy48m {
+		compatible = "fixed-clocks";
+		clock-frequency = <48000000>;
+		#clock-cells = <0>;
+	};
+
+	mmc_clk: dummy12m {
+		compatible = "fixed-clock";
+		clock-frequency = <12000000>;
+		#clock-cells = <0>;
+	};
+
+	system_clk: dummy13m {
+		compatible = "fixed-clock";
+		clock-frequency = <13000000>;
+		#clock-cells = <0>;
+	};
+
+	rtc_clk: dummy32k {
+		compatible = "fixed-clock";
+		clock-frequency = <32000>;
+		#clock-cells = <0>;
+	};
+
+	uart_clk: dummy26m {
+		compatible = "fixed-clock";
+		clock-frequency = <12000000>;
+		#clock-cells = <0>;
+	};
+
+	timer {
+		compatible = "arm,armv8-timer";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_PPI 13 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_HIGH)>,
+			     <GIC_PPI 14 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_HIGH)>,
+			     <GIC_PPI 11 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_HIGH)>,
+			     <GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_HIGH)>;
+	};
+
+	pcie_mirror: pcie_mirror@10000400 {
+		compatible = "mediatek,PCIE_IO_MIRRO";
+		reg = <0 0x10000400 0 0x10>;
+	};
+
+	timer: timer@10004000 {
+		compatible = "mediatek,mt7622-timer",
+			     "mediatek,mt6577-timer";
+		reg = <0 0x10004000 0 0x80>;
+		interrupts = <GIC_SPI 152 IRQ_TYPE_LEVEL_LOW>;
+		clocks = <&system_clk>, <&rtc_clk>;
+		clock-names = "system-clk", "rtc-clk";
+	};
+
+	sysirq: interrupt-controller@10200620 {
+		compatible = "mediatek,mt7622-sysirq",
+			     "mediatek,mt6577-sysirq";
+		interrupt-controller;
+		#interrupt-cells = <3>;
+		interrupt-parent = <&gic>;
+		reg = <0 0x10200620 0 0x20>;
+	};
+
+	emi: emi@10203000 {
+		compatible = "mediatek,mt7622-emi",
+			     "mediatek,mt8127-emi";
+		reg = <0 0x10203000 0 0x1000>;
+	};
+
+	wed: wed@1020b000 {
+		compatible = "mediatek,WCN_WEDCTRL";
+		wed_num = <2>;
+		reg = <0 0x1020a000 0 0x1000>,
+			<0 0x1020b000 0 0x1000>;
+		interrupts = <GIC_SPI 214 IRQ_TYPE_LEVEL_LOW>,
+			<GIC_SPI 215 IRQ_TYPE_LEVEL_LOW>;
+	};
+
+	wed2: wed2@1020b000 {
+		compatible = "mediatek,WCN_WEDCTRL2";
+		wed_num = <2>;
+		reg = <0 0x1020a000 0 0x1000>,
+			<0 0x1020b000 0 0x1000>;
+		interrupts = <GIC_SPI 214 IRQ_TYPE_LEVEL_LOW>,
+			<GIC_SPI 215 IRQ_TYPE_LEVEL_LOW>;
+		};
+
+	syscfg_pctl_a: syscfg_pctl_a@10211000 {
+			compatible = "mediatek,mt7622-pctl-a-syscfg", "syscon";
+			reg = <0 0x10211000 0 0x1000>;
+	};
+
+	pio: pinctrl@10211000 {
+			compatible = "mediatek,mt7622-pinctrl";
+			reg = <0 0x10005000 0 0x1000>;
+			mediatek,pctl-regmap = <&syscfg_pctl_a>;
+			pins-are-numbered;
+			gpio-controller;
+			#gpio-cells = <2>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
+			interrupts = <GIC_SPI 153 IRQ_TYPE_LEVEL_HIGH>;
+	};
+
+	watchdog: watchdog@10212000 {
+		compatible = "mediatek,mt7622-wdt",
+			     "mediatek,mt6589-wdt";
+		reg = <0 0x10212000 0 0x1000>;
+		interrupts = <GIC_SPI 128 IRQ_TYPE_EDGE_FALLING>;
+		#reset-cells = <1>;
+	};
+
+	gic: interrupt-controller@10300000 {
+		compatible = "arm,gic-400";
+		interrupt-controller;
+		#interrupt-cells = <3>;
+		interrupt-parent = <&gic>;
+		reg = <0 0x10310000 0 0x1000>,
+		      <0 0x10320000 0 0x1000>,
+		      <0 0x10340000 0 0x2000>,
+		      <0 0x10360000 0 0x2000>;
+	};
+
+	auxadc: adc@11001000 {
+		compatible = "mediatek,mt7622-auxadc";
+		reg = <0 0x11001000 0 0x1000>;
+		clocks = <&system_clk>;
+		#io-channel-cells = <1>;
+		status = "disabled";
+	};
+
+	uart0: serial@11002000 {
+		compatible = "mediatek,mt7622-uart",
+			     "mediatek,mt6577-uart";
+		reg = <0 0x11002000 0 0x400>;
+		interrupts = <GIC_SPI 91 IRQ_TYPE_LEVEL_LOW>;
+		clocks = <&uart_clk>;
+		status = "disabled";
+	};
+
+	uart1: serial@11003000 {
+		compatible = "mediatek,mt7622-uart",
+			     "mediatek,mt6577-uart";
+		reg = <0 0x11003000 0 0x400>;
+		interrupts = <GIC_SPI 92 IRQ_TYPE_LEVEL_LOW>;
+		clocks = <&uart_clk>;
+		status = "disabled";
+	};
+
+	uart2: serial@11004000 {
+		compatible = "mediatek,mt7622-uart",
+			     "mediatek,mt6577-uart";
+		reg = <0 0x11004000 0 0x400>;
+		interrupts = <GIC_SPI 93 IRQ_TYPE_LEVEL_LOW>;
+		clocks = <&uart_clk>;
+		status = "disabled";
+	};
+
+	uart3: serial@11005000 {
+		compatible = "mediatek,mt7622-uart",
+			     "mediatek,mt6577-uart";
+		reg = <0 0x11005000 0 0x400>;
+		interrupts = <GIC_SPI 94 IRQ_TYPE_LEVEL_LOW>;
+		clocks = <&uart_clk>;
+		status = "disabled";
+	};
+
+	pwm: pwm@11006000 {
+		compatible = "mediatek,mt7623-pwm";
+		reg = <0 0x11006000 0 0x1000>;
+		status = "disabled";
+	};
+
+	i2c0: i2c@11007000 {
+		compatible = "mediatek,mt7622-i2c";
+		reg = <0 0x11007000 0 0x90>,
+		      <0 0x11000100 0 0x80>;
+		interrupts = <GIC_SPI 84 IRQ_TYPE_LEVEL_LOW>;
+		clock-div = <1>;
+		clocks = <&clk12m>, <&clk12m>;
+		clock-names = "main", "dma";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "disabled";
+	};
+
+	i2c1: i2c@11008000 {
+		compatible = "mediatek,mt7622-i2c";
+		reg = <0 0x11008000 0 0x90>,
+		      <0 0x11000180 0 0x80>;
+		interrupts = <GIC_SPI 85 IRQ_TYPE_LEVEL_LOW>;
+		clock-div = <1>;
+		clocks = <&clk12m>, <&clk12m>;
+		clock-names = "main", "dma";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "disabled";
+	};
+
+	i2c2: i2c@11009000 {
+		compatible = "mediatek,mt7622-i2c";
+		reg = <0 0x11009000 0 0x90>,
+		      <0 0x11000200 0 0x80>;
+		interrupts = <GIC_SPI 86 IRQ_TYPE_LEVEL_LOW>;
+		clock-div = <1>;
+		clocks = <&clk12m>, <&clk12m>;
+		clock-names = "main", "dma";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "disabled";
+	};
+
+	nor_flash: spi@11014000 {
+		compatible = "mediatek,mt7622-nor",
+			     "mediatek,mt8173-nor";
+		reg = <0 0x11014000 0 0xe0>;
+		clocks = <&flash_peri_clk>, <&flash_top_clk>;
+		clock-names = "spi", "sf";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "disabled";
+	};
+
+	mmc0: mmc@11230000 {
+		compatible = "mediatek,mt7622-mmc";
+		reg = <0 0x11230000 0 0x1000>;
+		interrupts = <GIC_SPI 79 IRQ_TYPE_LEVEL_LOW>;
+		clocks = <&mmc_clk>,
+		       <&mmc_clk>;
+		clock-names = "source", "hclk";
+		status = "disabled";
+	};
+
+	mmc1: mmc@11240000 {
+		compatible = "mediatek,mt7622-mmc";
+		reg = <0 0x11240000 0 0x1000>;
+		interrupts = <GIC_SPI 80 IRQ_TYPE_LEVEL_LOW>;
+		clocks = <&mmc_clk>,
+		       <&mmc_clk>;
+		clock-names = "source", "hclk";
+		status = "disabled";
+	};
+
+	wbsys: wbsys@18000000 {
+		compatible = "mediatek,WCN_WIFIDMASYS";
+		reg = <0 0x18000000 0  0x100000>;
+		interrupts = <GIC_SPI 211 IRQ_TYPE_LEVEL_LOW>;
+	};
+
+	pcie@1a143000 {
+		compatible = "mediatek,pcie";
+		device_type = "pci";
+		reg = <0 0x1a143000 0 0x2000
+			0 0x1a145000 0 0x2000>;
+		interrupts = <GIC_SPI 228 IRQ_TYPE_LEVEL_LOW
+			      GIC_SPI 229 IRQ_TYPE_LEVEL_LOW>;
+		bus-range = <0x00 0xff>;
+		#address-cells = <3>;
+		#size-cells = <2>;
+		ranges = <0x82000000 0 0x20000000  0x0 0x20000000  0 0x02000000>;
+
+		pcie0: pcie@1,0 {
+			device_type = "pci";
+			reg = <0x0800 0 0 0 0>;
+			#address-cells = <3>;
+			#size-cells = <2>;
+			#interrupt-cells = <1>;
+			ranges;
+			interrupt-map-mask = <0 0 0 7>;
+			interrupt-map = <0 0 0 1 &pcie_intc0 1>,
+					<0 0 0 2 &pcie_intc0 2>,
+					<0 0 0 3 &pcie_intc0 3>,
+					<0 0 0 4 &pcie_intc0 4>;
+			pcie-port = <0>;
+			num-lanes = <1>;
+			phys = <&pcie0_phy>;
+			phy-names = "pcie-phy0";
+			status = "okay";
+			pcie_intc0: interrupt-controller {
+				interrupt-controller;
+				#address-cells = <0>;
+				#interrupt-cells = <1>;
+			};
+		};
+
+		pcie1: pcie@2,0 {
+			device_type = "pci";
+			reg = <0x1000 0 0 0 0>;
+			#address-cells = <3>;
+			#size-cells = <2>;
+			#interrupt-cells = <1>;
+			ranges;
+			interrupt-map-mask = <0 0 0 7>;
+			interrupt-map = <0 0 0 1 &pcie_intc1 1>,
+					<0 0 0 2 &pcie_intc1 2>,
+					<0 0 0 3 &pcie_intc1 3>,
+					<0 0 0 4 &pcie_intc1 4>;
+			pcie-port = <1>;
+			num-lanes = <1>;
+			phys = <&pcie1_phy>;
+			phy-names = "pcie-phy1";
+			status = "okay";
+			pcie_intc1: interrupt-controller {
+				interrupt-controller;
+				#address-cells = <0>;
+				#interrupt-cells = <1>;
+			};
+		};
+	};
+
+	pcie0_phy: pciephy@1a147000 {
+		compatible = "mediatek,pcie-phy";
+		reg = <0 0x1a147000 0 0x0800>;
+		#phy-cells = <0>;
+	};
+
+	pcie1_phy: pciephy@1a147800 {
+		compatible = "mediatek,pcie-phy";
+		reg = <0 0x1a147800 0 0x0800>;
+		#phy-cells = <0>;
+	};
+
+	sata: sata@1a200000 {
+		compatible = "mediatek,mt7622-sata";
+		reg = <0 0x1a200000 0 0x1100>;
+		interrupts = <GIC_SPI 233 IRQ_TYPE_LEVEL_HIGH>;
+		status = "disabled";
+	};
+
+	wdma: wdma@1b102800 {
+		compatible = "mediatek,WCN_WDMACTRL";
+		reg = <0 0x1b102800 0 0x400>,
+			<0 0x1b102c00 0 0x400>;
+		interrupts = <GIC_SPI  216 IRQ_TYPE_LEVEL_LOW>,
+			<GIC_SPI  217 IRQ_TYPE_LEVEL_LOW>,
+			<GIC_SPI  218 IRQ_TYPE_LEVEL_LOW>,
+			<GIC_SPI  219 IRQ_TYPE_LEVEL_LOW>,
+			<GIC_SPI  220 IRQ_TYPE_LEVEL_LOW>,
+			<GIC_SPI  221 IRQ_TYPE_LEVEL_LOW>;
+	};
+
+	ethsys: syscon@1b000000 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "mediatek,mt7622-ethsys",
+			     "syscon";
+		reg = <0 0x1b000000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	eth: ethernet@1b100000 {
+		compatible = "mediatek,mt7622-eth";
+		reg = <0 0x1b100000 0 0x20000>;
+		interrupts = <GIC_SPI 223 IRQ_TYPE_LEVEL_LOW>,
+			     <GIC_SPI 224 IRQ_TYPE_LEVEL_LOW>,
+			     <GIC_SPI 225 IRQ_TYPE_LEVEL_LOW>;
+		clocks = <&clk12m>, <&clk12m>, <&clk12m>, <&clk12m>, <&clk12m>;
+		clock-names = "ethif", "trgpll", "esw", "gp2", "gp1";
+		mediatek,ethsys = <&ethsys>;
+		mediatek,switch = <&gsw>;
+		#reset-cells = <1>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "disabled";
+	};
+
+	gsw: gswsys@1b100000 {
+		compatible = "mediatek,mt7623-gsw";
+		mediatek,ethsys = <&ethsys>;
+		status = "disabled";
+	};
+};
+

@@ -1,0 +1,105 @@
+/*
+ * Copyright (c) 2016 MediaTek Inc.
+ * Author: Ming Huang <ming.huang@mediatek.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+#include "mt7622-fpga.dtsi"
+
+/ {
+	model = "MediaTek MT7622 evaluation board";
+	compatible = "mediatek,mt7622-fpga", "mediatek,mt7622";
+
+	chosen {
+		bootargs = "console=ttyS0,921600n1 root=/dev/ram \
+			initrd=0x44000000,0x615E36 loglevel=8 androidboot.hardware=mt7622";
+	};
+
+	mmc_fixed_1v8_io: fixedregulator@0 {
+		compatible = "regulator-fixed";
+		regulator-name = "mmc_io";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-always-on;
+	};
+
+	mmc_fixed_3v3_power: fixedregulator@1 {
+		compatible = "regulator-fixed";
+		regulator-name = "mmc_power";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
+
+	memory {
+		reg = <0 0x40000000 0 0x3F000000>;
+	};
+};
+
+&auxadc {
+	status = "okay";
+};
+
+&i2c0 {
+	status = "okay";
+};
+
+&i2c1 {
+	status = "okay";
+};
+
+&i2c2 {
+	status = "okay";
+};
+
+&mmc0 {
+	status = "okay";
+	bus-width = <8>;
+	max-frequency = <6000000>;
+	cap-mmc-highspeed;
+	vmmv-supply = <&mmc_fixed_3v3_power>;
+	vqmmc-supply = <&mmc_fixed_1v8_io>;
+};
+
+&mmc1 {
+	status = "okay";
+	bus-width = <4>;
+	max-frequency = <6000000>;
+	cap-sd-highspeed;
+	vmmv-supply = <&mmc_fixed_3v3_power>;
+	vqmmc-supply = <&mmc_fixed_3v3_power>;
+};
+
+&nor_flash {
+	status = "okay";
+	flash@0 {
+		compatible = "jedec,spi-nor";
+		reg = <0>;
+	};
+};
+
+&pwm {
+	status = "okay";
+};
+
+&uart0 {
+	status = "okay";
+};
+
+&eth {
+	mac-address = [00 00 00 00 00 00];
+	status = "okay";
+};
+
+&gsw {
+	status = "okay";
+};

@@ -1,0 +1,10 @@
+config MTK_GIC_EXT
+	bool "MTK gic extension for FIQ support"
+	depends on !MTK_GIC && FIQ && MTK_IN_HOUSE_TEE_SUPPORT
+	default y if FIQ=y && MTK_IN_HOUSE_TEE_SUPPORT=y
+	help
+	  Add extensions for GIC driver.
+	  Normally this feature is not configed unless you exactly
+	  know how to use this feature.
+
+	  Support for the fiq register and map linux irq to hwirq.

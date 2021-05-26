@@ -1,0 +1,10 @@
+config MTK_EMI_BWL
+	bool "Enable EMI bandwidth limiter"
+	help
+	  Say y here to select this option to enable the EMI bandwidth limiter.
+	  This driver support to change bandwidth strategy for different scenairo.
+
+config MTK_EMI_7622
+	bool "Enable EMI BWL setting for 7622"
+	help
+	  Say y here to select the EMI bandwidth setting for 7622.

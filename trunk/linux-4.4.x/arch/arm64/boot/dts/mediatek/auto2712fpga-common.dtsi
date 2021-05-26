@@ -1,0 +1,323 @@
+/*
+ * Copyright (c) 2014 MediaTek Inc.
+ * Author: Eddie Huang <eddie.huang@mediatek.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "mt2712_fpga.dtsi"
+
+/ {
+	model = "MediaTek MT2712 fpga board";
+	compatible = "mediatek,mt2712fpga", "mediatek,mt2712";
+
+	aliases {
+		serial0 = &uart0;
+		serial1 = &uart1;
+		serial2 = &uart2;
+		serial3 = &uart3;
+	};
+
+	cust_alsps@0 {
+		compatible = "mediatek,CM36686";
+		i2c_num = <5>;
+		i2c_addr = <0x60 0x00 0x00 0x00>;
+		polling_mode_ps = <0>;
+		polling_mode_als = <1>;
+		power_id = <0xffff>;
+		power_vol = <0>;
+		als_level = <5 10 25 50 100 150 200 400 1000 \
+				1500 2000 3000 5000 8000 10000>;
+		als_value = <10 50 100 150 200 250 280 280 \
+				1600 1600 1600 6000 6000 9000 10240 10240>;
+		ps_threshold_high = <120>;
+		ps_threshold_low = <100>;
+		is_batch_supported_ps = <0>;
+		is_batch_supported_als = <0>;
+	};
+
+	memory@40000000 {
+		device_type = "memory";
+		reg = <0 0x40000000 0 0x40000000>;
+	};
+
+	mmc_fixed_3v3: fixedregulator@0 {
+	       compatible = "regulator-fixed";
+	       regulator-name = "mmc_power";
+	       regulator-min-microvolt = <3300000>;
+	       regulator-max-microvolt = <3300000>;
+	       enable-active-high;
+	};
+
+	mmc_fixed_1v8_io: fixedregulator@1 {
+		compatible = "regulator-fixed";
+		regulator-name = "mmc_io";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		enable-active-high;
+	};
+};
+
+&keypad {
+	pinctrl-names = "default";
+	pinctrl-0 = <&kpd_pins_default>;
+	status = "okay";
+	mediatek,kpd-key-debounce = <1024>;
+	mediatek,kpd-sw-pwrkey = <0>;
+	mediatek,kpd-hw-pwrkey = <8>;
+	mediatek,kpd-sw-rstkey  = <0>;
+	mediatek,kpd-hw-rstkey = <17>;
+	mediatek,kpd-use-extend-type = <0>;
+	/*HW Keycode [0~71] -> Linux Keycode*/
+	mediatek,kpd-hw-map-num = <72>;
+	mediatek,kpd-hw-init-map = \
+			<115 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+			0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+			0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 >;
+	mediatek,kpd-pwrkey-eint-gpio = <0>;
+	mediatek,kpd-pwkey-gpio-din  = <0>;
+	mediatek,kpd-hw-dl-key0 = <0>;
+	mediatek,kpd-hw-dl-key1 = <17>;
+	mediatek,kpd-hw-dl-key2 = <8>;
+	mediatek,kpd-hw-recovery-key = <17>;
+	mediatek,kpd-hw-factory-key  = <0>;
+};
+
+&i2c0 {
+	status = "okay";
+};
+
+&i2c1 {
+	status = "okay";
+};
+
+&i2c2 {
+	status = "okay";
+};
+
+&i2c3 {
+	status = "okay";
+};
+
+&i2c4 {
+	status = "okay";
+};
+
+&i2c5 {
+	status = "okay";
+	alsps@39 {
+		compatible = "mediatek,alsps";
+		reg = <0x39>;
+	};
+};
+
+&uart0 {
+	status = "okay";
+};
+
+&mmc0 {
+	pinctrl-names = "default", "state_uhs";
+	pinctrl-0 = <&mmc0_pins_default>;
+	pinctrl-1 = <&mmc0_pins_uhs>;
+	status = "okay";
+	bus-width = <8>;
+	max-frequency = <6000000>;
+	cap-mmc-highspeed;
+	mmc-hs200-1_8v;
+	cap-mmc-hw-reset;
+	r_smpl = <0>;
+	vmmc-supply = <&mmc_fixed_3v3>;
+	vqmmc-supply = <&mmc_fixed_1v8_io>;
+	non-removable;
+};
+
+&mmc1 {
+	pinctrl-names = "default", "state_uhs";
+	pinctrl-0 = <&mmc1_pins_default>;
+	pinctrl-1 = <&mmc1_pins_uhs>;
+	bus-width = <4>;
+	max-frequency = <6000000>;
+	cap-sd-highspeed;
+	vmmc-supply = <&mmc_fixed_3v3>;
+	vqmmc-supply = <&mmc_fixed_3v3>;
+	non-removable;
+};
+
+&nor_flash {
+	pinctrl-names = "default";
+	pinctrl-0 = <&nor_pins_default>;
+	status = "okay";
+	flash@0 {
+		compatible = "jedec,spi-nor";
+		reg = <0>;
+	};
+};
+
+&pio {
+	kpd_pins_default: kpddefault {
+		pins_cols {
+			pinmux = <MT2712_PIN_19_KPCOL0__FUNC_KCOL0>,
+				 <MT2712_PIN_21_KPCOL1__FUNC_KCOL1>,
+				 <MT2712_PIN_23_KPCOL2__FUNC_KCOL2>;
+			input-enable;
+			bias-pull-up = <MTK_PUPD_SET_R1R0_01>;
+		};
+
+		pins_rows {
+			pinmux = <MT2712_PIN_18_KPROW0__FUNC_KROW0>,
+				 <MT2712_PIN_20_KPROW1__FUNC_KROW1>,
+				 <MT2712_PIN_22_KPROW2__FUNC_KROW2>;
+			output-low;
+			bias-disable;
+		};
+	};
+
+	mmc0_pins_default: mmc0default {
+		pins_cmd_dat {
+			pinmux = <MT2712_PIN_45_MSDC0E_DAT0__FUNC_MSDC0_DAT0>,
+				 <MT2712_PIN_44_MSDC0E_DAT1__FUNC_MSDC0_DAT1>,
+				 <MT2712_PIN_43_MSDC0E_DAT2__FUNC_MSDC0_DAT2>,
+				 <MT2712_PIN_42_MSDC0E_DAT3__FUNC_MSDC0_DAT3>,
+				 <MT2712_PIN_41_MSDC0E_DAT4__FUNC_MSDC0_DAT4>,
+				 <MT2712_PIN_40_MSDC0E_DAT5__FUNC_MSDC0_DAT5>,
+				 <MT2712_PIN_39_MSDC0E_DAT6__FUNC_MSDC0_DAT6>,
+				 <MT2712_PIN_38_MSDC0E_DAT7__FUNC_MSDC0_DAT7>,
+				 <MT2712_PIN_46_MSDC0E_CMD__FUNC_MSDC0_CMD>;
+			input-enable;
+			drive-strength = <MTK_DRIVE_4mA>;
+			bias-pull-up = <MTK_PUPD_SET_R1R0_01>;
+		};
+
+		pins_clk {
+			pinmux = <MT2712_PIN_37_MSDC0E_CLK__FUNC_MSDC0_CLK>;
+			drive-strength = <MTK_DRIVE_4mA>;
+			bias-pull-down = <MTK_PUPD_SET_R1R0_10>;
+		};
+
+		pins_rst {
+			pinmux = <MT2712_PIN_48_MSDC0E_RSTB__FUNC_MSDC0_RSTB>;
+			bias-pull-up;
+		};
+	};
+
+	mmc0_pins_uhs: mmc0@0{
+		pins_cmd_dat {
+			pinmux = <MT2712_PIN_45_MSDC0E_DAT0__FUNC_MSDC0_DAT0>,
+				 <MT2712_PIN_44_MSDC0E_DAT1__FUNC_MSDC0_DAT1>,
+				 <MT2712_PIN_43_MSDC0E_DAT2__FUNC_MSDC0_DAT2>,
+				 <MT2712_PIN_42_MSDC0E_DAT3__FUNC_MSDC0_DAT3>,
+				 <MT2712_PIN_41_MSDC0E_DAT4__FUNC_MSDC0_DAT4>,
+				 <MT2712_PIN_40_MSDC0E_DAT5__FUNC_MSDC0_DAT5>,
+				 <MT2712_PIN_39_MSDC0E_DAT6__FUNC_MSDC0_DAT6>,
+				 <MT2712_PIN_38_MSDC0E_DAT7__FUNC_MSDC0_DAT7>,
+				 <MT2712_PIN_46_MSDC0E_CMD__FUNC_MSDC0_CMD>;
+			input-enable;
+			drive-strength = <MTK_DRIVE_6mA>;
+			bias-pull-up = <MTK_PUPD_SET_R1R0_01>;
+		};
+
+		pins_clk {
+			pinmux = <MT2712_PIN_37_MSDC0E_CLK__FUNC_MSDC0_CLK>;
+			drive-strength = <MTK_DRIVE_6mA>;
+			bias-pull-down = <MTK_PUPD_SET_R1R0_10>;
+		};
+
+		pins_ds {
+			pinmux = <MT2712_PIN_47_MSDC0E_DSL__FUNC_MSDC0_DSL>;
+			drive-strength = <MTK_DRIVE_6mA>;
+			bias-pull-down = <MTK_PUPD_SET_R1R0_10>;
+		};
+
+		pins_rst {
+			pinmux = <MT2712_PIN_48_MSDC0E_RSTB__FUNC_MSDC0_RSTB>;
+			bias-pull-up;
+		};
+
+	};
+
+	mmc1_pins_default: mmc1default {
+		pins_cmd_dat {
+			pinmux = <MT2712_PIN_68_MSDC1_DAT0__FUNC_MSDC1_DAT0>,
+				 <MT2712_PIN_65_MSDC1_DAT1__FUNC_MSDC1_DAT1>,
+				 <MT2712_PIN_66_MSDC1_DAT2__FUNC_MSDC1_DAT2>,
+				 <MT2712_PIN_64_MSDC1_DAT3__FUNC_MSDC1_DAT3>,
+				 <MT2712_PIN_69_MSDC1_CMD__FUNC_MSDC1_CMD>;
+			input-enable;
+			drive-strength = <MTK_DRIVE_4mA>;
+			bias-pull-up = <MTK_PUPD_SET_R1R0_10>;
+		};
+
+		pins_clk {
+			pinmux = <MT2712_PIN_63_MSDC1_CLK__FUNC_MSDC1_CLK>;
+			drive-strength = <MTK_DRIVE_4mA>;
+			bias-pull-down = <MTK_PUPD_SET_R1R0_10>;
+		};
+	};
+
+	mmc1_pins_uhs: mmc1@0{
+		pins_cmd_dat {
+			pinmux = <MT2712_PIN_68_MSDC1_DAT0__FUNC_MSDC1_DAT0>,
+				 <MT2712_PIN_65_MSDC1_DAT1__FUNC_MSDC1_DAT1>,
+				 <MT2712_PIN_66_MSDC1_DAT2__FUNC_MSDC1_DAT2>,
+				 <MT2712_PIN_64_MSDC1_DAT3__FUNC_MSDC1_DAT3>,
+				 <MT2712_PIN_69_MSDC1_CMD__FUNC_MSDC1_CMD>;
+			input-enable;
+			drive-strength = <MTK_DRIVE_6mA>;
+			bias-pull-up = <MTK_PUPD_SET_R1R0_10>;
+		};
+
+		pins_clk {
+			pinmux = <MT2712_PIN_63_MSDC1_CLK__FUNC_MSDC1_CLK>;
+			drive-strength = <MTK_DRIVE_6mA>;
+			bias-pull-down = <MTK_PUPD_SET_R1R0_10>;
+		};
+	};
+
+	nor_pins_default: nor {
+		pins1 {
+			pinmux = <MT2712_PIN_57_NOR_CS__FUNC_NOR_CS>,
+				 <MT2712_PIN_58_NOR_CK__FUNC_NOR_CK>;
+			drive-strength = <MTK_DRIVE_4mA>;
+			bias-pull-up;
+		};
+
+		pins2 {
+			pinmux = <MT2712_PIN_59_NOR_IO0__FUNC_NOR_IO0>,
+				 <MT2712_PIN_60_NOR_IO1__FUNC_NOR_IO1>,
+				 <MT2712_PIN_61_NOR_IO2__FUNC_NOR_IO2>,
+				 <MT2712_PIN_62_NOR_IO3__FUNC_NOR_IO3>;
+			input-enable;
+			drive-strength = <MTK_DRIVE_4mA>;
+			bias-pull-up;
+		};
+	};
+};
+
+
+&ssusb {
+	//vusb33-supply = <&mt6397_vusb_reg>;
+	//vbus-supply = <&usb_p0_vbus>;
+	//extcon = <&extcon_usb>;
+	dr_mode = "otg";
+	//mediatek,enable-wakeup;
+	//enable-manual-drd;
+	//maximum-speed = "full-speed";
+	//pinctrl-names = "default", "id_float", "id_ground";
+	//pinctrl-0 = <&usb_id_pins_float>;
+	//pinctrl-1 = <&usb_id_pins_float>;
+	//pinctrl-2 = <&usb_id_pins_ground>;
+	status = "okay";
+};
+
+&usb_host {
+	//vusb33-supply = <&mt6397_vusb_reg>;
+	//vbus-supply = <&usb_p1_vbus>;
+	status = "okay";
+};
