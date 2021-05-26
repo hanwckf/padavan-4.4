@@ -1,0 +1,12 @@
+Name: test
+Type: hash:ip,port
+Revision: 6
+Header: family inet6 hashsize 1024 maxelem 65536 timeout 4 bucketsize 12 initval 0x013bd339
+Size in memory: 736
+References: 0
+Number of entries: 4
+Members:
+2:1::,tcp:128 timeout 3
+2:1::1,tcp:128 timeout 3
+2::,tcp:5 timeout 3
+2::1,tcp:5 timeout 3

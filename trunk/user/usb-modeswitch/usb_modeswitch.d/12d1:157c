@@ -1,0 +1,4 @@
+# Huawei E3276-s150
+TargetVendor=0x12d1
+TargetProductList="1506,151d"
+HuaweiNewMode=1

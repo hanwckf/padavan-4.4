@@ -1,0 +1,12 @@
+Name: test
+Type: hash:net,net
+Revision: 3
+Header: family inet hashsize 128 maxelem 65536 comment bucketsize 12 initval 0xa48336cf
+Size in memory: 1190
+References: 0
+Number of entries: 4
+Members:
+1.1.1.1,1.1.1.2 comment "text 1.1.1.1/32,1.1.1.2/32"
+192.168.68.64/27,192.168.129.64/27 comment "text 192.168.68.69/27,192.168.129.69/27"
+2.0.0.0/24,2.0.1.0/24 comment "text 2.0.0.1/24,2.0.1.1/24"
+2.0.0.1,2.0.0.2

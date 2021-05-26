@@ -1,0 +1,8 @@
+Name: test
+Type: hash:ip,mark
+Revision: 3
+Header: family inet markmask 0xffffffff hashsize 1024 maxelem 65536 timeout 4 bucketsize 12 initval 0x139cd632
+Size in memory: 592
+References: 0
+Number of entries: 0
+Members:

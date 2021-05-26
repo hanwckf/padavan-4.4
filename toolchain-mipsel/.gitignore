@@ -1,0 +1,48 @@
+# Generated files
+configure
+autom4te.cache
+aclocal.m4
+config.h*
+config.log
+config.status
+Makefile
+Makefile.in
+ct-ng
+!ct-ng.comp
+!ct-ng.in
+paths.sh
+config/configure.in
+config/gen/
+config/versions/
+.config
+verbatim-data.mk
+maintainer/package-versions
+
+# Compressed files
+*.tar*
+*.zip
+*.xz
+*.7zip
+!.tarball-version
+
+# Temporaries
+.*.swp
+build.log
+.config.old
+temp.*
+stamp-h1
+
+# Testing
+testing/docker/*/build
+testing/docker/*/install
+testing/docker/*/xtools
+
+.build/
+.build-all/
+
+toolchain-4.4.x/
+dl/
+
+mipsel-linux-uclibc.tar.xz
+
+docs/ct-ng.1

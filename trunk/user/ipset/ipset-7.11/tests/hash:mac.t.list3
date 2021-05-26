@@ -1,0 +1,10 @@
+Name: test
+Type: hash:mac
+Revision: 1
+Header: hashsize 1024 maxelem 2 skbinfo bucketsize 12 initval 0x7c818884
+Size in memory: 496
+References: 0
+Number of entries: 2
+Members:
+01:02:03:04:05:06 skbprio 1:10
+01:02:03:04:05:07 skbprio 1:12 skbqueue 8

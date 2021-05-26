@@ -1,0 +1,20 @@
+#!/bin/bash
+
+echo "=================REMOVE-OLD-BUILD-TREE=================="
+
+if [ -f ct-ng ]; then
+	./ct-ng distclean || exit 1
+fi
+
+if [ -f Makefile ]; then
+	make distclean || exit 1
+fi
+
+if [ -d toolchain-3.4.x ]; then
+	rm -rf toolchain-3.4.x
+fi
+
+# remove remaining
+rm -rf Makefile.in aclocal.m4 autom4te.cache config.h.in config/gen config/versions configure kconfig/Makefile.in maintainer/package-versions verbatim-data.mk
+
+echo "====================All IS DONE!========================"

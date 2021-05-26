@@ -1,0 +1,8 @@
+Name: test
+Type: hash:ip
+Header: family inet hashsize 128 maxelem 65536 timeout 4 bucketsize 12 initval 0x00000000
+Size in memory: 464
+References: 0
+Number of entries: 1
+Members:
+192.168.68.69 timeout 0
