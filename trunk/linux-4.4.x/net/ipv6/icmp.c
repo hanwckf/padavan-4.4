@@ -625,7 +625,7 @@ static void icmpv6_echo_reply(struct sk_buff *skb)
                 && n->nud_state == NUD_REACHABLE && n->flags != NTF_ROUTER
                 && !ipv6_addr_any(&rt->rt6i_gateway))
         {
-            printk("icmpv6_echo_reply: nud_state=%02x flags=%02x dev=%s target=%pI6c\n", 
+            pr_debug("icmpv6_echo_reply: nud_state=%02x flags=%02x dev=%s target=%pI6c\n", 
                         n->nud_state, n->flags, n->dev->name, &rt->rt6i_gateway);
 
             goto out;

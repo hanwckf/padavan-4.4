@@ -3804,7 +3804,7 @@ static void addrconf_dad_work(struct work_struct *w)
 	/* send a neighbour solicitation for our addr */
 	addrconf_addr_solict_mult(&ifp->addr, &mcaddr);
 
-	pr_info("addrconf_dad_work: send ns, %s: addr=%pI6c\n", idev->dev->name, &ifp->addr);
+	pr_debug("addrconf_dad_work: send ns, %s: addr=%pI6c\n", idev->dev->name, &ifp->addr);
     
 	ndisc_send_ns(ifp->idev->dev, &ifp->addr, &mcaddr, &in6addr_any);
 out:
