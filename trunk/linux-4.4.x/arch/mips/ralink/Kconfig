@@ -68,40 +68,9 @@ choice
 		select BUILTIN_DTB
 endchoice
 
-choice
-	prompt "Devicetree selection"
-	default DTB_RT_NONE
+config RALINK_BUILTIN_DTB_NAME
+	string "Built in DTB"
 	help
-	  Select the devicetree.
-
-	config DTB_RT_NONE
-		bool "None"
-
-	config DTB_RT2880_EVAL
-		bool "RT2880 eval kit"
-		depends on SOC_RT288X
-		select BUILTIN_DTB
-
-	config DTB_RT305X_EVAL
-		bool "RT305x eval kit"
-		depends on SOC_RT305X
-		select BUILTIN_DTB
-
-	config DTB_RT3883_EVAL
-		bool "RT3883 eval kit"
-		depends on SOC_RT3883
-		select BUILTIN_DTB
-
-	config DTB_MT7620A_EVAL
-		bool "MT7620A eval kit"
-		depends on SOC_MT7620
-		select BUILTIN_DTB
-
-	config DTB_MT7621_EVAL
-		bool "MT7621 eval kit"
-		depends on SOC_MT7621
-		select BUILTIN_DTB
-
-endchoice
+	  Set the name of the DTB to embed in the vmlinux binary
 
 endif

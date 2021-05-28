@@ -1,10 +1,11 @@
-dtb-$(CONFIG_DTB_RT2880_EVAL)	+= rt2880_eval.dtb
-dtb-$(CONFIG_DTB_RT305X_EVAL)	+= rt3052_eval.dtb
-dtb-$(CONFIG_DTB_RT3883_EVAL)	+= rt3883_eval.dtb
-dtb-$(CONFIG_DTB_MT7620A_EVAL)	+= mt7620a_eval.dtb
-dtb-$(CONFIG_DTB_MT7621_EVAL)	+= mt7621_rfb.dtb
+builtindtb-y		:= mt7621-raeth-nor
 
-obj-y				+= $(patsubst %.dtb, %.dtb.o, $(dtb-y))
+ifneq ($(CONFIG_RALINK_BUILTIN_DTB_NAME),"")
+	builtindtb-y	:= $(patsubst "%",%,$(CONFIG_RALINK_BUILTIN_DTB_NAME))
+endif
+
+dtb-y := $(builtindtb-y).dtb
+obj-y += $(builtindtb-y).dtb.o
 
 # Force kbuild to make empty built-in.o if necessary
 obj-				+= dummy.o
