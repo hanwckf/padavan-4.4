@@ -6089,14 +6089,14 @@ INT set_hnat_register(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 	INT idx;
 	struct wifi_dev *wdev;
 	reg_en = os_str_tol(arg, 0, 10);
-	MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("Device Instance\n"));
+	MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_INFO, ("Device Instance\n"));
 
 	for (idx = 0; idx < WDEV_NUM_MAX; idx++) {
 		if (pAd->wdev_list[idx]) {
 			wdev = pAd->wdev_list[idx];
-			MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("\tWDEV %02d:, Name:%s, Wdev(list) Idx:%d\n",
+			MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_INFO, ("\tWDEV %02d:, Name:%s, Wdev(list) Idx:%d\n",
 					 idx, RTMP_OS_NETDEV_GET_DEVNAME(wdev->if_dev), wdev->wdev_idx));
-			MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("\t\t Idx:%d\n", RtmpOsGetNetIfIndex(wdev->if_dev)));
+			MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_INFO, ("\t\t Idx:%d\n", RtmpOsGetNetIfIndex(wdev->if_dev)));
 #if defined(CONFIG_FAST_NAT_SUPPORT)
 
 			if (ppe_dev_unregister_hook != NULL &&
@@ -6108,7 +6108,7 @@ INT set_hnat_register(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 			}
 #endif /*CONFIG_FAST_NAT_SUPPORT*/
 		} else
-			MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("\n"));
+			MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_INFO, ("\n"));
 	}
 
 	return TRUE;

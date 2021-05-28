@@ -2775,7 +2775,7 @@ void ppe_dev_reg_handler(struct net_device *dev)
 	int i;
 	for (i = 0; i < MAX_IF_NUM; i++) {
 		if (dst_port[i] == dev) {
-			pr_info("%s : %s dst_port table has beed registered(%d)\n", __func__, dev->name, i);
+			pr_debug("%s : %s dst_port table has beed registered(%d)\n", __func__, dev->name, i);
 			return;
 		}
 		if (dst_port[i] == NULL) {
