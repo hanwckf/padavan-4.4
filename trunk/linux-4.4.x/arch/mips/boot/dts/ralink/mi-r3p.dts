@@ -1,0 +1,182 @@
+/dts-v1/;
+
+#include "mt7621.dtsi"
+#include <dt-bindings/input/input.h>
+
+/ {
+	compatible = "mediatek,mt7621-soc";
+	model = "Xiaomi R3P";
+
+	chosen {
+		bootargs = "console=ttyS0,115200";
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		sys_red {
+			label = "power_3";
+			gpios = <&gpio0 6 GPIO_ACTIVE_LOW>;
+		};
+
+		sys_yellow {
+			label = "power_2";
+			gpios = <&gpio0 10 GPIO_ACTIVE_LOW>;
+		};
+
+		sys_blue {
+			label = "power";
+			gpios = <&gpio0 8 GPIO_ACTIVE_LOW>;
+		};
+
+		wan {
+			label = "wan";
+			gpios = <&gpio0 14 GPIO_ACTIVE_LOW>;
+		};
+
+		lan1 {
+			label = "lan1";
+			gpios = <&gpio0 15 GPIO_ACTIVE_LOW>;
+		};
+
+		lan2 {
+			label = "lan2";
+			gpios = <&gpio0 16 GPIO_ACTIVE_LOW>;
+		};
+
+		lan3 {
+			label = "lan3";
+			gpios = <&gpio0 13 GPIO_ACTIVE_LOW>;
+		};
+	};
+
+	gpio-keys-polled {
+		compatible = "gpio-keys-polled";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		poll-interval = <20>;
+
+		reset {
+			label = "reset";
+			gpios = <&gpio0 18 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_RESTART>;
+		};
+	};
+
+	reg_usb_vbus: regulator {
+		compatible = "regulator-fixed";
+		regulator-name = "usb_vbus";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		gpio = <&gpio0 12 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+	};
+
+};
+
+&bch {
+	status = "okay";
+};
+
+&raeth {
+	mac-address = [00 00 00 00 00 00];
+	wan_at = "p4";
+	gmac1-support = "rgmii-1";
+	rgmii-mode-1 = "force-1000";
+	gmac2-support = "rgmii-2";
+	rgmii-mode-2 = "force-1000";
+	gmac2-phy-address = <0>;
+	gmac1_txq_num = <1>;
+	gmac1_txq_txd_num = <1024>;
+	gmac2_txq_num = <1>;
+	gmac2_txq_txd_num = <1024>;
+	num_rx_desc = <1024>;
+	status = "okay";
+};
+
+&nand {
+	status = "okay";
+
+	flash@0 {
+		reg = <0>;
+		nand-ecc-mode = "hw";
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			partition@0 {
+				label = "Bootloader";
+				reg = <0x00000 0x40000>; /* 256k */
+				read-only;
+			};
+
+			partition@40000 {
+				label = "CFG_Bdata";
+				reg = <0x40000 0x80000>; /* 512k */
+			};
+
+			partition@0c0000 {
+				label = "Factory";
+				reg = <0x0c0000 0x40000>; /* 256k */
+			};
+
+			partition@100000 {
+				label = "Crash";
+				reg = <0x100000 0xc0000>; /* 768k */
+			};
+
+			partition@1c0000 {
+				label = "Cfg_bak";
+				reg = <0x1c0000 0x40000>; /* 256k */
+			};
+
+			partition@200000 {
+				label = "stock";
+				reg = <0x200000 0x400000>; /* 4096k */
+			};
+
+			partition@600000 {
+				label = "firmware";
+				reg = <0x600000 0x1800000>; /* 24M */
+			};
+
+			partition@1e00000 {
+				label = "Config";
+				reg = <0x1e00000 0x80000>; /* 512K */
+			};
+
+			partition@1e80000 {
+				label = "Storage";
+				reg = <0x1e80000 0x400000>; /* 4096K */
+			};
+
+			partition@2280000 {
+				label = "RWFS";
+				reg = <0x2280000 0x5d00000>;
+			};
+		};
+	};
+};
+
+&pinctrl {
+	state_default: pinctrl0 {
+		gpio {
+			mtk,group = "i2c", "uart2", "uart3", "rgmii2";
+			mtk,function = "gpio";
+		};
+	};
+};
+
+&pcie {
+	status = "okay";
+};
+
+&xhci {
+	vbus-supply = <&reg_usb_vbus>;
+	status = "okay";
+};
+
+&u3phy1 {
+	status = "okay";
+};
