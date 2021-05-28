@@ -1,0 +1,11 @@
+/dts-v1/;
+
+#include "k2p.dts"
+
+&xhci {
+	status = "okay";
+};
+
+&u3phy1 {
+	status = "okay";
+};

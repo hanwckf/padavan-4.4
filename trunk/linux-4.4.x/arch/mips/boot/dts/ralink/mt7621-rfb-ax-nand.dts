@@ -1,0 +1,228 @@
+/dts-v1/;
+
+#include "mt7621.dtsi"
+#include <dt-bindings/input/input.h>
+
+/ {
+	compatible = "mediatek,mt7621-rfb-ax-nand", "mediatek,mt7621-soc";
+	model = "MediaTek MT7621 RFB (802.11ax,NAND)";
+
+	chosen {
+		bootargs = "console=ttyS0,115200";
+	};
+
+	gpio-leds {
+		compatible = "gpio-leds";
+
+		internet_ok {
+			label = "internet_ok";
+			gpios = <&gpio0 16 1>;
+			default-state = "off";
+		};
+
+		internet_fail {
+			label = "internet_fail";
+			gpios = <&gpio0 14 1>;
+			default-state = "off";
+		};
+
+		power_ok {
+			label = "power_ok";
+			gpios = <&gpio0 13 1>;
+			default-state = "off";
+		};
+
+		power_fail {
+			label = "power_fail";
+			gpios = <&gpio0 15 1>;
+			default-state = "on";
+		};
+	};
+
+	gpio-keys-polled {
+		compatible = "gpio-keys-polled";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		poll-interval = <20>;
+
+		reset {
+			label = "reset";
+			gpios = <&gpio0 6 1>;
+			linux,code = <KEY_RESTART>;
+		};
+
+		wps {
+			label = "wps";
+			linux,code = <KEY_WPS_BUTTON>;
+			gpios = <&gpio0 18 1>;
+		};
+	};
+};
+
+&bch {
+	status = "okay";
+};
+
+&eth {
+        status = "okay";
+
+        gmac0: mac@0 {
+                compatible = "mediatek,eth-mac";
+                reg = <0>;
+                phy-mode = "trgmii";
+                fixed-link {
+                        speed = <1000>;
+                        full-duplex;
+                        pause;
+                };
+        };
+
+        gmac1: mac@1 {
+                compatible = "mediatek,eth-mac";
+                reg = <1>;
+                phy-mode = "rgmii";
+                phy-link-handle = <&phy4>;
+                fixed-link {
+                        speed = <1000>;
+                        full-duplex;
+                        pause;
+                };
+        };
+
+        mdio: mdio-bus {
+                #address-cells = <1>;
+                #size-cells = <0>;
+
+                phy1f: ethernet-phy@1f {
+                        reg = <0x1f>;
+                        phy-mode = "rgmii";
+                };
+        };
+};
+
+&gsw {
+        mediatek,mdio = <&mdio>;
+        mediatek,portmap = "llllw";
+        mediatek,mcm;
+
+        resets = <&rstctrl 2>;
+        reset-names = "mcm";
+
+        port5: port@5 {
+                compatible = "mediatek,mt753x-port";
+                reg = <5>;
+                phy-mode = "rgmii";
+                fixed-link {
+                        speed = <1000>;
+                        full-duplex;
+                };
+        };
+
+        port6: port@6 {
+                compatible = "mediatek,mt753x-port";
+                reg = <6>;
+                phy-mode = "trgmii";
+                fixed-link {
+                        speed = <1000>;
+                        full-duplex;
+                };
+        };
+
+        mdio-bus {
+                #address-cells = <1>;
+                #size-cells = <0>;
+
+				phy4: ethernet-phy@4 {
+					reg = <0x4>;
+					phy-mode = "gmii";
+				};
+        };
+};
+
+&hnat {
+        mtketh-wan = "eth1";
+        mtketh-ppd = "eth0";
+	ext-devices = "rax0", "ra0", "rax1", "ra1", "rax2", "ra2", "rax3", "ra3", "apclix0", "apcli0";
+        mtketh-max-gmac = <2>;
+        status = "okay";
+};
+
+&nand {
+	status = "okay";
+
+	flash@0 {
+		reg = <0>;
+		nand-ecc-mode = "hw";
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			partition@0 {
+				label = "Bootloader";
+				reg = <0x00000 0x80000>;
+				read-only;
+			};
+
+			partition@80000 {
+				label = "Config";
+				reg = <0x80000 0x80000>;
+			};
+
+			partition@100000 {
+				label = "Factory";
+				reg = <0x100000 0x80000>;
+			};
+
+			partition@180000 {
+				label = "firmware";
+				reg = <0x180000 0x2b00000>;
+			};
+
+			partition@2c80000 {
+				label = "firmware2";
+				reg = <0x2c80000 0x2b00000>;
+			};
+
+			partition@5780000 {
+				label = "Devdata";
+				reg = <0x5780000 0x800000>;
+			};
+
+			partition@5f80000 {
+				label = "User_data";
+				reg = <0x5f80000 0x2000000>;
+			};
+		};
+	};
+};
+
+&pinctrl {
+	state_default: pinctrl0 {
+		gpio {
+			mtk,group = "i2c", "uart3", "jtag", "wdt";
+			mtk,function = "gpio";
+		};
+
+		uart2 {
+			mtk,group = "uart2";
+			mtk,function = "uart2";
+		};
+	};
+};
+
+&uartfull1 {
+	status = "okay";
+};
+
+&pcie {
+	status = "okay";
+};
+
+&u3phy1 {
+	status = "okay";
+};
+
+&xhci {
+	status = "okay";
+};
