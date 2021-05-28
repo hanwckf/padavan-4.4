@@ -22,6 +22,10 @@ config IRQ_INTC
 	default y
 	depends on !SOC_MT7621
 
+config RALINK_MT7621
+	bool
+	default n
+
 choice
 	prompt "Ralink SoC selection"
 	default SOC_RT305X
@@ -60,6 +64,8 @@ choice
 		select MIPS_L1_CACHE_SHIFT_5
 		select ZONE_DMA
 		select MIPS_L2_CACHE_ER35
+		select RALINK_MT7621
+		select BUILTIN_DTB
 endchoice
 
 choice
