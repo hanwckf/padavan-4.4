@@ -1,4 +1,4 @@
-SRC_NAME = boost-1.72.0
+SRC_NAME = boost-1.76.0
 
 all: 
 	@echo "boost build ok"
