@@ -673,14 +673,19 @@ include_vts_nat(FILE *fp)
 }
 
 static void
-include_masquerade(FILE *fp, char *wan_if, char *wan_ip, char *lan_net)
+include_masquerade(FILE *fp, char *wan_if, char *wan_ip, char *lan_net, int is_fullcone)
 {
 	char *dtype = "POSTROUTING";
 
-	if (wan_ip)
-		fprintf(fp, "-A %s -o %s -s %s -j SNAT --to-source %s\n", dtype, wan_if, lan_net, wan_ip);
-	else
-		fprintf(fp, "-A %s -o %s -s %s -j MASQUERADE\n", dtype, wan_if, lan_net);
+	if (is_fullcone) {
+		fprintf(fp, "-A POSTROUTING -o %s -s %s -j FULLCONENAT\n", wan_if, lan_net);
+		fprintf(fp, "-A PREROUTING -i %s -j FULLCONENAT\n", wan_if);
+	} else {
+		if (wan_ip)
+			fprintf(fp, "-A %s -o %s -s %s -j SNAT --to-source %s\n", dtype, wan_if, lan_net, wan_ip);
+		else
+			fprintf(fp, "-A %s -o %s -s %s -j MASQUERADE\n", dtype, wan_if, lan_net);
+	}
 }
 
 static int
@@ -1801,7 +1806,10 @@ ipt_nat_rules(char *man_if, char *man_ip,
 #endif
 		
 		/* masquerade WAN connection for LAN clients */
-		include_masquerade(fp, wan_if, wan_ip, lan_net);
+		if (nvram_match("nf_nat_type", "1")) /* classical nat: 2, fullcone nat: 1*/
+			include_masquerade(fp, wan_if, wan_ip, lan_net, 1);
+		else
+			include_masquerade(fp, wan_if, wan_ip, lan_net, 0);
 		
 		/* masquerade MAN connection for LAN clients */
 		if (use_man) {
@@ -1810,12 +1818,12 @@ ipt_nat_rules(char *man_if, char *man_ip,
 			if (is_upnp_enabled)
 				fprintf(fp, "-A %s -o %s -j %s\n", "POSTROUTING", man_if, MINIUPNPD_CHAIN_IP4_NAT_POST);
 #endif
-			include_masquerade(fp, man_if, man_ip, lan_net);
+			include_masquerade(fp, man_if, man_ip, lan_net, 0);
 		}
 		
 		/* masquerade VPN client connection for LAN clients */
 		if (vpnc_if && i_vpnc_sfw != 2)
-			include_masquerade(fp, vpnc_if, NULL, lan_net);
+			include_masquerade(fp, vpnc_if, NULL, lan_net, 0);
 		
 		/* masquerade WAN connection for VPN server clients */
 		if (i_vpns_enable) {
@@ -1828,21 +1836,21 @@ ipt_nat_rules(char *man_if, char *man_ip,
 				if (i_vpns_type == 2) {
 					if (i_vpns_ov_mode == 1) {
 						if (i_vpns_actl == 0 || i_vpns_actl == 1 || i_vpns_actl == 4)
-							include_masquerade(fp, wan_if, wan_ip, vpn_net);
+							include_masquerade(fp, wan_if, wan_ip, vpn_net, 0);
 						
 						/* masquerade VPN server clients to LAN */
 						if (i_vpns_vuse == 2)
-							include_masquerade(fp, lan_if, lan_ip, vpn_net);
+							include_masquerade(fp, lan_if, lan_ip, vpn_net, 0);
 					}
 				} else
 #endif
 				{
 					if (i_vpns_vuse && (i_vpns_actl == 0 || i_vpns_actl == 1 || i_vpns_actl == 4))
-						include_masquerade(fp, wan_if, wan_ip, vpn_net);
+						include_masquerade(fp, wan_if, wan_ip, vpn_net, 0);
 					
 					/* masquerade VPN server clients to LAN */
 					if (i_vpns_vuse == 2)
-						include_masquerade(fp, lan_if, lan_ip, vpn_net);
+						include_masquerade(fp, lan_if, lan_ip, vpn_net, 0);
 				}
 			}
 		}
