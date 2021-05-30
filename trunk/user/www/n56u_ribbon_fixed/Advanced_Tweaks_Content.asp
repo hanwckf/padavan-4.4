@@ -154,6 +154,11 @@ function initial(){
 	if (!support_led_pwr())
 		showhide_div("row_led_pwr", 0);
 
+	if (!support_led_usb_trig()) {
+		var o4 = document.form.front_led_usb;
+		o4.remove(3);
+	}
+
 	showhide_div("row_led_wan", support_led_wan());
 	showhide_div("row_led_lan", support_led_lan());
 	showhide_div("row_led_usb", support_led_usb());

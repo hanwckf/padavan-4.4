@@ -30,6 +30,7 @@
 #include "rc.h"
 #include "switch.h"
 #include "gpio_pins.h"
+#include <gpioutils.h>
 
 static int
 wif_control(const char *wifname, int is_up)
@@ -70,9 +71,8 @@ mlme_radio_wl(int is_on)
 #endif
 	mlme_state_wl(is_on);
 
-#if defined(BOARD_GPIO_LED_SW5G)
-	LED_CONTROL(BOARD_GPIO_LED_SW5G, (is_on) ? LED_ON : LED_OFF);
-#endif
+	LED_CONTROL(LED_SW5G, (is_on) ? LED_ON : LED_OFF);
+
 }
 
 void
@@ -87,9 +87,7 @@ mlme_radio_rt(int is_on)
 
 	mlme_state_rt(is_on);
 
-#if defined(BOARD_GPIO_LED_SW2G)
-	LED_CONTROL(BOARD_GPIO_LED_SW2G, (is_on) ? LED_ON : LED_OFF);
-#endif
+	LED_CONTROL(LED_SW2G, (is_on) ? LED_ON : LED_OFF);
 
 #if defined(USE_RT3352_MII)
 	if (is_on) {
@@ -398,9 +396,7 @@ stop_wifi_all_wl(void)
 	wif_control(IFNAME_5G_GUEST, 0);
 	wif_control(IFNAME_5G_MAIN, 0);
 
-#if defined (BOARD_GPIO_LED_SW5G)
-	LED_CONTROL(BOARD_GPIO_LED_SW5G, LED_OFF);
-#endif
+	LED_CONTROL(LED_SW5G, LED_OFF);
 #endif
 }
 
@@ -426,9 +422,7 @@ stop_wifi_all_rt(void)
 	wif_control(IFNAME_2G_GUEST, 0);
 	wif_control(IFNAME_2G_MAIN, 0);
 
-#if defined (BOARD_GPIO_LED_SW2G)
-	LED_CONTROL(BOARD_GPIO_LED_SW2G, LED_OFF);
-#endif
+	LED_CONTROL(LED_SW2G, LED_OFF);
 }
 
 void 
@@ -758,13 +752,11 @@ restart_wifi_wl(int radio_on, int need_reload_conf)
 
 	check_apcli_wan(1, radio_on);
 
-	if (radio_on)
+	if (radio_on) {
 		update_vga_clamp_wl(0);
-
-#if defined (BOARD_GPIO_LED_SW5G)
-	if (radio_on)
-		LED_CONTROL(BOARD_GPIO_LED_SW5G, LED_ON);
-#endif
+		LED_CONTROL(LED_SW5G, LED_ON);
+	}
+		
 #endif
 }
 
@@ -806,13 +798,10 @@ restart_wifi_rt(int radio_on, int need_reload_conf)
 
 	check_apcli_wan(0, radio_on);
 
-	if (radio_on)
+	if (radio_on) {
 		update_vga_clamp_rt(0);
-
-#if defined (BOARD_GPIO_LED_SW2G)
-	if (radio_on)
-		LED_CONTROL(BOARD_GPIO_LED_SW2G, LED_ON);
-#endif
+		LED_CONTROL(LED_SW2G, LED_ON);
+	}
 }
 
 int is_need_8021x(char *auth_mode)

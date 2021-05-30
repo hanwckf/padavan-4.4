@@ -709,19 +709,11 @@ struct nvram_pair router_defaults[] = {
 	{ "wol_mac_last", "" },
 	{ "gw_arp_ping", "0" },
 	{ "ez_action_short", "0" },
-#if !defined(BOARD_GPIO_BTN_RESET)
 	{ "ez_action_long", "15" },	/* Reset */
-#else
-	{ "ez_action_long", "0" },
-#endif
-#if defined (BOARD_GPIO_BTN_FN1)
 	{ "fn1_action_short", "0" },
 	{ "fn1_action_long", "0" },
-#endif
-#if defined (BOARD_GPIO_BTN_FN2)
 	{ "fn2_action_short", "0" },
 	{ "fn2_action_long", "0" },
-#endif
 	{ "front_led_all", "1" },
 	{ "front_led_wan", "2" },
 	{ "front_led_lan", "2" },

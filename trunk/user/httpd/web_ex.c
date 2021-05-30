@@ -51,6 +51,7 @@
 #include <notify_rc.h>
 #include <rstats.h>
 #include <bin_sem_asus.h>
+#include <gpioutils.h>
 
 #include "common.h"
 #include "nvram_x.h"
@@ -2329,11 +2330,7 @@ ej_firmware_caps_hook(int eid, webs_t wp, int argc, char **argv)
 	int has_switch_type = 10; // RT3052/RT3352/RT5350 Embedded ESW
 #endif
 #endif
-#if defined (BOARD_GPIO_BTN_ROUTER) || defined (BOARD_GPIO_BTN_AP)
-	int has_btn_mode = 1;
-#else
 	int has_btn_mode = 0;
-#endif
 #if defined (USE_WID_5G) && (USE_WID_5G==7610 || USE_WID_5G==7612 || USE_WID_5G==7615 || USE_WID_5G==7915)
 	int has_5g_vht = 1;
 #else
@@ -2516,72 +2513,29 @@ ej_firmware_caps_hook(int eid, webs_t wp, int argc, char **argv)
 static int
 ej_hardware_pins_hook(int eid, webs_t wp, int argc, char **argv)
 {
-#if defined (BOARD_GPIO_BTN_WPS)
-	int has_but_wps = 1;
-#else
-	int has_but_wps = 0;
-#endif
-#if defined (BOARD_GPIO_BTN_FN1)
-	int has_but_fn1 = 1;
-#else
-	int has_but_fn1 = 0;
-#endif
-#if defined (BOARD_GPIO_BTN_FN2)
-	int has_but_fn2 = 1;
-#else
-	int has_but_fn2 = 0;
-#endif
-#if defined (BOARD_GPIO_LED_ALL)
-	int has_led_all = 1;
-#else
-	int has_led_all = 0;
-#endif
-#if defined (BOARD_GPIO_LED_WAN)
-	int has_led_wan = 1;
-#else
-	int has_led_wan = 0;
-#endif
-#if defined (BOARD_GPIO_LED_LAN)
-	int has_led_lan = 1;
-#else
-	int has_led_lan = 0;
-#endif
-#if defined (BOARD_GPIO_LED_USB) && defined (USE_USB_SUPPORT)
-	int has_led_usb = 1;
-#else
-	int has_led_usb = 0;
-#endif
-#if defined (BOARD_GPIO_LED_WIFI) || defined (BOARD_GPIO_LED_SW2G) || defined (BOARD_GPIO_LED_SW5G)
-	int has_led_wif = 1;
-#else
-	int has_led_wif = 0;
-#endif
-#if defined (BOARD_GPIO_LED_POWER)
-	int has_led_pwr = 1;
-#else
-	int has_led_pwr = 0;
-#endif
+	int leds = search_gpio_led();
+	int btns = search_gpio_btn();
 
 	websWrite(wp,
 		"function support_but_wps() { return %d;}\n"
 		"function support_but_fn1() { return %d;}\n"
 		"function support_but_fn2() { return %d;}\n"
-		"function support_led_all() { return %d;}\n"
 		"function support_led_wan() { return %d;}\n"
 		"function support_led_lan() { return %d;}\n"
 		"function support_led_usb() { return %d;}\n"
+		"function support_led_usb_trig() { return %d;}\n"
 		"function support_led_wif() { return %d;}\n"
 		"function support_led_pwr() { return %d;}\n"
 		"function support_led_phy() { return %d;}\n",
-		has_but_wps,
-		has_but_fn1,
-		has_but_fn2,
-		has_led_all,
-		has_led_wan,
-		has_led_lan,
-		has_led_usb,
-		has_led_wif,
-		has_led_pwr,
+		!!(btns & BTN_WPS),
+		!!(btns & BTN_FN1),
+		!!(btns & BTN_FN2),
+		!!(leds & LED_WAN),
+		!!(leds & LED_LAN),
+		!!((leds & LED_USB)),
+		!!((leds & LED_USB) && !(leds & LED_USB2)),
+		!!((leds & LED_WIFI) || (leds & LED_SW2G) || (leds & LED_SW5G)),
+		!!(leds & LED_PWR),
 		BOARD_NUM_ETH_LEDS
 	);
 

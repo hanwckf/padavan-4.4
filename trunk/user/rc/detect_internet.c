@@ -26,6 +26,7 @@
 #include <sys/time.h>
 
 #include "rc.h"
+#include <gpioutils.h>
 
 #define DI_MAX_HOSTS	6
 #define DI_STATUS_INIT	2
@@ -274,14 +275,9 @@ di_on_timer(void)
 		
 		nvram_set_int_temp("link_internet", link_internet);
 		
-#if defined (BOARD_GPIO_LED_WAN)
 		if (nvram_get_int("front_led_wan") == 3){
-			LED_CONTROL(BOARD_GPIO_LED_WAN, (link_internet) ? LED_ON : LED_OFF);
-#if defined (BOARD_K2P) || defined (BOARD_PSG1218)
-			LED_CONTROL(BOARD_GPIO_LED_WIFI, (link_internet) ? LED_OFF : LED_ON);
-#endif
+			LED_CONTROL(LED_WAN, (link_internet) ? LED_ON : LED_OFF);
 		}
-#endif
 		if (di_poll_mode != 0 && !di_pause_received) {
 			long fail_delay = (long)nvram_safe_get_int("di_lost_delay", 10, 0, 600);
 			

@@ -36,7 +36,7 @@
 
 #include "rc.h"
 #include "gpio_pins.h"
-
+#include <gpioutils.h>
 
 #define WD_NORMAL_PERIOD	10		/* 10s */
 #define WD_URGENT_PERIOD	(100 * 1000)	/* 100ms */
@@ -185,7 +185,6 @@ httpd_check_v2()
 }
 #endif
 
-#if defined (BOARD_GPIO_LED_POWER)
 static int
 get_state_led_pwr(void)
 {
@@ -201,16 +200,12 @@ get_state_led_pwr(void)
 
 	return i_led;
 }
-#endif
 
 #if defined (BOARD_GPIO_BTN_RESET)
 static int
 btn_check_reset(void)
 {
 	unsigned int i_button_value = !BTN_PRESSED;
-#if defined (BOARD_GPIO_LED_POWER)
-	int i_led;
-#endif
 
 #if defined (BOARD_GPIO_BTN_WPS)
 	/* check WPS pressed */
@@ -233,17 +228,6 @@ btn_check_reset(void)
 	if (i_button_value == BTN_PRESSED) {
 		/* "RESET" pressed */
 		btn_count_reset++;
-		
-#if defined (BOARD_GPIO_LED_POWER)
-		/* flash power LED */
-		i_led = get_state_led_pwr();
-		if (btn_count_reset == 1)
-			cpu_gpio_set_pin(BOARD_GPIO_LED_POWER, i_led);
-		else if (btn_count_reset > BTN_RESET_WAIT_COUNT) {
-			cpu_gpio_set_pin(BOARD_GPIO_LED_POWER, (btn_count_reset % 2) ? !i_led : i_led);
-			dbg("You can release RESET button now!\n");
-		}
-#endif
 	} else {
 		/* "RESET" released */
 		int press_count = btn_count_reset;
@@ -252,16 +236,9 @@ btn_check_reset(void)
 		if (press_count > BTN_RESET_WAIT_COUNT) {
 			/* pressed >= 5sec, reset! */
 			wd_alarmtimer(0, 0);
-#if defined (BOARD_GPIO_LED_POWER)
-			cpu_gpio_set_pin(BOARD_GPIO_LED_POWER, LED_OFF);
-#endif
 			erase_nvram();
 			erase_storage();
 			sys_exit();
-		} else if (press_count > 0) {
-#if defined (BOARD_GPIO_LED_POWER)
-			LED_CONTROL(BOARD_GPIO_LED_POWER, LED_ON);
-#endif
 		}
 	}
 
@@ -288,14 +265,6 @@ btn_check_ez(int btn_pin, int btn_id, int *p_btn_state)
 	if (i_button_value == BTN_PRESSED) {
 		/* BTN pressed */
 		(*p_btn_state)++;
-		
-#if defined (BOARD_GPIO_LED_POWER)
-		/* flash alert LED */
-		if (*p_btn_state > BTN_EZ_WAIT_COUNT) {
-			int i_led = get_state_led_pwr();
-			cpu_gpio_set_pin(BOARD_GPIO_LED_POWER, ((*p_btn_state) % 2) ? i_led : !i_led);
-		}
-#endif
 	} else {
 		/* BTN released */
 		int press_count = *p_btn_state;
@@ -770,14 +739,6 @@ ez_event_short(int btn_id)
 #endif
 		ez_action = nvram_get_int("ez_action_short");
 
-#if defined (BOARD_GPIO_LED_POWER)
-	cpu_gpio_set_pin(BOARD_GPIO_LED_POWER, get_state_led_pwr());
-	if (ez_action != 10) {
-		usleep(90000);
-		LED_CONTROL(BOARD_GPIO_LED_POWER, LED_ON);
-	}
-#endif
-
 	switch (ez_action)
 	{
 	case 1: // WiFi radio ON/OFF trigger
@@ -852,7 +813,6 @@ ez_event_long(int btn_id)
 #endif
 		ez_action = nvram_get_int("ez_action_long");
 
-#if defined (BOARD_GPIO_LED_POWER)
 	int led_state = LED_ON;
 
 	switch (ez_action)
@@ -867,8 +827,7 @@ ez_event_long(int btn_id)
 	}
 
 	if (led_state >= 0)
-		LED_CONTROL(BOARD_GPIO_LED_POWER, led_state);
-#endif
+		LED_CONTROL(LED_PWR, led_state);
 
 	switch (ez_action)
 	{

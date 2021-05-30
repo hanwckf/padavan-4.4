@@ -22,189 +22,38 @@
 #include <fcntl.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <sys/ioctl.h>
 
-////////////////////////////////////////////////////////////////////////////////
-// IOCTL
-////////////////////////////////////////////////////////////////////////////////
+#include <shutils.h>
+#include <gpioutils.h>
 
-static int
-ralink_gpio_ioctl(unsigned int cmd, unsigned int par, void *value)
+void gpio_led_trig_set(int led, const char* trig_name)
 {
-#if 0
-	int fd, retVal = 0;
+	char led_path[128];
+	const char *led_name = led_to_name(led);
 
-	fd = open(RALINK_GPIO_DEVPATH, O_RDONLY);
-	if (fd < 0) {
-		perror(RALINK_GPIO_DEVPATH);
-		return errno;
+	if (led_name && trig_name) {
+		sprintf(led_path, "/sys/devices/platform/leds/leds/%s/trigger", led_name);
+		fput_string(led_path, trig_name);
 	}
+}
 
-	cmd &= ((1u << IOCTL_GPIO_CMD_LENGTH_BITS) - 1);
-	cmd |= (par << IOCTL_GPIO_CMD_LENGTH_BITS);
+void gpio_led_set(int led, int value)
+{
+	char led_path[128];
+	const char *led_name = led_to_name(led);
 
-	if (ioctl(fd, cmd, value) < 0) {
-		perror("ioctl");
-		retVal = errno;
+	if (led_name) {
+		sprintf(led_path, "/sys/devices/platform/leds/leds/%s/brightness", led_name);
+		fput_int(led_path, value);
 	}
-
-	close(fd);
-
-	return retVal;
-#endif
-	return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// RALINK CPU GPIO CONTROL
-////////////////////////////////////////////////////////////////////////////////
-
-int cpu_gpio_mode_set_bit(int bit, unsigned int value)
-{
-//	return ralink_gpio_ioctl(IOCTL_GPIO_MODE_SET, bit, &value);
-	return 0;
-}
-
-int cpu_gpio_mode_get_bit(int bit, unsigned int *p_value)
-{
-//	return ralink_gpio_ioctl(IOCTL_GPIO_MODE_GET, bit, p_value);
-	return 0;
-}
-
-int cpu_gpio_set_pin_direction(int pin, unsigned int use_output_direction)
-{
-//	return ralink_gpio_ioctl(IOCTL_GPIO_DIR_OUT, pin, &use_output_direction);
-	return 0;
-}
-
-int cpu_gpio_set_pin(int pin, unsigned int value)
-{
-//	return ralink_gpio_ioctl(IOCTL_GPIO_WRITE, pin, &value);
-	return 0;
 }
 
 int cpu_gpio_get_pin(int pin, unsigned int *p_value)
 {
-//	return ralink_gpio_ioctl(IOCTL_GPIO_READ, pin, p_value);
 	return 0;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-// GPIO LED
-////////////////////////////////////////////////////////////////////////////////
-
-int cpu_gpio_led_set(unsigned int led_pin, int blink_inverted)
-{
-#if 0
-	ralink_gpio_led_info gli;
-
-	gli.invert = (blink_inverted) ? 1 : 0;
-	gli.on = 1;
-	gli.off = 1;
-	gli.blinks = 1;
-	gli.rests = 1;
-	gli.times = 1;
-
-	return ralink_gpio_ioctl(IOCTL_GPIO_LED_SET, led_pin, &gli);
-#endif
-	return 0;
-}
-
-int cpu_gpio_led_enabled(unsigned int led_pin, int enabled)
-{
-#if 0
-	return ralink_gpio_ioctl(IOCTL_GPIO_LED_ENABLED, led_pin, &enabled);
-#endif
-	return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// GPIO IRQ
-////////////////////////////////////////////////////////////////////////////////
 
 int cpu_gpio_irq_set(unsigned int irq_pin, int rising_edge, int falling_edge, pid_t pid)
 {
-#if 0
-	ralink_gpio_irq_info gii;
-
-	gii.pid = pid;
-	gii.rise = (rising_edge) ? 1 : 0;
-	gii.fall = (falling_edge) ? 1 : 0;
-
-	return ralink_gpio_ioctl(IOCTL_GPIO_IRQ_SET, irq_pin, &gii);
-#endif
 	return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// GPIO PROCESS
-////////////////////////////////////////////////////////////////////////////////
-
-static void show_usage(char *cmd)
-{
-	printf("Usage: %s -d <pin> <in/out> - gpio pin set direction (in=0, out=1)\n", cmd);
-	printf("       %s -r <pin> - gpio pin read value\n", cmd);
-	printf("       %s -w <pin> <value> - gpio pin write value (0/1)\n\n", cmd);
-	printf("       %s -m <bit> - gpio mode get bit\n", cmd);
-	printf("       %s -s <bit> <value> - gpio mode set bit (0/1)\n", cmd);
-}
-
-int cpu_gpio_main(int argc, char **argv)
-{
-	int ret = 1, idx;
-	unsigned int value = 0;
-
-	if (argc < 2) {
-		show_usage(argv[0]);
-		return 1;
-	}
-
-	if (strlen(argv[1]) < 2 || argv[1][0] != '-') {
-		show_usage(argv[0]);
-		return 1;
-	}
-
-	switch (argv[1][1])
-	{
-	case 'd':
-		if (argc == 4)
-			ret = cpu_gpio_set_pin_direction(atoi(argv[2]), atoi(argv[3]));
-		else
-			show_usage(argv[0]);
-		break;
-	case 'r':
-		if (argc == 3) {
-			idx = atoi(argv[2]);
-			ret = cpu_gpio_get_pin(idx, &value);
-			if (ret == 0)
-				printf("gpio pin %d = %d\n", idx, value);
-		} else
-			show_usage(argv[0]);
-		break;
-	case 'w':
-		if (argc == 4)
-			ret = cpu_gpio_set_pin(atoi(argv[2]), atoi(argv[3]));
-		else
-			show_usage(argv[0]);
-		break;
-	case 'm':
-		if (argc == 3) {
-			idx = atoi(argv[2]);
-			ret = cpu_gpio_mode_get_bit(idx, &value);
-			if (ret == 0)
-				printf("gpio mode bit [%d] = %d\n", idx, value);
-		} else
-			show_usage(argv[0]);
-		break;
-	case 's':
-		if (argc == 4)
-			ret = cpu_gpio_mode_set_bit(atoi(argv[2]), atoi(argv[3]));
-		else
-			show_usage(argv[0]);
-		break;
-	default:
-		show_usage(argv[0]);
-	}
-
-	return ret;
 }

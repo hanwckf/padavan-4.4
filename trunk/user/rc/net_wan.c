@@ -32,6 +32,7 @@
 
 #include "rc.h"
 #include "switch.h"
+#include <gpioutils.h>
 
 char*
 get_wan_unit_value(int unit, const char* param_name)
@@ -83,7 +84,6 @@ set_wan_unit_param(int unit, const char* param_name)
 static void
 control_wan_led_isp_state(int is_wan_up, int is_modem_unit)
 {
-#if defined (BOARD_GPIO_LED_WAN)
 	int front_led_wan = nvram_get_int("front_led_wan");
 
 	if (front_led_wan == 2) {
@@ -93,18 +93,11 @@ control_wan_led_isp_state(int is_wan_up, int is_modem_unit)
 			if (!get_wan_wisp_active(&has_link) && !is_modem_unit)
 				has_link = get_wan_ether_link_cached();
 		}
-		LED_CONTROL(BOARD_GPIO_LED_WAN, (is_wan_up && has_link) ? LED_ON : LED_OFF);
-#if defined (BOARD_K2P) || defined (BOARD_PSG1218)
-		LED_CONTROL(BOARD_GPIO_LED_WIFI, (is_wan_up && has_link) ? LED_OFF : LED_ON);
-#endif
+		LED_CONTROL(LED_WAN, (is_wan_up && has_link) ? LED_ON : LED_OFF);
 	} else if (front_led_wan == 3) {
 		if (!is_wan_up)
-			LED_CONTROL(BOARD_GPIO_LED_WAN, LED_OFF);
-#if defined (BOARD_K2P) || defined (BOARD_PSG1218)
-		LED_CONTROL(BOARD_GPIO_LED_WIFI, LED_ON);
-#endif
+			LED_CONTROL(LED_WAN, LED_OFF);
 	}
-#endif
 }
 
 static void

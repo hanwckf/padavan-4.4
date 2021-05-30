@@ -25,17 +25,8 @@
 
 #define BTN_PRESSED		0
 
-#if defined (BOARD_GPIO_LED_INVERTED)
-#define LED_ON			1
-#define LED_OFF			0
-#define LED_BLINK_STAY_SHOW	0
-#define LED_BLINK_STAY_HIDE	1
-#else
-#define LED_ON			0
-#define LED_OFF			1
-#define LED_BLINK_STAY_SHOW	1
-#define LED_BLINK_STAY_HIDE	0
-#endif
+#define LED_OFF         0
+#define LED_ON          1
 
 #ifndef BOARD_BOOT_TIME
 #define BOARD_BOOT_TIME		35
