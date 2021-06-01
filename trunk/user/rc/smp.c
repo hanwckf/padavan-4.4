@@ -83,26 +83,21 @@ struct smp_trx_layout_t {
 #define GIC_IRQ_XHCI	(GIC_OFFSET+22)
 #define GIC_IRQ_EIP93	(GIC_OFFSET+19)
 
-#define VPNC_RPS_MAP	SMP_MASK_CPU2
-#define VPNS_RPS_MAP	SMP_MASK_CPU0
+#define PPPOE_RPS_MAP	(SMP_MASK_CPU1|SMP_MASK_CPU2|SMP_MASK_CPU3)
 
 static const struct smp_irq_layout_t mt7621a_irq[] = {
 	{ GIC_IRQ_FE,    SMP_MASK_CPU1 },	/* GMAC  -> CPU:0, VPE:1 */
 	{ GIC_IRQ_EIP93, SMP_MASK_CPU1 },	/* EIP93 -> CPU:0, VPE:1 */
-	{ GIC_IRQ_PCIE0, SMP_MASK_CPU2 },	/* PCIe0 -> CPU:1, VPE:0 (usually rai0) */
-#if defined (BOARD_MT7915_DBDC)
-	{ GIC_IRQ_PCIE1, SMP_MASK_CPU2 },
-#else
-	{ GIC_IRQ_PCIE1, SMP_MASK_CPU3 },	/* PCIe1 -> CPU:1, VPE:1 (usually ra0) */
-#endif
+	{ GIC_IRQ_PCIE0, SMP_MASK_CPU3 },	/* PCIe0 -> CPU:1, VPE:0 (usually rai0) */
+	{ GIC_IRQ_PCIE1, SMP_MASK_CPU2 },	/* PCIe1 -> CPU:1, VPE:1 (usually ra0) */
 	{ GIC_IRQ_PCIE2, SMP_MASK_CPU0 },	/* PCIe2 -> CPU:0, VPE:0 (usually ahci) */
 	{ GIC_IRQ_SDXC,  SMP_MASK_CPU2 },	/* SDXC  -> CPU:1, VPE:0 */
 	{ GIC_IRQ_XHCI,  SMP_MASK_CPU3 },	/* xHCI  -> CPU:1, VPE:1 */
 };
 
-static const struct smp_trx_layout_t mt7621a_trx[] = {
+static const struct smp_trx_layout_t mt7621a_rps[] = {
 	{ IFNAME_MAC,		SMP_MASK_CPU0 | SMP_MASK_CPU2 },	/* eth2 */
-	{ IFNAME_MAC2,		SMP_MASK_CPU0 | SMP_MASK_CPU3 },	/* eth3 */
+	{ IFNAME_MAC2,		SMP_MASK_CPU0 | SMP_MASK_CPU2 },	/* eth3 */
 	{ IFNAME_2G_MAIN,	SMP_MASK_CPU0 | SMP_MASK_CPU1 },
 	{ IFNAME_2G_GUEST,	SMP_MASK_CPU0 | SMP_MASK_CPU1 },
 	{ IFNAME_2G_APCLI,	SMP_MASK_CPU0 | SMP_MASK_CPU1 },
@@ -121,47 +116,64 @@ static const struct smp_trx_layout_t mt7621a_trx[] = {
 #endif
 };
 
+static const struct smp_trx_layout_t mt7621a_xps[] = {
+	{ IFNAME_MAC,		SMP_MASK_CPU1 },	/* eth2 */
+	{ IFNAME_MAC2,		SMP_MASK_CPU1 },	/* eth3 */
+	{ IFNAME_2G_MAIN,	0 },
+	{ IFNAME_2G_GUEST,	0 },
+	{ IFNAME_2G_APCLI,	0 },
+	{ IFNAME_2G_WDS0,	0 },
+	{ IFNAME_2G_WDS1,	0 },
+	{ IFNAME_2G_WDS2,	0 },
+	{ IFNAME_2G_WDS3,	0 },
+#if BOARD_HAS_5G_RADIO
+	{ IFNAME_5G_MAIN,	0 },
+	{ IFNAME_5G_GUEST,  0 },
+	{ IFNAME_5G_APCLI,	0 },
+	{ IFNAME_5G_WDS0,	0 },
+	{ IFNAME_5G_WDS1,	0 },
+	{ IFNAME_5G_WDS2,	0 },
+	{ IFNAME_5G_WDS3,	0 },
+#endif
+};
+
 #else
 #error "undefined SoC with SMP!"
 #endif
 
 void
-set_cpu_affinity(int is_ap_mode)
+set_cpu_affinity(void)
 {
-	/* set initial IRQ affinity and RPS/XPS balancing */
-	const struct smp_irq_layout_t *irq_map;
-	const struct smp_trx_layout_t *trx_map;
-	int i, j, irq_len, trx_len;
-
-#if defined (CONFIG_RALINK_MT7621)
-	irq_map = mt7621a_irq;
-	trx_map = mt7621a_trx;
-	irq_len = ARRAY_SIZE(mt7621a_irq);
-	trx_len = ARRAY_SIZE(mt7621a_trx);
-#else
-	return;
-#endif
+	int i;
 
 	/* set CPU affinity */
-	for (i = 0; i < irq_len; i++)
-		irq_affinity_set(irq_map[i].irq, irq_map[i].cpu_mask);
+	for (i = 0; i < ARRAY_SIZE(mt7621a_irq); i++)
+		irq_affinity_set(mt7621a_irq[i].irq, mt7621a_irq[i].cpu_mask);
 
 	/* set network interfaces RPS/XPS mask */
-	for (j = 0; j < trx_len; j++) {
-		if (!is_interface_exist(trx_map[j].ifname))
+	for (i = 0; i < ARRAY_SIZE(mt7621a_rps); i++) {
+		if (!is_interface_exist(mt7621a_rps[i].ifname))
 			continue;
-		rps_queue_set(trx_map[j].ifname, trx_map[j].cpu_mask);
-		xps_queue_set(trx_map[j].ifname, trx_map[j].cpu_mask);
+		rps_queue_set(mt7621a_rps[i].ifname, mt7621a_rps[i].cpu_mask);
+	}
+
+	for (i = 0; i < ARRAY_SIZE(mt7621a_xps); i++) {
+		if (!is_interface_exist(mt7621a_xps[i].ifname))
+			continue;
+		xps_queue_set(mt7621a_xps[i].ifname, mt7621a_xps[i].cpu_mask);
+		
 	}
 }
 
 void
 set_vpn_balancing(const char *vpn_ifname, int is_server)
 {
-	/* set RPS/XPS balancing for PPP/SIT/TUN/TAP interfaces */
-	int rps_vpn;
-	rps_vpn = (is_server) ? VPNS_RPS_MAP : VPNC_RPS_MAP;
+	return;
+}
 
-	rps_queue_set(vpn_ifname, rps_vpn);
-	xps_queue_set(vpn_ifname, rps_vpn);
+void
+set_pppoe_balancing()
+{
+	rps_queue_set(IFNAME_MAC, PPPOE_RPS_MAP);
+	rps_queue_set(IFNAME_MAC2, PPPOE_RPS_MAP);
 }

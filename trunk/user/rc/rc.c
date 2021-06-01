@@ -733,7 +733,7 @@ init_router(void)
 #if defined (USE_IPV6)
 	init_ipv6();
 #endif
-	set_cpu_affinity(is_ap_mode);
+	set_cpu_affinity();
 
 	start_detect_link();
 	start_detect_internet(0);
