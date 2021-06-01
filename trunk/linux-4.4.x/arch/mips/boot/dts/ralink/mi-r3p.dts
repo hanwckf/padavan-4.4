@@ -80,7 +80,6 @@
 
 &raeth {
 	mac-address = [00 00 00 00 00 00];
-	wan_at = "p4";
 	gmac1-support = "rgmii-1";
 	rgmii-mode-1 = "force-1000";
 	gmac2-support = "rgmii-2";
