@@ -21,7 +21,4 @@
 void gpio_led_trig_set(int led, const char* trig_name);
 void gpio_led_set(int led, int value);
 
-int cpu_gpio_get_pin(int pin, unsigned int *p_value);
-int cpu_gpio_irq_set(unsigned int irq_pin, int rising_edge, int falling_edge, pid_t pid);
-
 #endif

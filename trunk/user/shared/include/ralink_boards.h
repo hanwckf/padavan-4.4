@@ -23,8 +23,6 @@
 #define FW_MTD_NAME		"firmware"
 #define FW_IMG_NAME		"/tmp/linux.trx"
 
-#define BTN_PRESSED		0
-
 #define LED_OFF         0
 #define LED_ON          1
 

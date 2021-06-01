@@ -709,7 +709,7 @@ struct nvram_pair router_defaults[] = {
 	{ "wol_mac_last", "" },
 	{ "gw_arp_ping", "0" },
 	{ "ez_action_short", "0" },
-	{ "ez_action_long", "15" },	/* Reset */
+	{ "ez_action_long", "0" },
 	{ "fn1_action_short", "0" },
 	{ "fn1_action_long", "0" },
 	{ "fn2_action_short", "0" },

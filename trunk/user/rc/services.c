@@ -549,6 +549,7 @@ start_services_once(int is_ap_mode)
 #endif
 	start_vpn_server();
 	start_watchdog();
+	start_gpio_btn();
 	start_infosvr();
 
 	if (!is_ap_mode) {

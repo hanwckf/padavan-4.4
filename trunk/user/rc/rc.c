@@ -1407,6 +1407,7 @@ static const applet_rc_t applets_rc[] = {
 	{ "detect_internet",	detect_internet_main	},
 
 	{ "watchdog",		watchdog_main		},
+	{ "gpio_btn",		btn_main		},
 	{ "rstats",		rstats_main		},
 
 #if defined (USE_MTK_ESW) || defined (USE_MTK_GSW)

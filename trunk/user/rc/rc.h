@@ -692,6 +692,13 @@ int  start_watchdog(void);
 void notify_watchdog_time(void);
 void notify_watchdog_wifi(int is_5ghz);
 
+int  btn_main(int argc, char *argv[]);
+int  start_gpio_btn(void);
+int  get_state_led_pwr(void);
+void btn_reset_action(void);
+void btn_event_long(int btn_id);
+void btn_event_short(int btn_id);
+
 #if defined (USE_RT3352_MII)
 /* inicd */
 int inicd_main(int argc, char *argv[]);

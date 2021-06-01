@@ -32,21 +32,9 @@
 #include <string.h>
 #include <sys/wait.h>
 
-#include <sys/ioctl.h>
-
 #include "rc.h"
-#include "gpio_pins.h"
-#include <gpioutils.h>
 
 #define WD_NORMAL_PERIOD	10		/* 10s */
-#define WD_URGENT_PERIOD	(100 * 1000)	/* 100ms */
-
-#define BTN_RESET_WAIT		5		/* 5s */
-#define BTN_RESET_WAIT_COUNT	(BTN_RESET_WAIT * 10)
-
-#define BTN_EZ_WAIT		3		/* 3s */
-#define BTN_EZ_WAIT_COUNT	(BTN_EZ_WAIT * 10)
-#define BTN_EZ_CANCEL_COUNT	8		/* 800ms */
 
 #define WD_NOTIFY_ID_WIFI2	1
 #define WD_NOTIFY_ID_WIFI5	2
@@ -72,20 +60,6 @@ static int httpd_missing = 0;
 static int dnsmasq_missing = 0;
 
 static struct itimerval wd_itv;
-
-#if defined (BOARD_GPIO_BTN_RESET)
-static int btn_count_reset = 0;
-#endif
-#if defined (BOARD_GPIO_BTN_WPS)
-static int btn_count_wps = 0;
-#endif
-#if defined (BOARD_GPIO_BTN_FN1)
-static int btn_count_fn1 = 0;
-#endif
-#if defined (BOARD_GPIO_BTN_FN2)
-static int btn_count_fn2 = 0;
-#endif
-
 
 static void
 wd_alarmtimer(unsigned long sec, unsigned long usec)
@@ -182,106 +156,6 @@ httpd_check_v2()
 	}
 
 	return 1;
-}
-#endif
-
-static int
-get_state_led_pwr(void)
-{
-	int i_led;
-
-	if (nvram_get_int("front_led_pwr") == 0) {
-		// POWER always OFF
-		i_led = LED_ON;
-	} else {
-		// POWER always ON
-		i_led = LED_OFF;
-	}
-
-	return i_led;
-}
-
-#if defined (BOARD_GPIO_BTN_RESET)
-static int
-btn_check_reset(void)
-{
-	unsigned int i_button_value = !BTN_PRESSED;
-
-#if defined (BOARD_GPIO_BTN_WPS)
-	/* check WPS pressed */
-	if (btn_count_wps > 0)
-		return 0;
-#endif
-#if defined (BOARD_GPIO_BTN_FN1)
-	/* check FN1 pressed */
-	if (btn_count_fn1 > 0)
-		return 0;
-#endif
-#if defined (BOARD_GPIO_BTN_FN2)
-	/* check FN2 pressed */
-	if (btn_count_fn2 > 0)
-		return 0;
-#endif
-	if (cpu_gpio_get_pin(BOARD_GPIO_BTN_RESET, &i_button_value) < 0)
-		return 0;
-
-	if (i_button_value == BTN_PRESSED) {
-		/* "RESET" pressed */
-		btn_count_reset++;
-	} else {
-		/* "RESET" released */
-		int press_count = btn_count_reset;
-		btn_count_reset = 0;
-		
-		if (press_count > BTN_RESET_WAIT_COUNT) {
-			/* pressed >= 5sec, reset! */
-			wd_alarmtimer(0, 0);
-			erase_nvram();
-			erase_storage();
-			sys_exit();
-		}
-	}
-
-	return (i_button_value != BTN_PRESSED) ? 0 : 1;
-}
-#endif
-
-
-#if defined (BOARD_GPIO_BTN_WPS) || defined (BOARD_GPIO_BTN_FN1) || defined (BOARD_GPIO_BTN_FN2)
-static int
-btn_check_ez(int btn_pin, int btn_id, int *p_btn_state)
-{
-	unsigned int i_button_value = !BTN_PRESSED;
-
-#if defined (BOARD_GPIO_BTN_RESET)
-	/* check RESET pressed */
-	if (btn_count_reset > 0)
-		return 0;
-#endif
-
-	if (cpu_gpio_get_pin(btn_pin, &i_button_value) < 0)
-		return 0;
-
-	if (i_button_value == BTN_PRESSED) {
-		/* BTN pressed */
-		(*p_btn_state)++;
-	} else {
-		/* BTN released */
-		int press_count = *p_btn_state;
-		*p_btn_state = 0;
-		
-		if (press_count > BTN_EZ_WAIT_COUNT) {
-			/* pressed >= 3sec */
-			wd_alarmtimer(0, 0);
-			ez_event_long(btn_id);
-		} else if (press_count > 0 && press_count < BTN_EZ_CANCEL_COUNT) {
-			/* pressed < 500ms */
-			wd_alarmtimer(0, 0);
-			ez_event_short(btn_id);
-		}
-	}
-
-	return (i_button_value != BTN_PRESSED) ? 0 : 1;
 }
 #endif
 
@@ -497,401 +371,6 @@ update_svc_status_wifi5()
 #endif
 }
 
-#if defined (BOARD_GPIO_BTN_WPS) || defined (BOARD_GPIO_BTN_FN1) || defined (BOARD_GPIO_BTN_FN2)
-static void
-ez_action_toggle_wifi2(void)
-{
-	if (get_enabled_radio_rt())
-	{
-		int i_radio_state = is_radio_on_rt();
-		i_radio_state = !i_radio_state;
-		
-		update_svc_status_wifi2();
-		
-		logmessage("watchdog", "Perform ez-button toggle %s radio: %s", "2.4GHz", (i_radio_state) ? "ON" : "OFF");
-		
-		control_radio_rt(i_radio_state, 1);
-	}
-}
-
-static void
-ez_action_toggle_wifi5(void)
-{
-#if BOARD_HAS_5G_RADIO
-	if (get_enabled_radio_wl())
-	{
-		int i_radio_state = is_radio_on_wl();
-		i_radio_state = !i_radio_state;
-		
-		update_svc_status_wifi5();
-		
-		logmessage("watchdog", "Perform ez-button toggle %s radio: %s", "5GHz", (i_radio_state) ? "ON" : "OFF");
-		
-		control_radio_wl(i_radio_state, 1);
-	}
-#endif
-}
-
-static void
-ez_action_change_wifi2(void)
-{
-	int i_radio_state;
-
-	if (get_enabled_radio_rt())
-	{
-		i_radio_state = 0;
-	}
-	else
-	{
-		i_radio_state = 1;
-		update_svc_status_wifi2();
-	}
-
-	nvram_wlan_set_int(0, "radio_x", i_radio_state);
-
-	logmessage("watchdog", "Perform ez-button %s %s %s", (i_radio_state) ? "enable" : "disable", "2.4GHz", "radio");
-
-#if defined(USE_RT3352_MII)
-	mlme_radio_rt(i_radio_state);
-#else
-	restart_wifi_rt(i_radio_state, 0);
-#endif
-}
-
-static void
-ez_action_change_wifi5(void)
-{
-#if BOARD_HAS_5G_RADIO
-	int i_radio_state;
-
-	if (get_enabled_radio_wl())
-	{
-		i_radio_state = 0;
-	}
-	else
-	{
-		i_radio_state = 1;
-		update_svc_status_wifi5();
-	}
-
-	nvram_wlan_set_int(1, "radio_x", i_radio_state);
-
-	logmessage("watchdog", "Perform ez-button %s %s %s", (i_radio_state) ? "enable" : "disable", "5GHz", "radio");
-
-	restart_wifi_wl(i_radio_state, 0);
-#endif
-}
-
-static void
-ez_action_change_guest_wifi2(void)
-{
-	int i_guest_state;
-
-	if (get_enabled_guest_rt())
-	{
-		i_guest_state = 0;
-	}
-	else
-	{
-		i_guest_state = 1;
-		update_svc_status_wifi2();
-	}
-
-	nvram_wlan_set_int(0, "guest_enable", i_guest_state);
-
-	logmessage("watchdog", "Perform ez-button %s %s %s", (i_guest_state) ? "enable" : "disable", "2.4GHz", "AP Guest");
-
-	control_guest_rt(i_guest_state, 1);
-}
-
-static void
-ez_action_change_guest_wifi5(void)
-{
-#if BOARD_HAS_5G_RADIO
-	int i_guest_state;
-
-	if (get_enabled_guest_wl())
-	{
-		i_guest_state = 0;
-	}
-	else
-	{
-		i_guest_state = 1;
-		update_svc_status_wifi5();
-	}
-
-	nvram_wlan_set_int(1, "guest_enable", i_guest_state);
-
-	logmessage("watchdog", "Perform ez-button %s %s %s", (i_guest_state) ? "enable" : "disable", "5GHz", "AP Guest");
-
-	control_guest_wl(i_guest_state, 1);
-#endif
-}
-
-static void
-ez_action_usb_saferemoval(int port)
-{
-#if defined (USE_USB_SUPPORT)
-	char ez_name[24];
-
-	strcpy(ez_name, "safe-removal USB");
-#if (BOARD_NUM_USB_PORTS > 1)
-	if (port == 1)
-		strcat(ez_name, " #1");
-	else if (port == 2)
-		strcat(ez_name, " #2");
-#else
-	port = 0;
-#endif
-	logmessage("watchdog", "Perform ez-button %s...", ez_name);
-
-	safe_remove_usb_device(port, NULL);
-#endif
-}
-
-static void
-ez_action_wan_down(void)
-{
-	if (get_ap_mode())
-		return;
-
-	logmessage("watchdog", "Perform ez-button %s...", "WAN disconnect");
-
-	stop_wan();
-}
-
-static void
-ez_action_wan_reconnect(void)
-{
-	if (get_ap_mode())
-		return;
-
-	logmessage("watchdog", "Perform ez-button %s...", "WAN reconnect");
-
-	full_restart_wan();
-}
-
-static void
-ez_action_wan_toggle(void)
-{
-	if (get_ap_mode())
-		return;
-
-	if (is_interface_up(get_man_ifname(0)))
-	{
-		logmessage("watchdog", "Perform ez-button %s...", "WAN disconnect");
-		
-		stop_wan();
-	}
-	else
-	{
-		logmessage("watchdog", "Perform ez-button %s...", "WAN reconnect");
-		
-		full_restart_wan();
-	}
-}
-
-static void
-ez_action_shutdown(void)
-{
-	logmessage("watchdog", "Perform ez-button %s...", "shutdown");
-
-	sys_stop();
-}
-
-static void
-ez_action_user_script(int script_param)
-{
-	const char *ez_script = "/etc/storage/ez_buttons_script.sh";
-
-	if (!check_if_file_exist(ez_script))
-		return;
-
-	logmessage("watchdog", "Execute %s %d", ez_script, script_param);
-
-	doSystem("%s %d", ez_script, script_param);
-}
-
-static void
-ez_action_led_toggle(void)
-{
-	int is_show = (nvram_get_int("led_front_t")) ? 0 : 1;
-
-	show_hide_front_leds(is_show);
-}
-
-void
-ez_event_short(int btn_id)
-{
-	int ez_action, ez_param = 1;
-
-#if defined (BOARD_GPIO_BTN_FN1)
-	if (btn_id == 2) {
-		ez_action = nvram_get_int("fn1_action_short");
-		ez_param = 3;
-	} else
-#endif
-#if defined (BOARD_GPIO_BTN_FN2)
-	if (btn_id == 3) {
-		ez_action = nvram_get_int("fn2_action_short");
-		ez_param = 5;
-	} else
-#endif
-		ez_action = nvram_get_int("ez_action_short");
-
-	switch (ez_action)
-	{
-	case 1: // WiFi radio ON/OFF trigger
-		ez_action_toggle_wifi2();
-		ez_action_toggle_wifi5();
-		break;
-	case 2: // WiFi 2.4GHz force Enable/Disable trigger
-		ez_action_change_wifi2();
-		break;
-	case 3: // WiFi 5GHz force Enable/Disable trigger
-		ez_action_change_wifi5();
-		break;
-	case 4: // WiFi 2.4 & 5GHz force Enable/Disable trigger
-		ez_action_change_wifi2();
-		ez_action_change_wifi5();
-		break;
-	case 5: // Safe removal all USB
-		ez_action_usb_saferemoval(0);
-		break;
-	case 6: // WAN down
-		ez_action_wan_down();
-		break;
-	case 7: // WAN reconnect
-		ez_action_wan_reconnect();
-		break;
-	case 8: // WAN up/down toggle
-		ez_action_wan_toggle();
-		break;
-	case 9: // Run user script
-		ez_action_user_script(ez_param);
-		break;
-	case 10: // Front LED toggle
-		ez_action_led_toggle();
-		break;
-	case 11: // WiFi AP Guest 2.4GHz Enable/Disable trigger
-		ez_action_change_guest_wifi2();
-		break;
-	case 12: // WiFi AP Guest 5GHz Enable/Disable trigger
-		ez_action_change_guest_wifi5();
-		break;
-	case 13: // WiFi AP Guest 2.4 & 5GHz Enable/Disable trigger
-		ez_action_change_guest_wifi2();
-		ez_action_change_guest_wifi5();
-		break;
-#if (BOARD_NUM_USB_PORTS > 1)
-	case 21: // Safe removal USB #1
-		ez_action_usb_saferemoval(1);
-		break;
-	case 22: // Safe removal USB #2
-		ez_action_usb_saferemoval(2);
-		break;
-#endif
-	}
-}
-
-void
-ez_event_long(int btn_id)
-{
-	int ez_action, ez_param = 2;
-
-#if defined (BOARD_GPIO_BTN_FN1)
-	if (btn_id == 2) {
-		ez_action = nvram_get_int("fn1_action_long");
-		ez_param = 4;
-	} else
-#endif
-#if defined (BOARD_GPIO_BTN_FN2)
-	if (btn_id == 3) {
-		ez_action = nvram_get_int("fn2_action_long");
-		ez_param = 6;
-	} else
-#endif
-		ez_action = nvram_get_int("ez_action_long");
-
-	int led_state = LED_ON;
-
-	switch (ez_action)
-	{
-	case 7: // Router reboot
-	case 8: // Router shutdown
-		led_state = LED_OFF;
-		break;
-	case 11: // Front LED toggle
-		led_state = -1;
-		break;
-	}
-
-	if (led_state >= 0)
-		LED_CONTROL(LED_PWR, led_state);
-
-	switch (ez_action)
-	{
-	case 1: // WiFi 2.4GHz force Enable/Disable trigger
-		ez_action_change_wifi2();
-		break;
-	case 2: // WiFi 5GHz force Enable/Disable trigger
-		ez_action_change_wifi5();
-		break;
-	case 3: // WiFi 2.4 & 5GHz force Enable/Disable trigger
-		ez_action_change_wifi2();
-		ez_action_change_wifi5();
-		break;
-	case 4: // Safe removal all USB
-		ez_action_usb_saferemoval(0);
-		break;
-	case 5: // WAN down
-		ez_action_wan_down();
-		break;
-	case 6: // WAN reconnect
-		ez_action_wan_reconnect();
-		break;
-	case 7: // Router reboot
-		sys_exit();
-		break;
-	case 8: // Router shutdown
-		ez_action_shutdown();
-		break;
-	case 9: // WAN up/down toggle
-		ez_action_wan_toggle();
-		break;
-	case 10: // Run user script
-		ez_action_user_script(ez_param);
-		break;
-	case 11: // Front LED toggle
-		ez_action_led_toggle();
-		break;
-	case 12: // WiFi AP Guest 2.4GHz Enable/Disable trigger
-		ez_action_change_guest_wifi2();
-		break;
-	case 13: // WiFi AP Guest 5GHz Enable/Disable trigger
-		ez_action_change_guest_wifi5();
-		break;
-	case 14: // WiFi AP Guest 2.4 & 5GHz Enable/Disable trigger
-		ez_action_change_guest_wifi2();
-		ez_action_change_guest_wifi5();
-		break;
-	case 15: // Reset settings
-		erase_nvram();
-		erase_storage();
-		sys_exit();
-		break;
-#if (BOARD_NUM_USB_PORTS > 1)
-	case 21: // Safe removal USB #1
-		ez_action_usb_saferemoval(1);
-		break;
-	case 22: // Safe removal USB #2
-		ez_action_usb_saferemoval(2);
-		break;
-#endif
-	}
-}
-#endif
-
 /* Sometimes, httpd becomes inaccessible, try to re-run it */
 static void httpd_process_check(void)
 {
@@ -989,46 +468,9 @@ watchdog_on_sigusr1(void)
 }
 
 static void
-watchdog_on_sigusr2(void)
-{
-	/* GPIO pins interrupt */
-	if (wd_itv.it_value.tv_usec != WD_URGENT_PERIOD)
-		wd_alarmtimer(0, WD_URGENT_PERIOD);
-}
-
-static void
 watchdog_on_timer(void)
 {
-	int is_ap_mode;
-
-	/* if timer is set to less than 1 sec, then check buttons only */
-	if (wd_itv.it_value.tv_sec == 0) {
-		int i_ret = 0;
-		
-		/* handle buttons */
-#if defined (BOARD_GPIO_BTN_RESET)
-		i_ret |= btn_check_reset();
-#endif
-#if defined (BOARD_GPIO_BTN_WPS)
-		i_ret |= btn_check_ez(BOARD_GPIO_BTN_WPS, 0, &btn_count_wps);
-#endif
-#if defined (BOARD_GPIO_BTN_FN1)
-		i_ret |= btn_check_ez(BOARD_GPIO_BTN_FN1, 2, &btn_count_fn1);
-#endif
-#if defined (BOARD_GPIO_BTN_FN2)
-		i_ret |= btn_check_ez(BOARD_GPIO_BTN_FN2, 3, &btn_count_fn2);
-#endif
-		if (i_ret) {
-			if (wd_itv.it_value.tv_usec != WD_URGENT_PERIOD)
-				wd_alarmtimer(0, WD_URGENT_PERIOD);
-		} else {
-			wd_alarmtimer(WD_NORMAL_PERIOD, 0);
-		}
-		
-		return;
-	}
-
-	is_ap_mode = get_ap_mode();
+	int is_ap_mode = get_ap_mode();
 
 	/* check for time-dependent services */
 	svc_timecheck();
@@ -1062,27 +504,8 @@ catch_sig_watchdog(int sig)
 	case SIGUSR1:
 		watchdog_on_sigusr1();
 		break;
-	case SIGUSR2:
-		watchdog_on_sigusr2();
-		break;
 	case SIGTERM:
 		remove(WD_PID_FILE);
-#if 0
-#if defined (BOARD_GPIO_BTN_WPS)
-		cpu_gpio_irq_set(BOARD_GPIO_BTN_WPS, 0, 0, 0);
-#endif
-#if defined (BOARD_GPIO_BTN_FN1)
-		cpu_gpio_irq_set(BOARD_GPIO_BTN_FN1, 0, 0, 0);
-#endif
-#if defined (BOARD_GPIO_BTN_FN2)
-		cpu_gpio_irq_set(BOARD_GPIO_BTN_FN2, 0, 0, 0);
-#endif
-#if defined (BOARD_GPIO_BTN_RESET)
-		cpu_gpio_irq_set(BOARD_GPIO_BTN_RESET, 0, 0, 0);
-#endif
-#else
-		/* kill uevent helper */
-#endif
 		wd_alarmtimer(0, 0);
 		exit(0);
 		break;
@@ -1129,10 +552,8 @@ watchdog_main(int argc, char *argv[])
 	sigaddset(&sa.sa_mask, SIGALRM);
 	sigaddset(&sa.sa_mask, SIGHUP);
 	sigaddset(&sa.sa_mask, SIGUSR1);
-	sigaddset(&sa.sa_mask, SIGUSR2);
 	sigaction(SIGHUP, &sa, NULL);
 	sigaction(SIGUSR1, &sa, NULL);
-	sigaction(SIGUSR2, &sa, NULL);
 	sigaction(SIGTERM, &sa, NULL);
 	sigaction(SIGALRM, &sa, NULL);
 
@@ -1158,20 +579,7 @@ watchdog_main(int argc, char *argv[])
 	}
 
 	nvram_set_int_temp("wd_notify_id", 0);
-#if 0
-#if defined (BOARD_GPIO_BTN_WPS)
-	cpu_gpio_irq_set(BOARD_GPIO_BTN_WPS, 0, 1, pid);
-#endif
-#if defined (BOARD_GPIO_BTN_FN1)
-	cpu_gpio_irq_set(BOARD_GPIO_BTN_FN1, 0, 1, pid);
-#endif
-#if defined (BOARD_GPIO_BTN_FN2)
-	cpu_gpio_irq_set(BOARD_GPIO_BTN_FN2, 0, 1, pid);
-#endif
-#if defined (BOARD_GPIO_BTN_RESET)
-	cpu_gpio_irq_set(BOARD_GPIO_BTN_RESET, 0, 1, pid);
-#endif
-#endif
+
 	/* set timer */
 	wd_alarmtimer(WD_NORMAL_PERIOD, 0);
 

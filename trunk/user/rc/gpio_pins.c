@@ -47,13 +47,3 @@ void gpio_led_set(int led, int value)
 		fput_int(led_path, value);
 	}
 }
-
-int cpu_gpio_get_pin(int pin, unsigned int *p_value)
-{
-	return 0;
-}
-
-int cpu_gpio_irq_set(unsigned int irq_pin, int rising_edge, int falling_edge, pid_t pid)
-{
-	return 0;
-}
