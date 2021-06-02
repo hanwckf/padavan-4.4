@@ -152,7 +152,12 @@
 
 			partition@2280000 {
 				label = "RWFS";
-				reg = <0x2280000 0x5d00000>;
+				reg = <0x2280000 0xdd00000>;
+			};
+
+			partition@all {
+				label = "ALL";
+				reg = <0x0 0xff80000>;
 			};
 		};
 	};

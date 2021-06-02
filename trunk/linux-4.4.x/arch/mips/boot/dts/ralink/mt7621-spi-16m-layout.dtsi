@@ -32,5 +32,10 @@
 			label = "Storage";
 			reg = <0xf80000 0x80000>; /* 512K */
 		};
+
+		partition@all {
+			label = "ALL";
+			reg = <0x0 0x1000000>;
+		};
 	};
 };

@@ -127,6 +127,11 @@
 				label = "RWFS";
 				reg = <0x5880000 0x2700000>;	/* 39m */
 			};
+
+			partition@all {
+				label = "ALL";
+				reg = <0x0 0x7f80000>;
+			};
 		};
 	};
 };
