@@ -8531,7 +8531,6 @@ INT set_hnat_register(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 
 		if (pAd->wdev_list[idx]) {
 			wdev = pAd->wdev_list[idx];
-			if (wdev->if_up_down_state) {
 			MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_INFO, ("\n\t\tName:%s\n",
 					RTMP_OS_NETDEV_GET_DEVNAME(wdev->if_dev)));
 			MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_INFO, ("\t\tWdev(list) Idx:%d\n", wdev->wdev_idx));
@@ -8546,7 +8545,6 @@ INT set_hnat_register(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 						ppe_dev_unregister_hook(wdev->if_dev);
 				}
 #endif /*CONFIG_FAST_NAT_SUPPORT*/
-			}
 		} else
 			MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_INFO, ("\n"));
 	}
