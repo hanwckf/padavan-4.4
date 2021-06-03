@@ -567,10 +567,8 @@ void ndisc_send_ns(struct net_device *dev, const struct in6_addr *solicit,
 
 	if (!saddr) {
 		if (ipv6_get_lladdr(dev, &addr_buf,
-				   (IFA_F_TENTATIVE|IFA_F_OPTIMISTIC))) {
-			printk("ndisc_send_ns: get lladdr failed, %s: addr=%pI6c\n", dev->name, solicit);
+				   (IFA_F_TENTATIVE|IFA_F_OPTIMISTIC)))
 			return;
-		}
 		saddr = &addr_buf;
 	}
 
@@ -580,10 +578,8 @@ void ndisc_send_ns(struct net_device *dev, const struct in6_addr *solicit,
 		optlen += ndisc_opt_addr_space(dev);
 
 	skb = ndisc_alloc_skb(dev, sizeof(*msg) + optlen);
-	if (!skb) {
-		printk("ndisc_send_ns: alloc skb failed, %s: addr=%pI6c\n", dev->name, solicit);
+	if (!skb)
 		return;
-    }
 	msg = (struct nd_msg *)skb_put(skb, sizeof(*msg));
 	*msg = (struct nd_msg) {
 		.icmph = {
