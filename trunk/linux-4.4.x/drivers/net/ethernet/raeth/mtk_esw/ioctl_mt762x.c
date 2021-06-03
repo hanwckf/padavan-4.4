@@ -1768,9 +1768,16 @@ static int change_vlan_rule(u32 vlan_rule_id, u32 vlan_rule)
 static void esw_link_status_changed_state(u32 port_id, int port_link)
 {
 	const char *port_state;
+	u32 wan_ports_mask;
 
 	if (port_id <= ESW_EPHY_ID_MAX)
 		atomic_set(&g_port_link_changed, 1);
+
+	/* only printk wan link change */
+	wan_ports_mask = get_ports_mask_wan(0, 1);
+
+	if (!(wan_ports_mask & (1u << port_id)))
+		return;
 
 	port_state = (port_link) ? "Up" : "Down";
 
