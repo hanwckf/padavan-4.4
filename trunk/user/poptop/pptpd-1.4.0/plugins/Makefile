@@ -1,6 +1,6 @@
-CC	= gcc
-COPTS	= -O2 -g
-CFLAGS	= $(COPTS) -I.. -I../../include -fPIC
+#CC	= gcc
+#COPTS	= -O2 -g
+CFLAGS	= $(COPTS) -I../../../pppd -I.. -fPIC
 LDFLAGS	= -shared
 LDADD   = -lutil
 INSTALL	= install -o root
