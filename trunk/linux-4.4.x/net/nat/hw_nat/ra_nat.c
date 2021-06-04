@@ -52,7 +52,7 @@
 struct timer_list hwnat_clear_entry_timer;
 static void hwnat_clear_entry(unsigned long data)
 {
-	printk("HW_NAT work normally\n");
+	//printk("HW_NAT work normally\n");
 	reg_modify_bits(PPE_FOE_CFG, FWD_CPU_BUILD_ENTRY, 4, 2);
 	//del_timer_sync(&hwnat_clear_entry_timer);
 
@@ -288,7 +288,7 @@ uint16_t remove_vlan_tag(struct sk_buff *skb)
 	/* something wrong */
 	if ((veth->h_vlan_proto != htons(ETH_P_8021Q)) && (veth->h_vlan_proto != 0x5678)) {
 		//if (pr_debug_ratelimited())
-			pr_info("HNAT: Reentry packet is untagged frame?\n");
+		//	pr_info("HNAT: Reentry packet is untagged frame?\n");
 		return 65535;
 	}
 	/*we just want to get vid*/
@@ -4287,14 +4287,14 @@ void foe_clear_entry(struct neighbour *neigh)
 				    (entry->ipv4_hnapt.dmac_hi[0] != mac3) ||
 				    (entry->ipv4_hnapt.dmac_lo[1] != mac4) ||
 				    (entry->ipv4_hnapt.dmac_lo[0] != mac5)) {
-				    	printk("%s: state=%d\n",__func__,neigh->nud_state);
+				    	//printk("%s: state=%d\n",__func__,neigh->nud_state);
 				    	reg_modify_bits(PPE_FOE_CFG, ONLY_FWD_CPU, 4, 2);
 				    	
 				  	entry->ipv4_hnapt.udib1.state = INVALID;
 					entry->ipv4_hnapt.udib1.time_stamp = reg_read(FOE_TS) & 0xFF;
 					ppe_set_cache_ebl();
 					mod_timer(&hwnat_clear_entry_timer, jiffies + 3 * HZ);
-				
+				/*
 					printk("delete old entry: dip =%x\n", ntohl(dip));
 							
 				    	printk("old mac= %x:%x:%x:%x:%x:%x, dip=%x\n", 
@@ -4306,7 +4306,7 @@ void foe_clear_entry(struct neighbour *neigh)
 				    		entry->ipv4_hnapt.dmac_lo[0],
 				    		ntohl(dip));
 				    	printk("new mac= %x:%x:%x:%x:%x:%x, dip=%x\n", mac0, mac1, mac2, mac3, mac4, mac5, ntohl(dip));
-
+				*/
 				}
 			}
 		}
