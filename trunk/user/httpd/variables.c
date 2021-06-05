@@ -431,7 +431,7 @@
 			{"fw_mac_drop", "", NULL, EVM_RESTART_FIREWALL},
 			{"wan_nat_x", "", NULL, EVM_RESTART_NETFILTER},
 			{"nf_nat_loop", "", NULL, EVM_RESTART_NETFILTER},
-			{"nf_nat_type", "", NULL, EVM_RESTART_SYSCTL},
+			{"nf_nat_type", "", NULL, EVM_RESTART_NETFILTER},
 			{"nf_max_conn", "", NULL, EVM_RESTART_SYSCTL},
 			{"nf_alg_ftp0", "", NULL, EVM_RESTART_FIREWALL},
 			{"nf_alg_ftp1", "", NULL, EVM_RESTART_FIREWALL},
