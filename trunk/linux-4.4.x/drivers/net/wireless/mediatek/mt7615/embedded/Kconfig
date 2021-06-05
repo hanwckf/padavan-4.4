@@ -72,12 +72,6 @@ config MT_DFS_SUPPORT
     depends on WIFI_DRIVER
     default y
 
-config MTK_OFFCHANNEL_SCAN_FEATURE
-	bool "Channel Quality Monitor"
-	depends on MTK_WIFI_DRIVER
-	depends on MTK_MT_AP_SUPPORT
-	default n
-
 #config WFA_VHT_R2_PF
 #    bool "WFA VHT R2 Plugfest"
 #    depends on DOT11_VHT_AC
