@@ -292,11 +292,13 @@ INT NICReadEEPROMParameters(RTMP_ADAPTER *pAd, RTMP_STRING *mac_addr)
 		checkAntCapSanity(pAd);
 #endif /*WCX_SUPPORT */
 #ifdef RF_LOCKDOWN
-
-		/* Merge RF parameters in Effuse to E2p buffer */
-		if (ops->merge_RF_lock_parameter != NULL)
-			ops->merge_RF_lock_parameter(pAd);
-
+#if defined(MT7615)
+		if (IS_MT7615(pAd)) {
+			/* Merge RF parameters in Effuse to E2p buffer */
+			if (ops->merge_RF_lock_parameter != NULL)
+				ops->merge_RF_lock_parameter(pAd);
+		}
+#endif
 		/* Replace Country code and Country Region in Profile by Effuse content */
 		if (ops->Config_Effuse_Country != NULL)
 			ops->Config_Effuse_Country(pAd);

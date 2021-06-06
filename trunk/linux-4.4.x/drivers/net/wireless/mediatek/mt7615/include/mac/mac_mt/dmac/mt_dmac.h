@@ -2217,5 +2217,8 @@ BOOLEAN in_altx_filter_list(UCHAR sub_type);
 extern UCHAR dmac_wmm_swq_2_hw_ac_que[4][4];
 extern const UCHAR altx_filter_list[];
 
+#ifdef MGMT_TXPWR_CTRL
+INT wtbl_update_pwr_offset(struct _RTMP_ADAPTER *pAd, struct wifi_dev *wdev);
+#endif
 #endif /* __MT_DMAC_H__ */
 

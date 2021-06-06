@@ -346,6 +346,11 @@ VOID APMlmePeriodicExec(
 
 				if (pDot11hTest->RDCount++ > ChannelMovingTime) {
 					pDot11hTest->RDCount = 0;
+#ifdef CONFIG_MAP_SUPPORT
+					if (IS_MAP_TURNKEY_ENABLE(pAd)) {
+						wapp_send_cac_stop(pAd, RtmpOsGetNetIfIndex(wdev->if_dev), wdev->channel, TRUE);
+					}
+#endif
 					MlmeEnqueue(pAd, DFS_STATE_MACHINE, DFS_CAC_END, 0, NULL, HcGetBandByWdev(wdev));
 					AsicSetSyncModeAndEnable(pAd, pAd->CommonCfg.BeaconPeriod, HW_BSSID_0,  OPMODE_AP);
 					pDot11hTest->RDMode = RD_NORMAL_MODE;

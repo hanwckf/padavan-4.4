@@ -138,7 +138,6 @@ static INT cut_through_token_list_destroy(
 				RELEASE_NDIS_PACKET(pktTokenCb->pAd, entry->pkt_buf, NDIS_STATUS_FAILURE);
 			}
 		}
-
 		os_free_mem(token_q->list->free_id);
 		os_free_mem(token_q->list->pkt_token);
 		os_free_mem(token_q->list);
@@ -156,7 +155,7 @@ static INT cut_through_token_list_init(
 {
 	PKT_TOKEN_LIST *token_list;
 	INT idx;
-
+	NDIS_STATUS res = NDIS_STATUS_SUCCESS;
 	if (token_q->token_inited == FALSE) {
 		NdisAllocateSpinLock(pktTokenCb->pAd, &token_q->token_id_lock);
 		os_alloc_mem(pktTokenCb->pAd, (UCHAR **)&token_q->list, sizeof(PKT_TOKEN_LIST));
@@ -173,11 +172,19 @@ static INT cut_through_token_list_init(
 		token_list->id_head = 0;
 		token_list->id_tail = pktTokenCb->pkt_tx_tkid_cnt;
 		/*allocate freeid*/
-		os_alloc_mem(pktTokenCb->pAd, (UCHAR **)&token_list->free_id, sizeof(UINT16)*pktTokenCb->pkt_tx_tkid_aray);
-		os_zero_mem(token_list->free_id, sizeof(UINT16)*pktTokenCb->pkt_tx_tkid_aray);
+		res = os_alloc_mem(pktTokenCb->pAd, (UCHAR **)&token_list->free_id, sizeof(UINT16)*pktTokenCb->pkt_tx_tkid_aray);
+		if (res != NDIS_STATUS_SUCCESS) {
+			MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("%s(): token_list->free_id AllocMem failed!\n", __func__));
+			goto AllocFailLabel;
+		} else
+			os_zero_mem(token_list->free_id, sizeof(UINT16)*pktTokenCb->pkt_tx_tkid_aray);
 		/*allocate pkt_token*/
-		os_alloc_mem(pktTokenCb->pAd, (UCHAR **)&token_list->pkt_token, sizeof(PKT_TOKEN_ENTRY)*pktTokenCb->pkt_tx_tkid_cnt);
-		os_zero_mem(token_list->pkt_token, sizeof(PKT_TOKEN_ENTRY)*pktTokenCb->pkt_tx_tkid_cnt);
+		res = os_alloc_mem(pktTokenCb->pAd, (UCHAR **)&token_list->pkt_token, sizeof(PKT_TOKEN_ENTRY)*pktTokenCb->pkt_tx_tkid_cnt);
+		if (res != NDIS_STATUS_SUCCESS) {
+			MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("%s(): token_list->pkt_token AllocMem failed!\n", __func__));
+			goto AllocFailLabel;
+		} else
+			os_zero_mem(token_list->pkt_token, sizeof(PKT_TOKEN_ENTRY)*pktTokenCb->pkt_tx_tkid_cnt);
 
 		/*initial freeid*/
 		for (idx = 0; idx < pktTokenCb->pkt_tx_tkid_cnt; idx++)
@@ -233,6 +240,17 @@ static INT cut_through_token_list_init(
 	}
 
 	return TRUE;
+AllocFailLabel:
+	if (token_list->free_id)
+		os_free_mem(token_list->free_id);
+	if (token_list->pkt_token)
+		os_free_mem(token_list->pkt_token);
+	if (token_q->list) {
+		os_free_mem(token_q->list);
+		token_q->list = NULL;
+	}
+	NdisFreeSpinLock(&token_q->token_id_lock);
+	return FALSE;
 }
 
 PNDIS_PACKET cut_through_rx_deq(
@@ -504,6 +522,10 @@ UINT16 cut_through_tx_enq(
 #ifdef CUT_THROUGH_DBG
 	NdisGetSystemUpTime(&pktTokenCb->tx_id_list.list->pkt_token[token].startTime);
 #endif
+#ifdef EAP_STATS_SUPPORT
+	do_gettimeofday(&pktTokenCb->tx_id_list.list->pkt_token[token].startTimeTv);
+#endif
+
 	return token;
 }
 
@@ -767,9 +789,8 @@ INT cut_through_init(VOID **ppPktTokenCb, VOID *pAd)
 {
 	PKT_TOKEN_CB *pktTokenCb;
 	RTMP_ADAPTER *ad = (RTMP_ADAPTER *)pAd;
-
+	INT res = TRUE;
 	os_alloc_mem(pAd, (UCHAR **)&pktTokenCb, sizeof(PKT_TOKEN_CB));
-
 	if (pktTokenCb == NULL) {
 		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
 				 ("%s os_alloc_mem fail\n",
@@ -797,8 +818,16 @@ INT cut_through_init(VOID **ppPktTokenCb, VOID *pAd)
 	pktTokenCb->pkt_tkid_invalid = (pktTokenCb->pkt_tx_tkid_max + 1);
 	pktTokenCb->pkt_tx_tkid_cnt = (pktTokenCb->pkt_tx_tkid_max + 1);
 	pktTokenCb->pkt_tx_tkid_aray = (pktTokenCb->pkt_tx_tkid_cnt + 1);
-	cut_through_token_list_init(pktTokenCb, &pktTokenCb->tx_id_list);
-	cut_through_token_list_init(pktTokenCb, &pktTokenCb->rx_id_list);
+	res = cut_through_token_list_init(pktTokenCb, &pktTokenCb->tx_id_list);
+	if (res != TRUE) {
+		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("%s(): tx_id_list init fail\n", __func__));
+		return FALSE;
+	}
+	res = cut_through_token_list_init(pktTokenCb, &pktTokenCb->rx_id_list);
+	if (res != TRUE) {
+		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s(): rx_id_list init fail\n", __func__));
+		return FALSE;
+	}
 #ifdef RX_CUT_THROUGH
 	pktTokenCb->cut_through_type = CUT_THROUGH_TYPE_BOTH;
 #else

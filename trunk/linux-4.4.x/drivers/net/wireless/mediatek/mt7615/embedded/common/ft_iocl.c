@@ -795,7 +795,7 @@ static VOID FT_OverDs_SimReq(
 	PUCHAR pOutBuffer = NULL;
 	ULONG FrameLen;
 	HEADER_802_11 Hdr;
-	FT_INFO FtInfoBuf;
+	PFT_INFO FtInfoBuf;
 	NDIS_STATUS NStatus;
 	UCHAR StaAddr[MAC_ADDR_LEN] = {0x00, 0x0c, 0x43, 0x00, 0x00, 0x00};
 	UCHAR TargetAddr[MAC_ADDR_LEN] = {0x00, 0x0c, 0x43, 0x26, 0x60, 0x0b};
@@ -805,12 +805,20 @@ static VOID FT_OverDs_SimReq(
 		FtEntry->Sst = SST_ASSOC;
 	}
 
-	NdisZeroMemory(&FtInfoBuf, sizeof(FT_INFO));
+	os_alloc_mem(pAd, (UCHAR **)&FtInfoBuf, sizeof(FT_INFO));
+	if (FtInfoBuf == NULL) {
+		MTWF_LOG(DBG_CAT_PROTO, CATPROTO_FT, DBG_LVL_ERROR, ("%s: allocate memory failed.\n",
+				 __func__));
+		return;
+	}
+	NdisZeroMemory(FtInfoBuf, sizeof(FT_INFO));
+
 	NStatus = MlmeAllocateMemory(pAd, &pOutBuffer);
 	os_zero_mem(pOutBuffer, MAX_MGMT_PKT_LEN);
 	if (NStatus != NDIS_STATUS_SUCCESS) {
 		MTWF_LOG(DBG_CAT_PROTO, CATPROTO_FT, DBG_LVL_ERROR, ("%s: allocate memory failed.\n",
 				 __func__));
+                os_free_mem(FtInfoBuf);
 		return;
 	}
 	/* Make 802.11 header. */
@@ -827,7 +835,7 @@ static VOID FT_OverDs_SimReq(
 	PEID_STRUCT  eid_ptr;
 	PUCHAR pRsnIe, pRsnIe_payload;
 	UCHAR	rsn_len = 0;
-	pRsnIe = (PUCHAR)FtInfoBuf.RSN_IE;
+	pRsnIe = (PUCHAR)FtInfoBuf->RSN_IE;
 	eid_ptr = (PEID_STRUCT)pRsnIe;
 	eid_ptr->Eid = IE_RSN;
 	pRsnIe_payload = (PUCHAR)&eid_ptr->Octet[0];
@@ -882,14 +890,14 @@ static VOID FT_OverDs_SimReq(
 	/* hex_dump("The RSNE", pRsnIe_payload, rsn_len); */
 
 	eid_ptr->Len = rsn_len;
-	FtInfoBuf.RSNIE_Len = eid_ptr->Len + 2;
+	FtInfoBuf->RSNIE_Len = eid_ptr->Len + 2;
 }
 	/* MD IE */
 {
-	FtInfoBuf.MdIeInfo.Len = 3;
-	FT_SET_MDID(FtInfoBuf.MdIeInfo.MdId, FT_DEFAULT_MDID);
-	FtInfoBuf.MdIeInfo.FtCapPlc.field.FtOverDs = 1;
-	FtInfoBuf.MdIeInfo.FtCapPlc.field.RsrReqCap = 1;
+	FtInfoBuf->MdIeInfo.Len = 3;
+	FT_SET_MDID(FtInfoBuf->MdIeInfo.MdId, FT_DEFAULT_MDID);
+	FtInfoBuf->MdIeInfo.FtCapPlc.field.FtOverDs = 1;
+	FtInfoBuf->MdIeInfo.FtCapPlc.field.RsrReqCap = 1;
 }
 	/* FT IE */
 {
@@ -897,30 +905,32 @@ static VOID FT_OverDs_SimReq(
 
 	pFtCfg = &pAd->ApCfg.MBSSID[FtEntry->apidx].wdev.FtCfg;
 
-	FtInfoBuf.FtIeInfo.Len = sizeof(FtInfoBuf.FtIeInfo.MICCtr);
-	FtInfoBuf.FtIeInfo.Len += sizeof(FtInfoBuf.FtIeInfo.MIC);
-	FtInfoBuf.FtIeInfo.Len += sizeof(FtInfoBuf.FtIeInfo.ANonce);
-	FtInfoBuf.FtIeInfo.Len += sizeof(FtInfoBuf.FtIeInfo.SNonce);
-	GenRandom(pAd, StaAddr, FtInfoBuf.FtIeInfo.SNonce);
+	FtInfoBuf->FtIeInfo.Len = sizeof(FtInfoBuf->FtIeInfo.MICCtr);
+	FtInfoBuf->FtIeInfo.Len += sizeof(FtInfoBuf->FtIeInfo.MIC);
+	FtInfoBuf->FtIeInfo.Len += sizeof(FtInfoBuf->FtIeInfo.ANonce);
+	FtInfoBuf->FtIeInfo.Len += sizeof(FtInfoBuf->FtIeInfo.SNonce);
+	GenRandom(pAd, StaAddr, FtInfoBuf->FtIeInfo.SNonce);
 
-	FtInfoBuf.FtIeInfo.Len += sizeof(((FT_OPTION_FIELD *)0)->SubElementId);
-	FtInfoBuf.FtIeInfo.Len += sizeof(FtInfoBuf.FtIeInfo.R0khIdLen);
-	FtInfoBuf.FtIeInfo.Len += pFtCfg->FtR0khIdLen;
-	NdisMoveMemory(FtInfoBuf.FtIeInfo.R0khId, pFtCfg->FtR0khId, pFtCfg->FtR0khIdLen);
-	FtInfoBuf.FtIeInfo.R0khIdLen = pFtCfg->FtR0khIdLen;
+	FtInfoBuf->FtIeInfo.Len += sizeof(((FT_OPTION_FIELD *)0)->SubElementId);
+	FtInfoBuf->FtIeInfo.Len += sizeof(FtInfoBuf->FtIeInfo.R0khIdLen);
+	FtInfoBuf->FtIeInfo.Len += pFtCfg->FtR0khIdLen;
+	NdisMoveMemory(FtInfoBuf->FtIeInfo.R0khId, pFtCfg->FtR0khId, pFtCfg->FtR0khIdLen);
+	FtInfoBuf->FtIeInfo.R0khIdLen = pFtCfg->FtR0khIdLen;
 
 	/* hex_dump("The FTE", (PUCHAR)&FtInfoBuf.FtIeInfo, FtInfoBuf.FtIeInfo.Len); */
 }
 	FT_MakeFtActFrame(pAd, pOutBuffer, &FrameLen,
 					  FT_ACTION_BT_REQ, FtEntry->Addr, TargetAddr, 0,
-					  &FtInfoBuf);
+					  FtInfoBuf);
 
 	/* enqueue it into FT action state machine. */
-#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT)
+#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT) || defined(NEIGHBORING_AP_STAT)
 	REPORT_MGMT_FRAME_TO_MLME(pAd, FtEntry->wcid, pOutBuffer, FrameLen, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, OPMODE_AP, &pAd->ApCfg.MBSSID[FtEntry->apidx].wdev, FtEntry->HTPhyMode.field.MODE);
 #else
 	REPORT_MGMT_FRAME_TO_MLME(pAd, FtEntry->wcid, pOutBuffer, FrameLen, 0, 0, 0, 0, 0, 0, OPMODE_AP, &pAd->ApCfg.MBSSID[FtEntry->apidx].wdev, FtEntry->HTPhyMode.field.MODE);
 #endif
+	if (FtInfoBuf)
+		os_free_mem(FtInfoBuf);
 	if (pOutBuffer)
 		os_free_mem(pOutBuffer);
 }

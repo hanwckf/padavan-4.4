@@ -856,19 +856,12 @@ static UINT32 RFLOCK_NUM = (sizeof(RFLOCK) / sizeof(UINT32));
 
 static BOOLEAN mt7622_check_RF_lock_down(RTMP_ADAPTER *pAd)
 {
-	UCHAR block[EFUSE_BLOCK_SIZE] = "";
-	USHORT offset = 0;
-	UINT isVaild = 0;
 	BOOL RFlockDown;
-	/* RF lock down column (0x12C) */
-	offset = RF_LOCKDOWN_EEPROME_BLOCK_OFFSET;
-	MtCmdEfuseAccessRead(pAd, offset, &block[0], &isVaild);
-
-	if (((block[RF_LOCKDOWN_EEPROME_COLUMN_OFFSET] & RF_LOCKDOWN_EEPROME_BIT) >> RF_LOCKDOWN_EEPROME_BIT_OFFSET) == TRUE)
+	if (pAd->EEPROMImage[MT7622_RF_LOCKDOWN_EEPROME_BLOCK_OFFSET + MT7622_RF_LOCKDOWN_EEPROME_COLUMN_OFFSET] & RF_LOCKDOWN_EEPROME_BIT)
 		RFlockDown = TRUE;
 	else
 		RFlockDown = FALSE;
-
+	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s: \033[32m RFlockDown %s \033[0m \n", __func__, (RFlockDown)?"Enable":"Disable"));
 	return RFlockDown;
 }
 
@@ -1003,15 +996,10 @@ static BOOLEAN mt7622_Config_Effuse_Country(RTMP_ADAPTER *pAd)
 {
 	UCHAR   Buffer0, Buffer1;
 	UCHAR   CountryCode[2];
-	struct _RTMP_CHIP_OP *ops = hc_get_chip_ops(pAd->hdev_ctrl);
-
-	/* Read Effuse Content */
-	if (ops->Read_Effuse_parameter != NULL) {
 		/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 		/* Country Region 2G */
 		/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-		Buffer0 = ops->Read_Effuse_parameter(pAd, COUNTRY_REGION_2G_EEPROME_OFFSET);
-
+		Buffer0 = pAd->EEPROMImage[MT7622_COUNTRY_REGION_2G_EEPROME_OFFSET];
 		/* Check the RF lock status */
 		if (Buffer0 != 0xFF) {
 			/* Check Validation bit for content */
@@ -1022,7 +1010,7 @@ static BOOLEAN mt7622_Config_Effuse_Country(RTMP_ADAPTER *pAd)
 		/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 		/* Country Region 5G */
 		/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-		Buffer1 = ops->Read_Effuse_parameter(pAd, COUNTRY_REGION_5G_EEPROME_OFFSET);
+		Buffer1 = pAd->EEPROMImage[MT7622_COUNTRY_REGION_5G_EEPROME_OFFSET];
 
 		/* Check the RF lock status */
 		if (Buffer1 != 0xFF) {
@@ -1034,8 +1022,8 @@ static BOOLEAN mt7622_Config_Effuse_Country(RTMP_ADAPTER *pAd)
 		/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 		/* Country Code */
 		/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-		CountryCode[0] = ops->Read_Effuse_parameter(pAd, COUNTRY_CODE_BYTE0_EEPROME_OFFSET);
-		CountryCode[1] = ops->Read_Effuse_parameter(pAd, COUNTRY_CODE_BYTE1_EEPROME_OFFSET);
+		CountryCode[0] = pAd->EEPROMImage[COUNTRY_CODE_BYTE0_EEPROME_OFFSET];
+		CountryCode[1] = pAd->EEPROMImage[COUNTRY_CODE_BYTE1_EEPROME_OFFSET];
 
 		/* Check the RF lock status */
 		if ((CountryCode[0] != 0xFF) && (CountryCode[1] != 0xFF)) {
@@ -1049,7 +1037,6 @@ static BOOLEAN mt7622_Config_Effuse_Country(RTMP_ADAPTER *pAd)
 						 pAd->CommonCfg.CountryCode[1], pAd->CommonCfg.CountryCode[1]));
 			}
 		}
-	}
 
 	return TRUE;
 }
@@ -1666,6 +1653,9 @@ static VOID mt7622_chipCap_init(void)
 	MT7622_ChipCap.tx_delay_support = TRUE;
 
 	MT7622_ChipCap.asic_caps |= fASIC_CAP_ADV_SECURITY;
+#ifdef OCE_SUPPORT
+	MT7622_ChipCap.FdFrameFwOffloadEnabled = TRUE;
+#endif /* OCE_SUPPORT */
 }
 
 static VOID mt7622_chipOp_init(void)

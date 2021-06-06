@@ -320,7 +320,13 @@ typedef struct completion RTMP_OS_COMPLETION;
 
 #define RTMP_OS_INIT_COMPLETION(__pCompletion)	\
 	init_completion(__pCompletion)
-
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 12, 74))
+#define RTMP_OS_REINIT_COMPLETION(__pCompletion) \
+	reinit_completion(__pCompletion)
+#else
+#define RTMP_OS_REINIT_COMPLETION(__pCompletion)	\
+	INIT_COMPLETION(*__pCompletion)
+#endif
 #define RTMP_OS_EXIT_COMPLETION(__pCompletion)	\
 	complete(__pCompletion)
 

@@ -46,10 +46,15 @@
 #endif /* DOT11K_RRM_SUPPORT */
 
 #include "security/owe_cmm.h"
-
+#ifdef WAPP_SUPPORT
+#include "wapp_cmm_type.h"
+#endif
 /* Extern Variables */
 extern UCHAR WPS_OUI[];
 extern UCHAR RALINK_OUI[];
+#ifdef OCE_SUPPORT
+	extern UCHAR BROADCAST_ADDR[];
+#endif /* OCE_SUPPORT */
 
 /* maximum supported capability information - */
 /* ESS, IBSS, Privacy, Short Preamble, Spectrum mgmt, Short Slot */
@@ -397,6 +402,17 @@ typedef struct GNU_PACKED _EXT_CAP_INFO_ELEMENT {
 	UINT8 ftm_resp:1;	/* bit70: FTM responder */
 	UINT8 ftm_init:1;	/* bit71: FTM Initiator in 802.11mc D4.0*/
 #endif /* RT_BIG_ENDIAN */
+#ifdef OCE_FILS_SUPPORT
+	UINT8 FILSCap:1;
+	UINT8 rsv72:1;
+	UINT8 rsv73:1;
+	UINT8 rsv74:1;
+	UINT8 rsv75:1;
+	UINT8 rsv76:1;
+	UINT8 twt_requester_support:1;
+	UINT8 twt_responder_support:1;
+	UINT8 rsv_79:1;
+#endif /* OCE_FILS_SUPPORT */
 } EXT_CAP_INFO_ELEMENT, *PEXT_CAP_INFO_ELEMENT;
 
 #define EXT_CAP_MIN_SAFE_LENGTH		8
@@ -908,18 +924,6 @@ typedef	struct _CIPHER_SUITE {
 	BOOLEAN							bMixMode;		/* Indicate Pair & Group cipher might be different */
 }	CIPHER_SUITE, *PCIPHER_SUITE;
 
-struct GNU_PACKED map_vendor_ie
-{
-	UCHAR type;
-	UCHAR subtype;
-	UCHAR root_distance;
-	UCHAR connectivity_to_controller;
-	USHORT uplink_rate;
-	UCHAR uplink_bssid[MAC_ADDR_LEN];
-	UCHAR bssid_5g[MAC_ADDR_LEN];
-	UCHAR bssid_2g[MAC_ADDR_LEN];
-};
-
 struct _vendor_ie_cap {
 	ULONG ra_cap;
 	ULONG mtk_cap;
@@ -984,7 +988,7 @@ enum _ac_type {
 	AC_VO = (1 << WMM_AC_VO),
 	AC_MSK = (AC_BK | AC_BE | AC_VI | AC_VO)
 };
-
+#ifndef WAPP_SUPPORT
 /* QBSS LOAD information from QAP's BEACON/ProbeRsp */
 typedef struct {
 	BOOLEAN     bValid;                     /* 1: variable contains valid value */
@@ -992,7 +996,7 @@ typedef struct {
 	UCHAR       ChannelUtilization;
 	USHORT      RemainingAdmissionControl;  /* in unit of 32-us */
 } QBSS_LOAD_PARM, *PQBSS_LOAD_PARM;
-
+#endif
 
 /* QBSS Info field in QSTA's assoc req */
 typedef struct GNU_PACKED _QBSS_STA_INFO_PARM {
@@ -1154,7 +1158,7 @@ typedef struct _BSS_ENTRY {
 	UINT8 CondensedPhyType;
 	UINT8 RSNI;
 #endif /* DOT11K_RRM_SUPPORT */
-#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT)
+#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT) || defined(NEIGHBORING_AP_STAT)
 	ULONG LastBeaconRxTimeT;
 	UCHAR  Snr[4];
 	CHAR   rssi[4];
@@ -1184,16 +1188,57 @@ typedef struct _BSS_ENTRY {
 #endif
 } BSS_ENTRY;
 
+#ifdef NEIGHBORING_AP_STAT
+#define OID_CUST_SCAN_DONE_EVENT 0x2001
+#define OID_CUST_SCAN_REPORT_GET 0x2002
+#define MAX_RPI_CHANNEL_CNT     38			/*for 5g/2g band*/
+#define MAX_COUNT_OF_BSS_ENTRIES 128
+#define SCAN_RESULT_2G   0
+#define SCAN_RESULT_5G   1
+#define COUNT_2G_5G 	 2
+/* Each customer scan result item */
+typedef struct {
+	CHAR   ssid[MAX_LEN_OF_SSID];
+	UCHAR  macAddr[MAC_ADDR_LEN];
+	SHORT  noise;
+	USHORT beaconPeriod;
+	USHORT dtimPeriod;
+	UCHAR  channel;
+	UCHAR  basicRate[MAX_LENGTH_OF_SUPPORT_RATES];
+	UCHAR  suppoRate[MAX_LENGTH_OF_SUPPORT_RATES];
+	UINT32 basicRateLen;
+	UINT32 suppRateLen;
+} SCAN_RPT_ITEM;
+/* Each channel RPI histogram */
+typedef struct {
+	UCHAR  channel;
+	INT32  hist[11];
+	INT32  NF;
+} SCAN_RPI_HIST;
+/* All customer scan result entry*/
+typedef struct {
+	UINT32         ctr_cr[DBDC_BAND_NUM];/* save ctrl cr original value */
+	SCAN_RPT_ITEM  items[MAX_LEN_OF_BSS_TABLE];
+	UCHAR          rpi_cnt;/* available rpi channel count */
+	SCAN_RPI_HIST  rpi[MAX_RPI_CHANNEL_CNT];
+	UINT32 		   item_ctr;
+} CUSTOM_SCAN_RESULT;
+#endif
+
 typedef struct {
 	UINT BssNr;
 	UCHAR           BssOverlapNr;
 	BSS_ENTRY       BssEntry[MAX_LEN_OF_BSS_TABLE];
+#ifdef NEIGHBORING_AP_STAT
+	CUSTOM_SCAN_RESULT ScanResult[COUNT_2G_5G];
+	UINT8		   Ipi;	/*1:set ipi config, 0: set RPI config*/;
+#endif
 } BSS_TABLE, *PBSS_TABLE;
 
 
 struct raw_rssi_info {
 	CHAR raw_rssi[4];
-#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT)
+#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT) || defined(NEIGHBORING_AP_STAT)
 	UCHAR raw_Snr[4];
 #endif
 	UCHAR raw_snr;
@@ -1207,6 +1252,9 @@ typedef struct _MLME_QUEUE_ELEM {
 	ULONG MsgLen;
 	LARGE_INTEGER TimeStamp;
 	struct raw_rssi_info rssi_info;
+#if defined(CUSTOMER_DCC_FEATURE) || defined(NEIGHBORING_AP_STAT)
+	UCHAR Snr[4];
+#endif
 	UCHAR Signal;
 	UCHAR Channel;
 	UCHAR Wcid;
@@ -1525,6 +1573,7 @@ struct _build_ie_info {
 	UCHAR phy_mode;
 	BOOLEAN is_draft_n_type;
 	struct wifi_dev *wdev;
+	UINT16 pos;
 };
 
 #ifdef HOSTAPD_OWE_SUPPORT
@@ -1591,6 +1640,10 @@ typedef struct _IE_lists {
 #endif /* DOT11K_RRM_SUPPORT */
 #ifdef CONFIG_MAP_SUPPORT
 	UCHAR MAP_AttriValue;
+#ifdef MAP_R2
+	UCHAR MAP_ProfileValue;
+	UINT16 MAP_default_vid;
+#endif
 #endif
 	UCHAR ht_cap_len;
 	HT_CAPABILITY_IE HTCapability;

@@ -1395,10 +1395,14 @@ VOID StaRecBfRead(
 VOID TxBfProfileMemAllocMap(
 	IN PUCHAR  pBuf)
 {
-	UINT_16 au2PfmuMemAllocMap[TXBF_PFMU_ARRAY_SIZE][MAX_PFMU_MEM_LEN_PER_ROW];
+	UINT_16 *au2PfmuMemAllocMap;
 	UINT_8  ucLoop, ucBit;
+	UINT_16 len = sizeof(UINT_16) * TXBF_PFMU_ARRAY_SIZE * MAX_PFMU_MEM_LEN_PER_ROW;
 
-	NdisCopyMemory(au2PfmuMemAllocMap, pBuf, sizeof(au2PfmuMemAllocMap));
+	os_alloc_mem(NULL, (UCHAR **)&au2PfmuMemAllocMap, len);
+	if (!au2PfmuMemAllocMap)
+		return;
+	NdisCopyMemory(au2PfmuMemAllocMap, pBuf, len);
 
 	for (ucLoop = 0; ucLoop < TXBF_PFMU_ARRAY_SIZE; ucLoop++) {
 		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_TRACE, (
@@ -1406,10 +1410,11 @@ VOID TxBfProfileMemAllocMap(
 		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_TRACE, (
 					 "%3d :", ucLoop));
 
-		for (ucBit = 0; ucBit < 6; ucBit++) {
+		for (ucBit = 0; ucBit < MAX_PFMU_MEM_LEN_PER_ROW; ucBit++) {
+                        UINT_16 idx = ucLoop * MAX_PFMU_MEM_LEN_PER_ROW + ucBit;
 			MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_TRACE, (
 						 "%4d |",
-						 le2cpu16(au2PfmuMemAllocMap[ucLoop][ucBit])));
+						 le2cpu16(au2PfmuMemAllocMap[idx])));
 
 			if (ucBit == 5) {
 				MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_TRACE, (
@@ -1420,6 +1425,7 @@ VOID TxBfProfileMemAllocMap(
 		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_TRACE, (
 					 "==============================================\n"));
 	}
+	os_free_mem(au2PfmuMemAllocMap);
 }
 
 BOOLEAN TxBfModuleEnCtrl(

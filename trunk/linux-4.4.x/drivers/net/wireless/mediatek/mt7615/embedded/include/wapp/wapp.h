@@ -29,13 +29,6 @@ typedef enum {
 	ACTIVE,
 } STA_STATUS;
 
-
-struct GNU_PACKED nop_channel_list_s
-{
-	unsigned char channel_count;
-	unsigned char channel_list[MAX_NUM_OF_CHANNELS];
-};
-
 INT	wapp_event_handle(
 	PRTMP_ADAPTER pAd,
 	struct wapp_req *req);
@@ -47,7 +40,8 @@ INT wapp_send_cli_join_event(
 INT wapp_send_cli_leave_event(
 	PRTMP_ADAPTER pAd,
 	UINT32 ifindex,
-	UCHAR *mac_addr);
+	UCHAR *mac_addr,
+	MAC_TABLE_ENTRY *mac_entry);
 
 INT wapp_send_cli_probe_event(
 	PRTMP_ADAPTER pAd,
@@ -118,6 +112,13 @@ VOID wapp_send_air_mnt_rssi(
 	IN PMNT_STA_ENTRY pMntEntry);
 #endif
 
+#ifdef CONFIG_MAP_SUPPORT
+VOID wapp_send_cac_period_event(
+	IN PRTMP_ADAPTER pAd,
+	IN UINT32 ifindex,
+	IN UCHAR channel,
+	IN UCHAR cac_enable);
+#endif
 VOID wapp_bss_load_check(
 	struct _RTMP_ADAPTER *ad);
 
@@ -148,7 +149,9 @@ INT wapp_send_sta_connect_rejected(
 	UCHAR *sta_mac_addr,
 	UCHAR *bssid,
 	UINT8 connect_stage,
-	UINT16 reason);
+	UINT16 reason,
+	USHORT status_code,
+	USHORT reason_code);
 
 INT wapp_send_wsc_scan_complete_notification(
 	PRTMP_ADAPTER pAd,
@@ -164,6 +167,18 @@ INT wapp_send_scan_complete_notification(
 	PRTMP_ADAPTER pAd,
 	struct wifi_dev *wdev);
 #endif
+VOID wapp_send_cac_stop(
+	IN PRTMP_ADAPTER pAd,
+	IN UINT32 ifindex,
+	IN UCHAR channel,
+	IN UCHAR ret);
+#ifdef DFS_CAC_R2
+void wapp_get_cac_cap(
+	IN PRTMP_ADAPTER pAd,
+	struct wifi_dev *wdev,
+	struct cac_capability_lib *cac_cap);
+#endif
+
 #ifdef A4_CONN
 INT wapp_send_a4_entry_missing(
 	PRTMP_ADAPTER pAd,
@@ -180,6 +195,17 @@ VOID setChannelList(
 	PRTMP_ADAPTER pAd,
 	struct wifi_dev *wdev,
 	struct _wdev_chn_info *chn_list);
+#ifdef MAP_R2
+INT wapp_send_sta_disassoc_stats_event(
+	PRTMP_ADAPTER pAd,
+	MAC_TABLE_ENTRY *pEntry,
+	USHORT reason);
+
+void wapp_handle_sta_disassoc(PRTMP_ADAPTER pAd,
+									UINT16 wcid,
+									UINT16 Reason);
+
+#endif
 
 INT wapp_send_radar_detect_notif(
 	PRTMP_ADAPTER pAd,
@@ -189,7 +215,16 @@ INT wapp_send_radar_detect_notif(
 	);
 void wapp_prepare_nop_channel_list(PRTMP_ADAPTER pAd,
 	struct nop_channel_list_s *nop_list);
+#ifdef DPP_SUPPORT
+void cache_dpp_frame_rx_event(struct wifi_dev *wdev, const char *peer_mac_addr, UINT channel,
+					const char *frm, UINT16 frm_len, BOOL is_gas, UINT32 frm_count);
+void wext_send_dpp_frame_rx_event(struct wifi_dev *wdev, UINT32 frm_count);
+void wext_send_dpp_action_frame(PRTMP_ADAPTER pAd, struct wifi_dev *wdev, const char *peer_mac_addr, UINT channel,
+							  const char *frm, UINT16 frm_len, BOOLEAN is_gas);
+void wext_send_dpp_frame_tx_status(PRTMP_ADAPTER pAd, struct wifi_dev *wdev,
+				BOOLEAN tx_error, UINT16 seq_no);
 
+#endif /* DPP_SUPPORT */
 #endif /* WAPP_SUPPORT */
 #endif /* _WAPP_H_ */
 

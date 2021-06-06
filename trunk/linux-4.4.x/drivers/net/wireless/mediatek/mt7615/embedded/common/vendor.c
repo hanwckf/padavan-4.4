@@ -126,8 +126,17 @@ INT vie_oper_proc(struct _RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 	UINT32 frm_map = 0;
 	UINT32 oui_oitype = 0;
 	UCHAR oui[OUI_LEN * 2] = {0};
-	UCHAR ctnt[(MAX_VENDOR_IE_LEN + 1) * 2] = {0};
-	UCHAR ie_hex_ctnt[MAX_VENDOR_IE_LEN] = {0};
+	UCHAR *ctnt = NULL;
+	UCHAR *ie_hex_ctnt = NULL;
+
+	os_alloc_mem(pAd, (UCHAR **)&ctnt, sizeof((MAX_VENDOR_IE_LEN + 1) * 2));
+	os_alloc_mem(pAd, (UCHAR **)&ie_hex_ctnt, sizeof(MAX_VENDOR_IE_LEN));
+
+	if (!ctnt || !ie_hex_ctnt)
+		goto end;
+
+	os_zero_mem(ctnt, sizeof((MAX_VENDOR_IE_LEN + 1) * 2));
+	os_zero_mem(ie_hex_ctnt, sizeof(MAX_VENDOR_IE_LEN));
 
 	os_obj = (struct os_cookie *)pAd->OS_Cookie;
 #ifdef CONFIG_AP_SUPPORT
@@ -148,7 +157,8 @@ INT vie_oper_proc(struct _RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 				     oui,
 				     ctnt) == NDIS_STATUS_FAILURE) {
 			ret = FALSE;
-			goto print_format;
+			show_format();
+			goto end;
 		}
 
 		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
@@ -189,10 +199,11 @@ INT vie_oper_proc(struct _RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 			print_vie(wdev, frm_map);
 	}
 
-	return ret;
-
-print_format:
-	show_format();
+end:
+	if (ctnt)
+		os_free_mem(ctnt);
+	if (ie_hex_ctnt)
+		os_free_mem(ie_hex_ctnt);
 	return ret;
 }
 
@@ -629,7 +640,6 @@ void map_parse_vendor_ie(struct _RTMP_ADAPTER *pAd, struct _vendor_ie_cap *vendo
 	rate = (short *)ptr;
 	vendor_ie->map_info.uplink_rate = *rate;
 	ptr += 2;
-	vendor_ie->map_info.uplink_rate = be2cpu16(vendor_ie->map_info.uplink_rate);
 	NdisCopyMemory(vendor_ie->map_info.uplink_bssid, ptr, MAC_ADDR_LEN);
 	ptr += MAC_ADDR_LEN;
 	NdisCopyMemory(vendor_ie->map_info.bssid_5g, ptr, MAC_ADDR_LEN);

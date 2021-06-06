@@ -113,8 +113,13 @@ VOID HandleCounterMeasure(RTMP_ADAPTER *pAd, MAC_TABLE_ENTRY *pEntry)
 			struct wifi_dev *wdev = pAd->MacTab.Content[i].wdev;
 			/* happened twice within 60 sec,  AP SENDS disaccociate all associated STAs.  All STA's transition to State 2 */
 			if ((IS_ENTRY_CLIENT(&pAd->MacTab.Content[i])) && wdev != NULL
-			&& wdev->channel == pEntry->wdev->channel)
+			&& wdev->channel == pEntry->wdev->channel) {
+
+#ifdef MAP_R2
+				wapp_handle_sta_disassoc(pAd, i, REASON_MIC_FAILURE);
+#endif
 				MlmeDeAuthAction(pAd, &pAd->MacTab.Content[i], REASON_MIC_FAILURE, FALSE);
+		}
 		}
 #endif
 

@@ -294,14 +294,24 @@ VOID RT_HMAC_SHA384(
 	OUT UINT8 MAC[],
 	IN  UINT MACLen)
 {
-	SHA384_CTX_STRUC sha_ctx1;
-	SHA384_CTX_STRUC sha_ctx2;
-	UINT8 K0[SHA384_BLOCK_SIZE];
-	UINT8 Digest[SHA384_DIGEST_SIZE];
+	SHA384_CTX_STRUC *sha_ctx1 = NULL;
+	SHA384_CTX_STRUC *sha_ctx2 = NULL;
+	UINT8 *K0 = NULL;
+	UINT8 *Digest = NULL;
 	UINT index;
 
-	NdisZeroMemory(&sha_ctx1, sizeof(SHA384_CTX_STRUC));
-	NdisZeroMemory(&sha_ctx2, sizeof(SHA384_CTX_STRUC));
+	os_alloc_mem(NULL, (UCHAR **)&sha_ctx1, sizeof(SHA384_CTX_STRUC));
+	os_alloc_mem(NULL, (UCHAR **)&sha_ctx2, sizeof(SHA384_CTX_STRUC));
+	os_alloc_mem(NULL, (UCHAR **)&K0, SHA384_BLOCK_SIZE);
+	os_alloc_mem(NULL, (UCHAR **)&Digest, SHA384_DIGEST_SIZE);
+
+	if (!sha_ctx1 || !sha_ctx2 || !K0 || !Digest) {
+		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s:Allocate memory failed!", __func__));
+		goto end;
+	}
+
+	NdisZeroMemory(sha_ctx1, sizeof(SHA384_CTX_STRUC));
+	NdisZeroMemory(sha_ctx2, sizeof(SHA384_CTX_STRUC));
 	/*
 	 * If the length of K = B(Block size): K0 = K.
 	 * If the length of K > B: hash K to obtain an L byte string,
@@ -309,6 +319,7 @@ VOID RT_HMAC_SHA384(
 	 * If the length of K < B: append zeros to the end of K to create a B-byte string K0
 	 */
 	NdisZeroMemory(K0, SHA384_BLOCK_SIZE);
+	NdisZeroMemory(Digest, SHA384_DIGEST_SIZE);
 
 	if (KeyLen <= SHA384_BLOCK_SIZE)
 		NdisMoveMemory(K0, Key, KeyLen);
@@ -321,12 +332,12 @@ VOID RT_HMAC_SHA384(
 		K0[index] ^= 0x36;
 
 	/* End of for */
-	RT_SHA384_Init(&sha_ctx1);
+	RT_SHA384_Init(sha_ctx1);
 	/* H(K0^ipad) */
-	RT_SHA384_Append(&sha_ctx1, K0, sizeof(K0));
+	RT_SHA384_Append(sha_ctx1, K0, SHA384_BLOCK_SIZE);
 	/* H((K0^ipad)||text) */
-	RT_SHA384_Append(&sha_ctx1, Message, MessageLen);
-	RT_SHA384_End(&sha_ctx1, Digest);
+	RT_SHA384_Append(sha_ctx1, Message, MessageLen);
+	RT_SHA384_End(sha_ctx1, Digest);
 
 	/* Exclusive-Or K0 with opad and remove ipad */
 	/* opad: Outer pad; the byte x 5c repeated B times. */
@@ -334,17 +345,27 @@ VOID RT_HMAC_SHA384(
 		K0[index] ^= 0x36^0x5c;
 
 	/* End of for */
-	RT_SHA384_Init(&sha_ctx2);
+	RT_SHA384_Init(sha_ctx2);
 	/* H(K0^opad) */
-	RT_SHA384_Append(&sha_ctx2, K0, sizeof(K0));
+	RT_SHA384_Append(sha_ctx2, K0, SHA384_BLOCK_SIZE);
 	/* H( (K0^opad) || H((K0^ipad)||text) ) */
-	RT_SHA384_Append(&sha_ctx2, Digest, SHA384_DIGEST_SIZE);
-	RT_SHA384_End(&sha_ctx2, Digest);
+	RT_SHA384_Append(sha_ctx2, Digest, SHA384_DIGEST_SIZE);
+	RT_SHA384_End(sha_ctx2, Digest);
 
 	if (MACLen > SHA384_DIGEST_SIZE)
 		NdisMoveMemory(MAC, Digest, SHA384_DIGEST_SIZE);
 	else
 		NdisMoveMemory(MAC, Digest, MACLen);
+
+end:
+	if (sha_ctx1)
+		os_free_mem(sha_ctx1);
+	if (sha_ctx2)
+		os_free_mem(sha_ctx2);
+	if (K0)
+		os_free_mem(K0);
+	if (Digest)
+		os_free_mem(Digest);
 } /* End of RT_HMAC_SHA384 */
 
 VOID RT_HMAC_SHA384_VECTOR(
@@ -356,16 +377,26 @@ VOID RT_HMAC_SHA384_VECTOR(
 	OUT UINT8 mac[],
 	IN UINT mac_len)
 {
-	SHA384_CTX_STRUC sha_ctx1;
-	SHA384_CTX_STRUC sha_ctx2;
-	UINT8 K0[SHA384_BLOCK_SIZE];
-	UINT8 Digest[SHA384_DIGEST_SIZE];
+	SHA384_CTX_STRUC *sha_ctx1 = NULL;
+	SHA384_CTX_STRUC *sha_ctx2 = NULL;
+	UINT8 *K0 = NULL;
+	UINT8 *Digest = NULL;
 	UINT index;
 	const UCHAR *_addr[6];
 	INT _len[6], i;
 
-	NdisZeroMemory(&sha_ctx1, sizeof(SHA384_CTX_STRUC));
-	NdisZeroMemory(&sha_ctx2, sizeof(SHA384_CTX_STRUC));
+	os_alloc_mem(NULL, (UCHAR **)&sha_ctx1, sizeof(SHA384_CTX_STRUC));
+	os_alloc_mem(NULL, (UCHAR **)&sha_ctx2, sizeof(SHA384_CTX_STRUC));
+	os_alloc_mem(NULL, (UCHAR **)&K0, SHA384_BLOCK_SIZE);
+	os_alloc_mem(NULL, (UCHAR **)&Digest, SHA384_DIGEST_SIZE);
+
+	if (!sha_ctx1 || !sha_ctx2 || !K0 || !Digest) {
+		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s:Allocate memory failed!", __func__));
+		goto end;
+	}
+
+	NdisZeroMemory(sha_ctx1, sizeof(SHA384_CTX_STRUC));
+	NdisZeroMemory(sha_ctx2, sizeof(SHA384_CTX_STRUC));
 	/*
 	 * If the length of K = B(Block size): K0 = K.
 	 * If the length of K > B: hash K to obtain an L byte string,
@@ -373,6 +404,7 @@ VOID RT_HMAC_SHA384_VECTOR(
 	 * If the length of K < B: append zeros to the end of K to create a B-byte string K0
 	 */
 	NdisZeroMemory(K0, SHA384_BLOCK_SIZE);
+	NdisZeroMemory(Digest, SHA384_DIGEST_SIZE);
 
 	if (key_len <= SHA384_BLOCK_SIZE)
 		NdisMoveMemory(K0, key, key_len);
@@ -385,11 +417,11 @@ VOID RT_HMAC_SHA384_VECTOR(
 		K0[index] ^= 0x36;
 
 	/* End of for */
-	RT_SHA384_Init(&sha_ctx1);
+	RT_SHA384_Init(sha_ctx1);
 	/* H(K0^ipad) */
 
 	_addr[0] = K0;
-	_len[0] = sizeof(K0);
+	_len[0] = SHA384_BLOCK_SIZE;
 
 	for (i = 0; i < element_num; i++) {
 		_addr[i + 1] = message[i];
@@ -403,17 +435,27 @@ VOID RT_HMAC_SHA384_VECTOR(
 		K0[index] ^= 0x36^0x5c;
 
 	/* End of for */
-	RT_SHA384_Init(&sha_ctx2);
+	RT_SHA384_Init(sha_ctx2);
 	/* H(K0^opad) */
-	RT_SHA384_Append(&sha_ctx2, K0, sizeof(K0));
+	RT_SHA384_Append(sha_ctx2, K0, SHA384_BLOCK_SIZE);
 	/* H( (K0^opad) || H((K0^ipad)||text) ) */
-	RT_SHA384_Append(&sha_ctx2, Digest, SHA384_DIGEST_SIZE);
-	RT_SHA384_End(&sha_ctx2, Digest);
+	RT_SHA384_Append(sha_ctx2, Digest, SHA384_DIGEST_SIZE);
+	RT_SHA384_End(sha_ctx2, Digest);
 
 	if (mac_len > SHA384_DIGEST_SIZE)
 		NdisMoveMemory(mac, Digest, SHA384_DIGEST_SIZE);
 	else
 		NdisMoveMemory(mac, Digest, mac_len);
+
+end:
+	if (sha_ctx1)
+		os_free_mem(sha_ctx1);
+	if (sha_ctx2)
+		os_free_mem(sha_ctx2);
+	if (K0)
+		os_free_mem(K0);
+	if (Digest)
+		os_free_mem(Digest);
 }
 
 #endif /* SHA384_SUPPORT */

@@ -93,6 +93,8 @@ VOID ActionStateMachineInit(
 #ifdef CONFIG_DOT11V_WNM
 	StateMachineSetAction(S, ACT_IDLE, CATEGORY_WNM, (STATE_MACHINE_FUNC)PeerWNMAction);
 #endif /* CONFIG_DOT11V_WNM */
+	StateMachineSetAction(S, ACT_IDLE, CATEGORY_PD, (STATE_MACHINE_FUNC)PeerProtectedDualAction);
+
 }
 
 
@@ -667,6 +669,47 @@ VOID ChannelSwitchAction(
 #endif /* DOT11N_DRAFT3 */
 #endif /* DOT11_N_SUPPORT */
 
+VOID PeerProtectedDualAction(RTMP_ADAPTER *pAd, MLME_QUEUE_ELEM *Elem)
+{
+		UCHAR Action = Elem->Msg[LENGTH_802_11 + 1];
+
+#if defined(WAPP_SUPPORT) && defined(CONFIG_AP_SUPPORT)
+
+		if (!GasEnable(pAd, Elem))
+#endif
+			if ((!VALID_UCAST_ENTRY_WCID(pAd, Elem->Wcid))
+				&& (Action != ACTION_GAS_INITIAL_REQ)
+				&& (Action != ACTION_GAS_INITIAL_RSP)
+				&& (Action != ACTION_GAS_COMEBACK_REQ)
+				&& (Action != ACTION_GAS_COMEBACK_RSP)
+			)
+				return;
+
+		switch (Action) {
+#ifdef CONFIG_AP_SUPPORT
+#if defined(WAPP_SUPPORT) || defined(FTM_SUPPORT)
+
+		case ACTION_GAS_INIT_REQ:
+			if (GasEnable(pAd, Elem))
+				ReceiveGASInitReq(pAd, Elem);
+
+			break;
+
+		case ACTION_GAS_CB_REQ:
+			if (GasEnable(pAd, Elem))
+				ReceiveGASCBReq(pAd, Elem);
+
+			break;
+#endif
+#endif /* CONFIG_AP_SUPPORT */
+
+		default:
+			break;
+		}
+}
+
+
+
 
 VOID PeerPublicAction(RTMP_ADAPTER *pAd, MLME_QUEUE_ELEM *Elem)
 {
@@ -679,20 +722,26 @@ struct _RTMP_CHIP_CAP *cap = hc_get_chip_cap(pAd->hdev_ctrl);
 #endif /* CONFIG_AP_SUPPORT */
 
 #if defined(WAPP_SUPPORT) && defined(CONFIG_AP_SUPPORT)
-
-	if (!GasEnable(pAd, Elem))
+#ifdef DPP_SUPPORT
+	if (!pAd->bDppEnable)
+#endif /* DPP_SUPPORT */
+	{
+		if (!GasEnable(pAd, Elem))
 #endif
-			if ((!VALID_UCAST_ENTRY_WCID(pAd, Elem->Wcid))
+				if ((!VALID_UCAST_ENTRY_WCID(pAd, Elem->Wcid))
 #ifdef FTM_SUPPORT
-				&& (Action != ACTION_FTM_REQUEST)
-				&& (Action != ACTION_FTM)
-				&& (Action != ACTION_GAS_INITIAL_REQ)
-				&& (Action != ACTION_GAS_INITIAL_RSP)
-				&& (Action != ACTION_GAS_COMEBACK_REQ)
-				&& (Action != ACTION_GAS_COMEBACK_RSP)
+					&& (Action != ACTION_FTM_REQUEST)
+					&& (Action != ACTION_FTM)
+					&& (Action != ACTION_GAS_INITIAL_REQ)
+					&& (Action != ACTION_GAS_INITIAL_RSP)
+					&& (Action != ACTION_GAS_COMEBACK_REQ)
+					&& (Action != ACTION_GAS_COMEBACK_RSP)
 #endif /* FTM_SUPPORT */
-			   )
-				return;
+				   )
+					return;
+#if defined(WAPP_SUPPORT) && defined(CONFIG_AP_SUPPORT)
+	}
+#endif
 
 	switch (Action) {
 #ifdef DOT11_N_SUPPORT
@@ -899,11 +948,19 @@ struct _RTMP_CHIP_CAP *cap = hc_get_chip_cap(pAd->hdev_ctrl);
 #if defined(WAPP_SUPPORT) || defined(FTM_SUPPORT)
 
 	case ACTION_GAS_INIT_REQ:
-		if (GasEnable(pAd, Elem))
+		if (GasEnable(pAd, Elem)
+#ifdef DPP_SUPPORT
+		    || pAd->bDppEnable			/* Bypassing Gas Enable Check for DPP Gas Frames */
+#endif /* DPP_SUPPORT */
+		   )
 			ReceiveGASInitReq(pAd, Elem);
 
 		break;
-
+#ifdef DPP_SUPPORT
+	case ACTION_GAS_INIT_RSP:
+		DPP_ReceiveGASInitRsp(pAd, Elem);
+		break;
+#endif /* DPP_SUPPORT */
 	case ACTION_GAS_CB_REQ:
 		if (GasEnable(pAd, Elem))
 			ReceiveGASCBReq(pAd, Elem);
@@ -913,6 +970,20 @@ struct _RTMP_CHIP_CAP *cap = hc_get_chip_cap(pAd->hdev_ctrl);
 #endif /* CONFIG_AP_SUPPORT */
 
 	case ACTION_WIFI_DIRECT:
+#ifdef DPP_SUPPORT
+		if (NdisEqualMemory(&(Elem->Msg[LENGTH_802_11 + 2]), DPP_OUI, OUI_LEN) &&
+			Elem->Msg[LENGTH_802_11 + 5] == WFA_DPP_SUBTYPE) {
+			if (pAd->bDppEnable) {
+				wext_send_dpp_action_frame(pAd, Elem->wdev, &Elem->Msg[10], Elem->Channel,
+							  Elem->Msg, Elem->MsgLen, 0);
+				MTWF_LOG(DBG_CAT_PROTO, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
+					("%s, got one DPP puplic action frame\n", __func__));
+			} else
+				MTWF_LOG(DBG_CAT_PROTO, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
+					("%s, DPP Disabled DPP puplic action frame not sent to WAPP\n", __func__));
+			break;
+		}
+#endif /* DPP_SUPPORT */
 
 		break;
 #ifdef FTM_SUPPORT

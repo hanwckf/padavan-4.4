@@ -646,9 +646,16 @@ VOID RT_SHA384_Hash(
 	IN  SHA384_CTX_STRUC * pSHA_CTX)
 {
 	UINT32 W_i, t;
-	UINT64 W[80];
+	UINT64 *W = NULL;
 	UINT64 a, b, c, d, e, f, g, h, T1, T2;
 	/* Prepare the message schedule, {W_i}, 0 < t < 15 */
+	os_alloc_mem(NULL, (UCHAR **)&W, 80*sizeof(UINT64));
+
+	if (!W) {
+		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s:Allocate memory failed!", __func__));
+		return;
+	}
+	NdisZeroMemory(W, 80*sizeof(UINT64));
 	NdisMoveMemory(W, pSHA_CTX->Block, SHA384_BLOCK_SIZE);
 
 	for (W_i = 0; W_i < 16; W_i++)
@@ -694,6 +701,9 @@ VOID RT_SHA384_Hash(
 	pSHA_CTX->HashValue[7] += h;
 	NdisZeroMemory(pSHA_CTX->Block, SHA384_BLOCK_SIZE);
 	pSHA_CTX->BlockLen = 0;
+
+	if (W)
+		os_free_mem(W);
 } /* End of RT_SHA384_Hash */
 
 

@@ -324,6 +324,8 @@ HAS_CCK_LQ_SUPPORT=n
 
 HAS_WIFI_EAP_FEATURE=y
 
+HAS_CONFIG_RA_PHY_RATE_SUPPORT=y
+
 #################################################
 
 CC := $(CROSS_COMPILE)gcc
@@ -693,6 +695,10 @@ endif
 
 ifeq ($(HAS_WIFI_EAP_FEATURE),y)
 WFLAGS += -DWIFI_EAP_FEATURE
+endif
+
+ifeq ($(HAS_CONFIG_RA_PHY_RATE_SUPPORT),y)
+WFLAGS += -DCONFIG_RA_PHY_RATE_SUPPORT
 endif
 
 endif #// endif of RT2860_MODE == AP //

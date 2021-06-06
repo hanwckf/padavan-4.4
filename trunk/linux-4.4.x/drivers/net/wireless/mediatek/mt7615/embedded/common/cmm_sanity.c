@@ -43,6 +43,9 @@ extern UCHAR	MARVELL_OUI[];
 extern UCHAR	ATHEROS_OUI[];
 
 
+#ifdef OCE_SUPPORT
+extern UCHAR	MBO_OCE_OUIBYTE[];
+#endif /* OCE_SUPPORT */
 
 typedef struct wsc_ie_probreq_data {
 	UCHAR	ssid[32];
@@ -256,6 +259,7 @@ BOOLEAN PeerDelBAActionSanity(
  */
 BOOLEAN PeerBeaconAndProbeRspSanity(
 	IN PRTMP_ADAPTER pAd,
+	IN struct wifi_dev *wdev,
 	IN VOID * Msg,
 	IN ULONG MsgLen,
 	IN UCHAR  MsgChannel,
@@ -286,6 +290,14 @@ BOOLEAN PeerBeaconAndProbeRspSanity(
 			frame as the channel. (May inaccuracy!!)
 	*/
 	UCHAR CtrlChannel = 0;
+#ifdef OCE_SUPPORT
+#ifdef CONFIG_AP_SUPPORT
+	P_OCE_CTRL	pOceCtrl = &wdev->OceCtrl;
+	BOOLEAN bHasOceIE = FALSE;
+	INT OceNonOcePresentOldValue;
+#endif /* CONFIG_AP_SUPPORT */
+#endif /* OCE_SUPPORT */
+
 	os_alloc_mem(NULL, &pPeerWscIe, 512);
 	Sanity = 0;		/* Add for 3 necessary EID field check*/
 	ie_list->AironetCellPowerLimit = 0xFF;  /* Default of AironetCellPowerLimit is 0xFF*/
@@ -377,7 +389,15 @@ BOOLEAN PeerBeaconAndProbeRspSanity(
 			}
 
 			break;
-
+#ifdef CONFIG_AP_SUPPORT
+#ifdef NEIGHBORING_AP_STAT
+		case IE_TIM:
+		if (pEid->Len == 4) {
+			ie_list->DtimPeriod = pEid->Octet[1];
+		}
+		break;
+#endif
+#endif
 		case IE_HT_CAP:
 			if (pEid->Len >= SIZE_HT_CAP_IE) { /*Note: allow extension.!!*/
 				NdisMoveMemory(&ie_list->HtCapability, pEid->Octet, sizeof(HT_CAPABILITY_IE));
@@ -719,6 +739,15 @@ BOOLEAN PeerBeaconAndProbeRspSanity(
 				}
 
 			}
+
+#ifdef OCE_SUPPORT
+#ifdef CONFIG_AP_SUPPORT
+		if (IS_OCE_ENABLE(wdev) && !pOceCtrl->Scan11bOceAPTimerRunning) {
+			if (NdisEqualMemory(pEid->Octet, MBO_OCE_OUIBYTE, 4) && (pEid->Len >= 5))
+				bHasOceIE = OceCheckOceCap(pAd, wdev, pEid->Octet, pEid->Len);
+		}
+#endif
+#endif
 			break;
 
 		case IE_EXT_SUPP_RATES:
@@ -965,6 +994,20 @@ SanityCheck:
 	} else {
 	}
 
+#ifdef OCE_SUPPORT
+	if (IS_OCE_ENABLE(wdev) && !pOceCtrl->Scan11bOceAPTimerRunning) {
+		if (!bHasOceIE) {
+			OceNonOcePresentOldValue = OCE_GET_CONTROL_FIELD(pOceCtrl->OceCapIndication,
+			OCE_NONOCE_PRESENT_MASK, OCE_NONOCE_PRESENT_OFFSET);
+			OCE_SET_CONTROL_FIELD(pOceCtrl->OceCapIndication,
+				1, OCE_NONOCE_PRESENT_MASK, OCE_NONOCE_PRESENT_OFFSET);
+
+			if (OceNonOcePresentOldValue != OCE_GET_CONTROL_FIELD(pOceCtrl->OceCapIndication,
+				OCE_NONOCE_PRESENT_MASK, OCE_NONOCE_PRESENT_OFFSET))
+				OceSendFilsDiscoveryAction(pAd, wdev);
+		}
+	}
+#endif
 	return TRUE;
 }
 
@@ -1097,7 +1140,7 @@ UCHAR ChannelSanity(
 	return 0;
 }
 
-UCHAR ChannelSanityDBDC(
+UCHAR ChannelSanityByWdev(
 	IN PRTMP_ADAPTER pAd,
 	IN struct wifi_dev *wdev,
 	IN UCHAR channel)
@@ -1422,7 +1465,12 @@ BOOLEAN PeerProbeReqSanity(
 #endif /* WSC_INCLUDED */
 #endif /* CONFIG_AP_SUPPORT */
 	UINT		total_ie_len = 0;
-
+#ifdef OCE_SUPPORT
+#ifdef CONFIG_AP_SUPPORT
+	UINT32 MaxChannelTime;
+	P_OCE_CTRL pOceCtrl = &pAd->ApCfg.MBSSID[MAIN_MBSSID].wdev.OceCtrl;
+#endif
+#endif /* OCE_SUPPORT */
 #ifdef WSC_INCLUDED
 	MLME_QUEUE_ELEM *Elem = NULL;
 	UCHAR current_band = 0;
@@ -1430,6 +1478,11 @@ BOOLEAN PeerProbeReqSanity(
 
 	/* NdisZeroMemory(ProbeReqParam, sizeof(*ProbeReqParam)); */
 	COPY_MAC_ADDR(ProbeReqParam->Addr2, &Fr->Hdr.Addr2);
+#ifdef OCE_SUPPORT
+#ifdef CONFIG_AP_SUPPORT
+		COPY_MAC_ADDR(ProbeReqParam->Addr1, &Fr->Hdr.Addr1);
+#endif
+#endif /* OCE_SUPPORT */
 
 	if (Fr->Octet[0] != IE_SSID || Fr->Octet[1] > MAX_LEN_OF_SSID) {
 		MTWF_LOG(DBG_CAT_MLME, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("%s(): sanity fail - wrong SSID IE\n", __func__));
@@ -1530,8 +1583,33 @@ BOOLEAN PeerProbeReqSanity(
 #endif /* CONFIG_AP_SUPPORT */
 #endif /* WSC_INCLUDED */
 			}
-
+#ifdef OCE_SUPPORT
+#ifdef CONFIG_AP_SUPPORT
+	if (NdisEqualMemory(eid_data, MBO_OCE_OUIBYTE, 4) && (eid_len >= 5))
+		OceParseStaOceIE(pAd, eid_data, eid_len, ProbeReqParam);
+#endif
+#endif
 			break;
+#ifdef OCE_SUPPORT
+#ifdef CONFIG_AP_SUPPORT
+		case IE_WLAN_EXTENSION:
+		{
+			if (ProbeReqParam->IsOceCapability &&
+				*(eid_data) == FILS_REQ_ID_EXTENSION &&
+				MAC_ADDR_EQUAL(ProbeReqParam->Addr1, BROADCAST_ADDR)) {
+				MaxChannelTime = *(eid_data + 2);
+				ProbeReqParam->MaxChannelTime = MaxChannelTime;
+				if (!pOceCtrl->MaxChannelTimerRunning) {
+					RTMPSetTimer(&pOceCtrl->MaxChannelTimer, MaxChannelTime);
+					pOceCtrl->MaxChannelTimerRunning = TRUE;
+					pOceCtrl->MaxChannelTimesUp = FALSE;
+				}
+			}
+		}
+			break;
+#endif
+#endif
+
 #ifdef CONFIG_HOTSPOT
 
 		case IE_INTERWORKING:

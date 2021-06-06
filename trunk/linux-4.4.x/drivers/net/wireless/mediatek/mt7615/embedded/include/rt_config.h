@@ -153,7 +153,7 @@
 #include "map.h"
 #endif
 #ifdef WAPP_SUPPORT
-#include "wapp/wapp_cmm_type.h"
+#include "wapp_cmm_type.h"
 #endif /* WAPP_SUPPORT */
 #ifdef CONFIG_ATE
 #include "ate_agent.h"
@@ -197,6 +197,10 @@
 #ifdef MBO_SUPPORT
 #include "mbo.h"
 #endif /* MBO_SUPPORT */
+
+#ifdef OCE_SUPPORT
+#include "oce.h"
+#endif /* OCE_SUPPORT */
 
 
 #if defined(AP_WSC_INCLUDED) || defined(STA_WSC_INCLUDED)

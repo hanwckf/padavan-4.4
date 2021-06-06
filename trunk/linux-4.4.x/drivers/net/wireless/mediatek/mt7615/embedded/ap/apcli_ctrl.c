@@ -866,6 +866,9 @@ static VOID ApCliCtrlProbeRspAction(
 	UCHAR CliIdx = 0xFF;
 	REPEATER_CLIENT_ENTRY *pReptCliEntry = NULL;
 #endif /* MAC_REPEATER_SUPPORT */
+#ifdef WSC_AP_SUPPORT
+	PWSC_CTRL           pWscControl;
+#endif
 #ifdef APCLI_AUTO_CONNECT_SUPPORT
 	USHORT apcli_ifIndex = (USHORT)(Elem->Priv);
 #endif /* APCLI_AUTO_CONNECT_SUPPORT */
@@ -906,7 +909,9 @@ static VOID ApCliCtrlProbeRspAction(
 	pApCliEntry = &pAd->ApCfg.ApCliTab[ifIndex];
 	wdev = &pApCliEntry->wdev;
 	pProfile_SecConfig = &wdev->SecConfig;
-
+#ifdef WSC_AP_SUPPORT
+	pWscControl = &wdev->WscControl;
+#endif
 
 #ifdef MAC_REPEATER_SUPPORT
 
@@ -1002,6 +1007,15 @@ per mactable entry */
 						pEntry_SecConfig->key_deri_alg = SEC_KEY_DERI_SHA1;
 					}
 
+					if (((pProfile_SecConfig->PmfCfg.MFPR) && (RsnCap.field.MFPC == FALSE))
+							|| ((pProfile_SecConfig->PmfCfg.MFPC == FALSE) && (RsnCap.field.MFPR))) {
+						MTWF_LOG(DBG_CAT_SEC, DBG_SUBCAT_ALL, DBG_LVL_WARN,
+								("%s: PMF fail: peer MFPR = %d, MFPC = %d\n",
+								 __func__, RsnCap.field.MFPR, RsnCap.field.MFPC));
+						return; /* None matched*/
+					}
+
+
 					if ((pProfile_SecConfig->PmfCfg.MFPC) && (RsnCap.field.MFPC)) {
 						pEntry_SecConfig->PmfCfg.UsePMFConnect = TRUE;
 
@@ -1009,7 +1023,8 @@ per mactable entry */
 							pEntry_SecConfig->key_deri_alg = SEC_KEY_DERI_SHA256;
 
 						pEntry_SecConfig->PmfCfg.MFPC = RsnCap.field.MFPC;
-						pEntry_SecConfig->PmfCfg.MFPR = RsnCap.field.MFPR;
+						/* PMF Test Case 5.2: Requirement */
+						pEntry_SecConfig->PmfCfg.MFPR = pProfile_SecConfig->PmfCfg.MFPR;
 					}
 
 					pEntry_SecConfig->PmfCfg.igtk_cipher = pApCliEntry->MlmeAux.IntegrityGroupCipher;
@@ -1023,8 +1038,12 @@ per mactable entry */
 				} else {
 					CHAR rsne_idx = 0;
 
-					if (!(IS_AKM_SAE_SHA256(pEntry_SecConfig->AKMMap) || IS_AKM_OWE(pEntry_SecConfig->AKMMap)
-								|| IS_AKM_OPEN(pEntry_SecConfig->AKMMap))) {
+					if (!(IS_AKM_SAE_SHA256(pEntry_SecConfig->AKMMap) ||
+						IS_AKM_OWE(pEntry_SecConfig->AKMMap) ||
+#ifdef DPP_SUPPORT
+						IS_AKM_DPP(pEntry_SecConfig->AKMMap) ||
+#endif /* DPP_SUPPORT */
+						IS_AKM_OPEN(pEntry_SecConfig->AKMMap))) {
 						{
 
 						SetWPAPSKKey(pAd, pProfile_SecConfig->PSK, strlen(pProfile_SecConfig->PSK),
@@ -1081,7 +1100,11 @@ per mactable entry */
 #endif
 
 #ifdef APCLI_SAE_SUPPORT
-	if (IS_AKM_SAE_SHA256(pApCliEntry->MlmeAux.AKMMap)) {
+	if (IS_AKM_SAE_SHA256(pApCliEntry->MlmeAux.AKMMap)
+#ifdef WSC_AP_SUPPORT
+	&& (pWscControl->bWscTrigger == FALSE)
+#endif
+		) {
 		UCHAR if_addr[MAC_ADDR_LEN];
 		UCHAR pmkid[LEN_PMKID];
 		UCHAR pmk[LEN_PMK];

@@ -209,9 +209,19 @@ VOID MBSS_Init(RTMP_ADAPTER *pAd, RTMP_OS_NETDEV_OP_HOOK *pNetDevOps)
 
 		/* register this device to OS */
 		status = RtmpOSNetDevAttach(pAd->OpMode, pDevNew, &netDevHook);
+#ifdef CONFIG_MAP_SUPPORT
+		if (IS_MAP_TURNKEY_ENABLE(pAd)) {
+			if (wdev && wdev->wdev_type == WDEV_TYPE_AP)
+				map_make_vend_ie(pAd, IdBss);
+		}
+#endif /* CONFIG_MAP_SUPPORT */
 	}
 
 	pAd->FlgMbssInit = TRUE;
+#ifdef MAP_R2
+	if (IS_MAP_ENABLE(pAd))
+		MtCmdSetRxTxAirtimeEn(pAd, ENUM_RX_AT_FEATURE_SUB_TYPE_AIRTIME_EN, TRUE);
+#endif
 }
 
 

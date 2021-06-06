@@ -57,6 +57,9 @@ VOID APPMFInit(
 		pSecConfig->PmfCfg.MFPR = (IS_AKM_WPA2PSK(pSecConfig->AKMMap)) ? FALSE : TRUE;
 	} else if (IS_AKM_WPA3_192BIT(pSecConfig->AKMMap)
 		|| IS_AKM_OWE(pSecConfig->AKMMap)
+#ifdef DPP_SUPPORT
+		|| IS_AKM_DPP(pSecConfig->AKMMap)
+#endif /* DPP_SUPPORT */
 		|| IS_AKM_WPA3(pSecConfig->AKMMap)) {
 	/* In WPA3 spec, When WPA3-Enterprise Suite B is used,
 	 * Protected Management Frame (PMF) shall be set to required (MFPR=1).
@@ -67,12 +70,22 @@ VOID APPMFInit(
 	if ((IS_AKM_WPA2(pSecConfig->AKMMap) || IS_AKM_WPA2PSK(pSecConfig->AKMMap))
 		&& IS_CIPHER_CCMP128(pSecConfig->PairwiseCipher)
 		&& IS_CIPHER_CCMP128(pSecConfig->GroupCipher)
-		&& (pSecConfig->PmfCfg.Desired_MFPC)) {
+		&& (pSecConfig->PmfCfg.Desired_MFPC
+#ifdef OCE_SUPPORT
+		|| IS_OCE_ENABLE(wdev)
+#endif /* OCE_SUPPORT */
+		)) {
 		pSecConfig->PmfCfg.MFPC = TRUE;
 		pSecConfig->PmfCfg.MFPR = pSecConfig->PmfCfg.Desired_MFPR;
 
 		if ((pSecConfig->PmfCfg.Desired_PMFSHA256) || (pSecConfig->PmfCfg.MFPR))
 			pSecConfig->PmfCfg.PMFSHA256 = TRUE;
+#ifdef OCE_SUPPORT
+		if (IS_OCE_ENABLE(wdev) &&
+			pSecConfig->PmfCfg.Desired_MFPC == FALSE)
+			MTWF_LOG(DBG_CAT_SEC, CATSEC_PMF, DBG_LVL_OFF,
+			("%s:: Force MFPC on when OCE enable\n", __func__));
+#endif /* OCE_SUPPORT */
 	} else if (pSecConfig->PmfCfg.Desired_MFPC)
 		MTWF_LOG(DBG_CAT_SEC, CATSEC_PMF, DBG_LVL_ERROR, ("[PMF]%s:: Security is not WPA2/WPA2PSK AES\n", __func__));
 
@@ -735,6 +748,34 @@ INT RTMPSearchPMKIDCache(
 	return i;
 }
 
+INT RTMPSearchPMKIDCacheByPmkId(
+	IN NDIS_AP_802_11_PMKID * pPMKIDCache,
+	IN INT apidx,
+	IN UCHAR *pAddr,
+	IN UCHAR *pPmkId)
+{
+	INT	i = 0;
+
+	for (i = 0; i < MAX_PMKID_COUNT; i++) {
+		if ((pPMKIDCache->BSSIDInfo[i].Valid == TRUE)
+			&& (pPMKIDCache->BSSIDInfo[i].Mbssidx == apidx)
+			&& MAC_ADDR_EQUAL(&pPMKIDCache->BSSIDInfo[i].MAC, pAddr)
+			&& RTMPEqualMemory(pPmkId, &pPMKIDCache->BSSIDInfo[i].PMKID, LEN_PMKID)) {
+			MTWF_LOG(DBG_CAT_SEC, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
+					 ("%s():%02x:%02x:%02x:%02x:%02x:%02x cache(%d) from IF(ra%d)\n",
+					  __func__, PRINT_MAC(pAddr), i, apidx));
+			break;
+		}
+	}
+
+	if (i >= MAX_PMKID_COUNT) {
+		MTWF_LOG(DBG_CAT_SEC, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
+				 ("%s(): - IF(%d) not found\n", __func__, apidx));
+		return INVALID_PMKID_IDX;
+	}
+
+	return i;
+}
 
 INT RTMPValidatePMKIDCache(
 	IN NDIS_AP_802_11_PMKID * pPMKIDCache,

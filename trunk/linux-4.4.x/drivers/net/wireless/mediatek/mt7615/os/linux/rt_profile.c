@@ -1905,8 +1905,10 @@ wf_drv_tbl.wf_fwd_set_bridge_hook = NULL;
 }
 
 #if defined(CONFIG_WIFI_PKT_FWD) || defined(CONFIG_WIFI_PKT_FWD_MODULE)
+#ifndef MT76XX_COMBO_DUAL_DRIVER_SUPPORT
 EXPORT_SYMBOL(wifi_fwd_register);
 EXPORT_SYMBOL(wifi_fwd_unregister);
+#endif /* MT76XX_COMBO_DUAL_DRIVER_SUPPORT */
 #endif
 
 #endif

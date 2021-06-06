@@ -28,7 +28,7 @@
 
 #ifdef RTMP_FLASH_SUPPORT
 
-#include "rt_config.h"
+#include	"rt_config.h"
 #include "hdev/hdev.h"
 
 #ifdef CONFIG_WIFI_MTD

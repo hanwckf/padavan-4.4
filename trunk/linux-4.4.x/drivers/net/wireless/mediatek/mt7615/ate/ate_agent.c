@@ -3148,7 +3148,7 @@ INT SetATETxBfDutInitProc(RTMP_ADAPTER *pAd, RTMP_STRING *Arg)
 	/* 0x22, 0x22, 0x22, 0x22, 0x22); */
 	/* SetATEBssid(pAd, cmdStr); */
 	if (fgBw160) {
-		snprintf(cmdStr, sizeof(cmdStr), "00:00:00:%.2x:%.2x:%.2x:%.2x:%.2x",
+		snprintf(cmdStr, sizeof(cmdStr), "00:01:00:%.2x:%.2x:%.2x:%.2x:%.2x",
 			0x22, 0x22, 0x22, 0x22, 0x22);
 	} else {
 		if (control_band_idx == 0) {
@@ -3303,7 +3303,7 @@ INT SetATETxBfGdInitProc(RTMP_ADAPTER *pAd, RTMP_STRING *Arg)
 	/* 0x22, 0x22, 0x22, 0x22, 0x22); */
 	/* SetATEBssid(pAd, cmdStr); */
 	if (fgBw160) {
-		snprintf(cmdStr, sizeof(cmdStr), "00:00:00:%.2x:%.2x:%.2x:%.2x:%.2x",
+		snprintf(cmdStr, sizeof(cmdStr), "00:01:00:%.2x:%.2x:%.2x:%.2x:%.2x",
 			0x22, 0x22, 0x22, 0x22, 0x22);
 	} else {
 		if (control_band_idx == 0) {
@@ -3832,7 +3832,7 @@ INT32 SetATEIBfProfileUpdate(RTMP_ADAPTER *pAd, RTMP_STRING *Arg)
 	Set_TxBfProfileTagWrite(pAd, cmdStr);
 	/* Configure the BF StaRec */
 	if (ATECtrl->fgBw160) {
-		snprintf(cmdStr, sizeof(cmdStr), "01:00:00:%.2x:%.2x:%.2x:%.2x:%.2x:%.2x",
+		snprintf(cmdStr, sizeof(cmdStr), "01:01:00:%.2x:%.2x:%.2x:%.2x:%.2x:%.2x",
 			ATECtrl->Addr1[0], ATECtrl->Addr1[1], ATECtrl->Addr1[2], ATECtrl->Addr1[3], ATECtrl->Addr1[4], ATECtrl->Addr1[5]);
 	} else {
 		if (control_band_idx == 0) {
@@ -3946,7 +3946,7 @@ INT32 SetATEEBfProfileConfig(RTMP_ADAPTER *pAd, RTMP_STRING *Arg)
 	Set_TxBfProfileTagWrite(pAd, cmdStr);
 	/* Configure the BF StaRec */
 	if (ATECtrl->fgBw160) {
-		snprintf(cmdStr, sizeof(cmdStr), "01:00:00:%.2x:%.2x:%.2x:%.2x:%.2x:%.2x",
+		snprintf(cmdStr, sizeof(cmdStr), "01:01:00:%.2x:%.2x:%.2x:%.2x:%.2x:%.2x",
 			ATECtrl->Addr1[0], ATECtrl->Addr1[1], ATECtrl->Addr1[2], ATECtrl->Addr1[3], ATECtrl->Addr1[4], ATECtrl->Addr1[5]);
 	} else {
 		if (control_band_idx == 0) {
@@ -4750,8 +4750,19 @@ INT32 SetATEConTxETxBfGdProc(
 		TRUE,
 		DEVINFO_ACTIVE_FEATURE);
 #endif /* CONFIG_AP_SUPPORT */
-	snprintf(cmdStr, sizeof(cmdStr), "00:00:%.2x:%.2x:%.2x:%.2x:%.2x:%.2x",
-			 ATECtrl->Addr3[0], ATECtrl->Addr3[1], ATECtrl->Addr3[2], ATECtrl->Addr3[3], ATECtrl->Addr3[4], ATECtrl->Addr3[5]);
+
+	if (control_band_idx == 0)
+		snprintf(cmdStr, sizeof(cmdStr), "11:00:%.2x:%.2x:%.2x:%.2x:%.2x:%.2x",
+				ATECtrl->Addr3[0], ATECtrl->Addr3[1], ATECtrl->Addr3[2], ATECtrl->Addr3[3],
+				ATECtrl->Addr3[4], ATECtrl->Addr3[5]);
+
+#ifdef DBDC_MODE
+	else if (control_band_idx == 1)
+		snprintf(cmdStr, sizeof(cmdStr), "00:01:%.2x:%.2x:%.2x:%.2x:%.2x:%.2x",
+				ATECtrl->Addr3[0], ATECtrl->Addr3[1], ATECtrl->Addr3[2], ATECtrl->Addr3[3],
+				ATECtrl->Addr3[4], ATECtrl->Addr3[5]);
+#endif /* DBDC_MODE */
+
 	Set_BssInfoUpdate(pAd, cmdStr);
 	/* Set Tx mode */
 	snprintf(cmdStr, sizeof(cmdStr), "%d", TxMode);

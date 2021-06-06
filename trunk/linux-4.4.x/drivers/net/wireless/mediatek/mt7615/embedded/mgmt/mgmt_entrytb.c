@@ -143,6 +143,7 @@ VOID TRTableInsertEntry(RTMP_ADAPTER *pAd, UCHAR tr_tb_idx, MAC_TABLE_ENTRY *pEn
 
 #endif /* MT_MAC */
 		tr_entry->PsMode = PWR_ACTIVE;
+		tr_entry->ps_state = PWR_ACTIVE;
 		tr_entry->isCached = FALSE;
 		tr_entry->PortSecured = WPA_802_1X_PORT_NOT_SECURED;
 		tr_entry->CurrTxRate = pEntry->CurrTxRate;
@@ -510,7 +511,7 @@ MAC_TABLE_ENTRY *MacTableInsertEntry(
 	i = HcAcquireUcastWcid(pAd, wdev);
 
 	if (i == INVAILD_WCID) {
-		MTWF_LOG(DBG_CAT_MLME, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
+		MTWF_LOG(DBG_CAT_MLME, DBG_SUBCAT_ALL, DBG_LVL_WARN,
 		("%s(): Entry full!\n",
 		 __func__));
 		NdisReleaseSpinLock(&pAd->MacTabLock);
@@ -547,6 +548,7 @@ MAC_TABLE_ENTRY *MacTableInsertEntry(
 		pEntry->AssocDeadLine = MAC_TABLE_ASSOC_TIMEOUT;
 		pEntry->PsMode = PWR_ACTIVE;
 		pEntry->NoDataIdleCount = 0;
+		pEntry->NoDataLastIdleCount = 0;
 		pEntry->ContinueTxFailCnt = 0;
 #ifdef WDS_SUPPORT
 		pEntry->LockEntryTx = FALSE;
@@ -851,6 +853,14 @@ MAC_TABLE_ENTRY *MacTableInsertEntry(
 			}
 #endif
 
+#ifdef ANTENNA_CONTROL_SUPPORT
+			if (IS_ENTRY_CLIENT(pEntry)) {
+				UINT32 WtblAddr = pAd->mac_ctrl.wtbl_base_addr[0] + pEntry->wcid * pAd->mac_ctrl.wtbl_entry_size[0];
+
+				WtblAddr += 4*28; /* wtbl rcpi offset*/
+				HW_IO_WRITE32(pAd, WtblAddr, 0xffffffff); /* reset rcpi */
+			}
+#endif
 		}
 
 #endif /* CONFIG_AP_SUPPORT */
@@ -1067,6 +1077,9 @@ BOOLEAN MacTableDeleteEntry(RTMP_ADAPTER *pAd, USHORT wcid, UCHAR *pAddr)
 #ifdef RADIUS_ACCOUNTING_SUPPORT
 					|| IS_AKM_WPA_CAPABILITY_Entry(pEntry)
 #endif /*RADIUS_ACCOUNTING_SUPPORT*/
+#ifdef OCE_FILS_SUPPORT
+					|| IS_AKM_FILS_Entry(pEntry)
+#endif /* OCE_FILS_SUPPORT */
 				   )
 					DOT1X_InternalCmdAction(pAd, pEntry, DOT1X_DISCONNECT_ENTRY);
 
@@ -1266,7 +1279,7 @@ BOOLEAN MacTableDeleteEntry(RTMP_ADAPTER *pAd, USHORT wcid, UCHAR *pAddr)
 #endif /* MBO_SUPPORT */
 #ifdef WAPP_SUPPORT
 		if (IS_ENTRY_CLIENT(pEntry))
-			wapp_send_cli_leave_event(pAd, RtmpOsGetNetIfIndex(wdev->if_dev), TmpAddrForIndicate);
+			wapp_send_cli_leave_event(pAd, RtmpOsGetNetIfIndex(wdev->if_dev), TmpAddrForIndicate, pEntry);
 #endif /* WAPP_SUPPORT */
 		if (IS_ENTRY_CLIENT(pEntry))
 			nonerp_sta_num(pEntry, PEER_LEAVE);
@@ -1444,6 +1457,10 @@ VOID MacTableReset(RTMP_ADAPTER *pAd)
 						DiagConnError(pAd, pMacEntry->func_tb_idx, pMacEntry->Addr,
 							DIAG_CONN_DEAUTH, Reason);
 #endif
+#ifdef MAP_R2
+					wapp_handle_sta_disassoc(pAd, pMacEntry->wcid, Reason);
+#endif
+
 					MTWF_LOG(DBG_CAT_MLME, DBG_SUBCAT_ALL, DBG_LVL_WARN, ("Send DeAuth (Reason=%d) to %02x:%02x:%02x:%02x:%02x:%02x\n",
 							 Reason, PRINT_MAC(pMacEntry->Addr)));
 					MgtMacHeaderInit(pAd, &DeAuthHdr, SUBTYPE_DEAUTH, 0, pMacEntry->Addr,

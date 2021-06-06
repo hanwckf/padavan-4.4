@@ -1107,7 +1107,9 @@ VOID FT_FtAction(
 			if (result == MLME_SUCCESS) {
 				NdisMoveMemory(&pEntry->MdIeInfo, &pFtInfo->MdIeInfo, sizeof(FT_MDIE_INFO));
 				pEntry->AuthState = AS_AUTH_OPEN;
-				pEntry->Sst = SST_AUTH;
+				/*According to specific, if it already in SST_ASSOC, it can not go back */
+				if (pEntry->Sst != SST_ASSOC)
+					pEntry->Sst = SST_AUTH;
 			}
 
 			/* Build Ft-Rsp action frame. */
@@ -1334,7 +1336,7 @@ VOID FT_RrbHandler(
 					  END_OF_ARGS);
 	/* enqueue it into FT action state machine. */
 	if (pEntry) {
-#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT)
+#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT) || defined(NEIGHBORING_AP_STAT)
 		REPORT_MGMT_FRAME_TO_MLME(pAd, Wcid, pOutBuffer, FrameLen,
 			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, OPMODE_AP, wdev, pEntry->HTPhyMode.field.MODE);
 #else
@@ -1343,7 +1345,7 @@ VOID FT_RrbHandler(
 #endif
 	} else {
 		/* Report basic phymode if pEntry = NULL  */
-#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT)
+#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT) || defined(NEIGHBORING_AP_STAT)
 		REPORT_MGMT_FRAME_TO_MLME(pAd, Wcid, pOutBuffer, FrameLen,
 			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, OPMODE_AP, wdev, WMODE_CAP_5G(wdev->PhyMode) ? MODE_OFDM : MODE_CCK);
 #else

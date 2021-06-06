@@ -268,12 +268,20 @@ INT build_ap_extended_cap_ie(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, UCHAR *bu
 		extCapInfo.interworking = 1;
 #endif
 
-#if defined(CONFIG_HOTSPOT) || defined(FTM_SUPPORT)
+#if defined(CONFIG_HOTSPOT) || defined(FTM_SUPPORT) || defined(CONFIG_DOT11U_INTERWORKING)
 
 	if (mbss->GASCtrl.b11U_enable)
 		extCapInfo.interworking = 1;
 
 #endif
+
+#ifdef DOT11_VHT_AC
+
+	if (WMODE_CAP_AC(wdev->PhyMode) &&
+		(wdev->channel > 14))
+		extCapInfo.operating_mode_notification = 1;
+
+#endif /* DOT11_VHT_AC */
 #ifdef FTM_SUPPORT
 
 	/* add IE_EXT_CAPABILITY IE here */
@@ -292,6 +300,12 @@ INT build_ap_extended_cap_ie(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, UCHAR *bu
 	*/
 	extCapInfo.ftm_resp = 1;
 #endif /* FTM_SUPPORT */
+
+#ifdef OCE_FILS_SUPPORT
+	if (IS_AKM_FILS(wdev->SecConfig.AKMMap))
+		extCapInfo.FILSCap = 1;
+#endif /* OCE_FILS_SUPPORT */
+
 	pInfo = (PUCHAR)(&extCapInfo);
 
 	for (infoPos = 0; infoPos < extInfoLen; infoPos++) {

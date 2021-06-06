@@ -6721,9 +6721,10 @@ static INT32 hqa_iBFSetValue_ext(PRTMP_ADAPTER pAd, RTMP_IOCTL_INPUT_STRUCT *wrq
 	}
 
 	/* MTWF_LOG(DBG_CAT_TEST, DBG_SUBCAT_ALL, DBG_LVL_OFF,("%s, Action ID : %d, str:%s\n", __FUNCTION__, u4Action, cmd)); */
-	os_free_mem(cmd);
 	NdisMoveMemory(cmd_frame->Data + 2, (UCHAR *)&ext_id, sizeof(ext_id));
 HQA_IBF_CMD_FAIL:
+	if (cmd)
+		os_free_mem(cmd);
 	ResponseToQA(cmd_frame, wrq, 6, ret);
 	return ret;
 }

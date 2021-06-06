@@ -567,7 +567,7 @@ VOID BndStrg_InsertNeighborRepIE(PRTMP_ADAPTER pAd, PBND_STRG_CLI_TABLE init_tab
 	BssidInfo.field.APReachAble = 3;
 	BssidInfo.field.Security = 1; /* rrm to do. */
 	BssidInfo.field.KeyScope = 1; /* "report AP has same authenticator as the AP. */
-	BssidInfo.field.SepctrumMng = (pMbss->CapabilityInfo & (1 << 8))?1:0;
+	BssidInfo.field.SpectrumMng = (pMbss->CapabilityInfo & (1 << 8))?1:0;
 	BssidInfo.field.Qos = (pMbss->CapabilityInfo & (1 << 9))?1:0;
 	BssidInfo.field.APSD = (pMbss->CapabilityInfo & (1 << 11))?1:0;
 	BssidInfo.field.RRM = (pMbss->CapabilityInfo & RRM_CAP_BIT)?1:0;
@@ -1775,6 +1775,7 @@ VOID BndStrg_ChannelLoadStatusRsp(PRTMP_ADAPTER pAd, PBND_STRG_CLI_TABLE table, 
 		chanload_status_rsp->Channel = table->Channel;
 		{
 			UINT32  ChanBusyTime[DBDC_BAND_NUM] = {0};
+			UINT32  ChanBusyTimeCcaNavTx[DBDC_BAND_NUM] = {0};
 			UINT32  ObssAirTime[DBDC_BAND_NUM] = {0};
 			UINT32  MyTxAirTime[DBDC_BAND_NUM] = {0};
 			UINT32  MyRxAirTime[DBDC_BAND_NUM] = {0};
@@ -1789,6 +1790,7 @@ VOID BndStrg_ChannelLoadStatusRsp(PRTMP_ADAPTER pAd, PBND_STRG_CLI_TABLE table, 
 
 			i = HcGetBandByChannel(pAd, table->Channel);
 			ChanBusyTime[i] = pAd->OneSecMibBucket.ChannelBusyTime[i];
+			ChanBusyTimeCcaNavTx[i] = pAd->OneSecMibBucket.ChannelBusyTimeCcaNavTx[i];
 			ObssAirTime[i] = Get_OBSS_AirTime(pAd, i);
 			MyTxAirTime[i] = Get_My_Tx_AirTime(pAd, i);
 			MyRxAirTime[i] = Get_My_Rx_AirTime(pAd, i);

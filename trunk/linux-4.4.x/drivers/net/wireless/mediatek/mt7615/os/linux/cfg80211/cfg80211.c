@@ -317,7 +317,13 @@ static int CFG80211_OpsChannelSet(
  *	For iw utility: set type, set monitor
  * ========================================================================
  */
-#if (KERNEL_VERSION(2, 6, 32) <= LINUX_VERSION_CODE)
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
+static int CFG80211_OpsVirtualInfChg(
+	IN struct wiphy					*pWiphy,
+	IN struct net_device			*pNetDevIn,
+	IN enum nl80211_iftype			Type,
+		struct vif_params				*pParams)
+#elif (KERNEL_VERSION(2, 6, 32) <= LINUX_VERSION_CODE)
 static int CFG80211_OpsVirtualInfChg(
 	IN struct wiphy					*pWiphy,
 	IN struct net_device			*pNetDevIn,
@@ -362,6 +368,23 @@ static int CFG80211_OpsVirtualInfChg(
 	VifInfo.net_dev = pNetDev;
 	VifInfo.newIfType = Type;
 	VifInfo.oldIfType = oldType;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
+	if (pParams != NULL) {
+		VifInfo.MonFilterFlag = 0;
+
+		if (((pParams->flags) & NL80211_MNTR_FLAG_FCSFAIL) == NL80211_MNTR_FLAG_FCSFAIL)
+			VifInfo.MonFilterFlag |= RT_CMD_80211_FILTER_FCSFAIL;
+
+		if (((pParams->flags) & NL80211_MNTR_FLAG_FCSFAIL) == NL80211_MNTR_FLAG_PLCPFAIL)
+			VifInfo.MonFilterFlag |= RT_CMD_80211_FILTER_PLCPFAIL;
+
+		if (((pParams->flags) & NL80211_MNTR_FLAG_CONTROL) == NL80211_MNTR_FLAG_CONTROL)
+			VifInfo.MonFilterFlag |= RT_CMD_80211_FILTER_CONTROL;
+
+		if (((pParams->flags) & NL80211_MNTR_FLAG_CONTROL) == NL80211_MNTR_FLAG_OTHER_BSS)
+			VifInfo.MonFilterFlag |= RT_CMD_80211_FILTER_OTHER_BSS;
+	}
+#else
 
 	if (pFlags != NULL) {
 		VifInfo.MonFilterFlag = 0;
@@ -378,7 +401,7 @@ static int CFG80211_OpsVirtualInfChg(
 		if (((*pFlags) & NL80211_MNTR_FLAG_CONTROL) == NL80211_MNTR_FLAG_OTHER_BSS)
 			VifInfo.MonFilterFlag |= RT_CMD_80211_FILTER_OTHER_BSS;
 	}
-
+#endif
 	/* Type transer from linux to driver defined */
 	if (Type == NL80211_IFTYPE_STATION)
 		Type = RT_CMD_80211_IFTYPE_STATION;

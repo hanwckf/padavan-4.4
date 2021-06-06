@@ -96,7 +96,7 @@ VOID operate_loader_rts_pkt_thld(struct wlan_operate *op, UCHAR pkt_num);
 * be_vht module
 */
 VOID operate_loader_vht_bw(struct wlan_operate *op);
-
+VOID operate_loader_vht_ldpc(struct wlan_operate *op, UCHAR vht_ldpc);
 
 
 #endif /*__BE_INTERNAL_H__*/

@@ -36,7 +36,7 @@
 #define ROUTING_ENTRY_AGEOUT (60*OS_HZ)  /* seconds */
 #define ROUTING_ENTRY_RETRY_TIME (2*OS_HZ)  /* seconds */
 #define ROUTING_ENTRY_MAX_RETRY 5
-#define ROUTING_POOL_SIZE 128
+#define ROUTING_POOL_SIZE 256
 #define ROUTING_HASH_TAB_SIZE 64  /* the legth of hash table must be power of 2. */
 
 enum ROUTING_ENTRY_FLAG {

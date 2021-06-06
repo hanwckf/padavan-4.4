@@ -171,6 +171,7 @@ INT process_ecdh_element(
 	UCHAR prk[SHA512_DIGEST_SIZE], pmkid[SHA512_DIGEST_SIZE];
 	UCHAR hash_len = 0;
 	struct _SECURITY_CONFIG *sec_config = &entry->SecConfig;
+	BOOLEAN ret = MLME_SUCCESS;
 
 	if ((ext_ie_ptr->ext_ie_id == 0) && (ext_ie_ptr->length == 0))
 		return MLME_SUCCESS;
@@ -228,35 +229,40 @@ INT process_ecdh_element(
 	if (owe_process_peer_pubkey(owe, peer_pub, remain_len) == 0) {
 		MTWF_LOG(DBG_CAT_SEC, CATSEC_OWE, DBG_LVL_ERROR,
 				 ("==> %s(), owe_process_peer_pubkey failed...\n", __func__));
-		return MLME_UNSPECIFY_FAIL;
+		ret = MLME_UNSPECIFY_FAIL;
+		goto LabelErr;
 	}
 
 	SAE_BN_INIT(&secret);
 	if (owe_calculate_secret(owe, &secret) == 0) {
 		MTWF_LOG(DBG_CAT_SEC, CATSEC_OWE, DBG_LVL_ERROR,
 				 ("==> %s(), owe_calculate_secret failed...\n", __func__));
-		return MLME_UNSPECIFY_FAIL;
+		ret = MLME_UNSPECIFY_FAIL;
+		goto LabelErr;
 	}
 
 	ec_group = (EC_GROUP_INFO *)owe->group_info;
 	if (os_alloc_mem(NULL, (UCHAR **)&sec_buf, ec_group->prime_len) == NDIS_STATUS_FAILURE) {
 		MTWF_LOG(DBG_CAT_SEC, CATSEC_OWE, DBG_LVL_ERROR,
 				 ("==> %s(), alloc buf for hkey failed...\n", __func__));
-		return MLME_UNSPECIFY_FAIL;
+		ret = MLME_UNSPECIFY_FAIL;
+		goto LabelErr;
 	}
 	SAE_BN_BI2BIN_WITH_PAD(secret, sec_buf, &sec_length, ec_group->prime_len);
 
 	if (os_alloc_mem(NULL, (UCHAR **)&hkey, ec_group->prime_len + remain_len + 2) == NDIS_STATUS_FAILURE) {
 		MTWF_LOG(DBG_CAT_SEC, CATSEC_OWE, DBG_LVL_ERROR,
 				 ("==> %s(), alloc buf for hkey failed...\n", __func__));
-		return MLME_UNSPECIFY_FAIL;
+		ret = MLME_UNSPECIFY_FAIL;
+		goto LabelErr;
 	}
 
 	my_pubkey = get_owe_pub_key(owe);
 	if (my_pubkey == NULL) {
 		MTWF_LOG(DBG_CAT_SEC, CATSEC_OWE, DBG_LVL_ERROR,
 				 ("==> %s(), get own pub failed, shall not happen...\n", __func__));
-		return MLME_UNSPECIFY_FAIL;
+		ret = MLME_UNSPECIFY_FAIL;
+		goto LabelErr;
 	}
 
 	owe_calculate_pmkid(owe, my_pubkey->x, peer_pub, type, remain_len, peer_group, pmkid);
@@ -278,7 +284,8 @@ INT process_ecdh_element(
 	} else {
 		MTWF_LOG(DBG_CAT_SEC, CATSEC_OWE, DBG_LVL_ERROR,
 				 ("==> %s(), parsing wrong type, shall not happen\n", __func__));
-		return MLME_UNSPECIFY_FAIL;
+		ret = MLME_UNSPECIFY_FAIL;
+		goto LabelErr;
 	}
 	if (peer_group == ECDH_GROUP_256) {
 		hash_len = SHA256_DIGEST_SIZE;
@@ -303,6 +310,7 @@ INT process_ecdh_element(
 	hex_dump("OWE PRK:", prk, hash_len);
 	hex_dump("OWE PMK:", sec_config->PMK, hash_len);
 
+LabelErr:
 	if (sec_buf)
 		os_free_mem(sec_buf);
 	if (hkey)
@@ -313,7 +321,7 @@ INT process_ecdh_element(
 	if (peer_pub)
 		os_free_mem(peer_pub);
 
-	return MLME_SUCCESS;
+	return ret;
 }
 
 INT init_owe_group(OWE_INFO *owe, UCHAR group)

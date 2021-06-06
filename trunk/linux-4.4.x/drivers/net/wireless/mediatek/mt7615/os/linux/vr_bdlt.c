@@ -28,8 +28,9 @@
 
 /* global variables */
 int (*pToUpperLayerPktSent)(struct sk_buff *pSkb) = netif_rx;
+#ifndef MT76XX_COMBO_DUAL_DRIVER_SUPPORT
 EXPORT_SYMBOL(pToUpperLayerPktSent);
-
+#endif /* MT76XX_COMBO_DUAL_DRIVER_SUPPORT */
 
 
 /*
@@ -52,7 +53,9 @@ VOID replace_upper_layer_packet_destination(VOID *pXiDestination)
 	MTWF_LOG(DBG_CAT_INIT, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("ralink broad light> replace_upper_layer_packet_destination\n"));
 	pToUpperLayerPktSent = pXiDestination;
 } /* End of replace_upper_layer_packet_destination */
+#ifndef MT76XX_COMBO_DUAL_DRIVER_SUPPORT
 EXPORT_SYMBOL(replace_upper_layer_packet_destination);
+#endif /*MT76XX_COMBO_DUAL_DRIVER_SUPPORT */
 
 #endif /* PLATFORM_BL2348 */
 

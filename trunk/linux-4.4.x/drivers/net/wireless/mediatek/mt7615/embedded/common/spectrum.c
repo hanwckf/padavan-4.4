@@ -682,7 +682,8 @@ VOID InsertChannelRepIE(
 	IN RTMP_STRING *pCountry,
 	IN UINT8 RegulatoryClass,
 	IN UINT8 *ChReptList,
-	IN UCHAR PhyMode
+	IN UCHAR PhyMode,
+	IN UINT8 IfIdx
 )
 {
 	ULONG TempLen;
@@ -696,43 +697,99 @@ VOID InsertChannelRepIE(
 	PUCHAR channel_set = NULL;
 	UCHAR channel_set_num;
 	UCHAR ch_list_num = 0;
+#ifdef OCE_SUPPORT
+	UINT8 k, t;
+	struct wifi_dev *wdev;
+	BOOLEAN Same = FALSE;
+	BSS_TABLE *ScanTab = NULL;
+	BSS_ENTRY *pBssEntry = NULL;
+#endif /* OCE_SUPPORT */
 
 	if (RegulatoryClass == 0)
 		return;
 
 	Len = 1;
-	channel_set = get_channelset_by_reg_class(pAd, RegulatoryClass, PhyMode);
-	channel_set_num = get_channel_set_num(channel_set);
+#ifdef OCE_SUPPORT
+	wdev = &pAd->ApCfg.MBSSID[IfIdx].wdev;
+	NumberOfChannels = 0;
+	ScanTab = &pAd->ScanTab;
+	pBssEntry = &ScanTab->BssEntry[0];
 
-	ch_list_num = get_channel_set_num(ChReptList);
+	if (IS_OCE_RNR_ENABLE(wdev)) {
 
-	/* no match channel set. */
-	if (channel_set == NULL)
-		return;
+		/* not vap and no nr */
+		if (ScanTab->BssNr == 0 && pAd->ApCfg.BssidNum == 0)
+			return;
 
-	/* empty channel set. */
-	if (channel_set_num == 0)
-		return;
+		if (pAd->ApCfg.BssidNum > 1)
+			ChannelList[NumberOfChannels++] = wdev->channel;
 
-	if (ch_list_num) { /* assign partial channel list */
-		for (i = 0; i < channel_set_num; i++) {
-			for (j = 0; j < ch_list_num; j++) {
-				if (ChReptList[j] == channel_set[i])
-					ChannelList[NumberOfChannels++] = channel_set[i];
+		for (i = 0; i < ScanTab->BssNr; i++) {
+			pBssEntry = &ScanTab->BssEntry[i];
+
+			Same = FALSE;
+			for (j = 0; j < NumberOfChannels; j++) {
+				if (pBssEntry->Channel == ChannelList[j]) {
+					Same = TRUE;
+					break;
+				}
+			}
+			if (Same == FALSE)
+				ChannelList[NumberOfChannels++] = pBssEntry->Channel;
+
+		}
+		if (NumberOfChannels > 0) {
+			for (i = 0; i < NumberOfChannels-1; i++) {
+				for (j = i+1, k = i; j < NumberOfChannels; j++) {
+					if (ChannelList[j] < ChannelList[k])
+						k = j;
+				}
+			t = ChannelList[k];
+			ChannelList[k] = ChannelList[i];
+			ChannelList[i] = t;
 			}
 		}
 
 		pChannelList = &ChannelList[0];
-	} else {
-		NumberOfChannels = channel_set_num;
-		pChannelList = channel_set;
-	}
+		Len += NumberOfChannels;
+		pChListPtr = pChannelList;
 
-	MTWF_LOG(DBG_CAT_HW, DBG_SUBCAT_ALL, DBG_LVL_INFO,
-			 ("%s: Requlatory class (%d), NumberOfChannels=%d, channel_set_num=%d\n",
-			  __func__, RegulatoryClass, NumberOfChannels, channel_set_num));
-	Len += NumberOfChannels;
-	pChListPtr = pChannelList;
+	} else
+#endif /* OCE_SUPPORT */
+	{
+		channel_set = get_channelset_by_reg_class(pAd, RegulatoryClass, PhyMode);
+		channel_set_num = get_channel_set_num(channel_set);
+
+		ch_list_num = get_channel_set_num(ChReptList);
+
+		/* no match channel set. */
+		if (channel_set == NULL)
+			return;
+
+		/* empty channel set. */
+		if (channel_set_num == 0)
+			return;
+
+		if (ch_list_num) { /* assign partial channel list */
+			for (i = 0; i < channel_set_num; i++) {
+				for (j = 0; j < ch_list_num; j++) {
+					if (ChReptList[j] == channel_set[i])
+						ChannelList[NumberOfChannels++] = channel_set[i];
+				}
+			}
+
+			pChannelList = &ChannelList[0];
+		} else {
+			NumberOfChannels = channel_set_num;
+			pChannelList = channel_set;
+		}
+
+		MTWF_LOG(DBG_CAT_HW, DBG_SUBCAT_ALL, DBG_LVL_INFO,
+				("%s: Requlatory class (%d), NumberOfChannels=%d, channel_set_num=%d\n",
+				__func__, RegulatoryClass, NumberOfChannels, channel_set_num));
+		Len += NumberOfChannels;
+		pChListPtr = pChannelList;
+	}
 
 	if (Len > 1) {
 		MakeOutgoingFrame(pFrameBuf,	&TempLen,

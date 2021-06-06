@@ -642,6 +642,13 @@ typedef struct _STAREC_AUTO_RATE_UPDATE_T {
 	UINT_8  ucMmpsMode;
 } CMD_STAREC_AUTO_RATE_UPDATE_T, *P_CMD_STAREC_AUTO_RATE_UPDATE_T;
 
+#ifdef CONFIG_MAP_SUPPORT
+typedef struct _EXT_CMD_GET_TX_RATE_T {
+	UINT_8 ucReqWcid;
+	UINT_8 aucReserved[3];
+} EXT_CMD_GET_TX_RATE_T, *P_EXT_CMD_GET_TX_RATE_T;
+#endif
+
 typedef struct _EXT_CMD_GET_TX_STATISTIC_T {
 	UINT_32 u4Field;
 	UINT_8 ucWlanIdx;
@@ -674,6 +681,29 @@ typedef struct _EXT_EVENT_MAX_AMSDU_LENGTH_UPDATE_T {
 	UINT_8 ucWlanIdx;
 	UINT_8 ucAmsduLen;
 } EXT_EVENT_MAX_AMSDU_LENGTH_UPDATE_T, *P_EXT_EVENT_MAX_AMSDU_LENGTH_UPDATE_T;
+#ifdef CONFIG_MAP_SUPPORT
+typedef struct _AC_ADM_INFO_T {
+	UINT_32 u4ACTxTime;
+	UINT_32 u4ACTxBytes;
+} AC_ADM_INFO_T, *P_AC_ADM_INFO_T;
+
+typedef struct _TX_ADM_INFO_T {
+	AC_ADM_INFO_T arTxAdmInfo[4];
+} TX_ADM_INFO_T, *P_TX_ADM_INFO_T;
+
+typedef struct _ONE_TX_RATE_RESULT_T {
+	UINT_8 ucWlanIdx;
+	RA_PHY_CFG_T rEntryTxRate;
+	TX_ADM_INFO_T txRxAdmInfo;
+} ONE_TX_RATE_RESULT_T, *P_ONE_TX_RATE_RESULT_T;
+
+#define CFG_STA_REC_NUM_PER_EVENT 16
+
+typedef struct _EXT_EVENT_TX_RATE_RESULT_T {
+	UINT_8 ucStaNum;
+	ONE_TX_RATE_RESULT_T rAllTxRateResult[CFG_STA_REC_NUM_PER_EVENT];
+} EXT_EVENT_TX_RATE_RESULT_T, *P_EXT_EVENT_TX_RATE_RESULT_T;
+#endif
 
 typedef struct _EXT_EVENT_TX_STATISTIC_RESULT_T {
 	UINT_8 ucWlanIdx;
@@ -1395,6 +1425,26 @@ Set_RA_Debug_Proc(
 	IN RTMP_STRING * arg
 );
 #endif /* DBG */
+
+#ifdef CONFIG_RA_PHY_RATE_SUPPORT
+INT
+Set_SupRateSet_Proc(
+	IN struct _RTMP_ADAPTER *pAd,
+	IN RTMP_STRING * arg
+);
+
+INT
+Set_HtSupRateSet_Proc(
+	IN struct _RTMP_ADAPTER *pAd,
+	IN RTMP_STRING * arg
+);
+
+INT
+Set_VhtSupRateSet_Proc(
+	IN struct _RTMP_ADAPTER *pAd,
+	IN RTMP_STRING * arg
+);
+#endif /* CONFIG_RA_PHY_RATE_SUPPORT */
 
 #if defined(MT7615) || defined(MT7622) || defined(P18) || defined(MT7663)
 INT32

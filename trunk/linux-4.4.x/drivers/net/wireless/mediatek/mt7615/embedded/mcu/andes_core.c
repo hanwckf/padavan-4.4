@@ -384,8 +384,8 @@ VOID _AndesUnlinkCmdMsg(struct cmd_msg *msg, DL_LIST *list)
 {
 	if (!msg)
 		return;
-
-	DlListDel(&msg->list);
+	if ((msg->list.Next != NULL) && (msg->list.Prev != NULL))
+		DlListDel(&msg->list);
 }
 
 

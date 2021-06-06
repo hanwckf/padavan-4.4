@@ -450,7 +450,7 @@ static INT CFG80211DRV_UpdateApSettingFromBeacon(PRTMP_ADAPTER pAd, UINT mbss_id
 #endif /* CONFIG_AP_SUPPORT */
 
 	pMbss->CapabilityInfo =	CAP_GENERATE(1, 0, (!IS_CIPHER_NONE(wdev->SecConfig.PairwiseCipher)),
-										 (pAd->CommonCfg.TxPreamble == Rt802_11PreambleLong ? 0 : 1), pAd->CommonCfg.bUseShortSlotTime, /*SpectrumMgmt*/FALSE);
+										 (pAd->CommonCfg.TxPreamble == Rt802_11PreambleLong ? 0 : 1), wdev->bUseShortSlotTime, /*SpectrumMgmt*/FALSE);
 
 #ifdef DOT11K_RRM_SUPPORT
 	if (IS_RRM_ENABLE(wdev))
@@ -1408,9 +1408,8 @@ BOOLEAN CFG80211DRV_ApKeyAdd(
 			hex_dump("PMF IGTK pKeyInfo->KeyBuf=", (UINT8 *)pKeyInfo->KeyBuf, pKeyInfo->KeyLen);
 			MTWF_LOG(DBG_CAT_SEC, DBG_SUBCAT_ALL, DBG_LVL_ERROR,("PMF IGTK pKeyInfo->KeyId=%d\n", pKeyInfo->KeyId));
 
-#ifdef MT7615
-			if (IS_MT7615(pAd))
-			{
+#if defined(MT7615) || defined(MT7622)
+			if (IS_MT7615(pAd) || IS_MT7622(pAd)) {
 				PPMF_CFG pPmfCfg = &pWdev->SecConfig.PmfCfg;
 				ASIC_SEC_INFO Info = {0};
 				USHORT Wcid;

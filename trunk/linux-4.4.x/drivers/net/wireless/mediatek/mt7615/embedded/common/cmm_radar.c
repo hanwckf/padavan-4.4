@@ -431,7 +431,9 @@ NTSTATUS Dot11HCntDownTimeoutAction(PRTMP_ADAPTER pAd, PCmdQElmt CMDQelmt)
 					int j;
 					for (j = 0; j < MAX_APCLI_NUM; j++) {
 						wdev_temp = &pAd->ApCfg.ApCliTab[j].wdev;
-						if (wdev_temp->pDot11_H == pDot11h) {
+						if ((wdev_temp->pDot11_H == pDot11h)
+						&& (wdev_temp->WscControl.WscConfMode != WSC_DISABLE)
+						&& (wdev_temp->WscControl.bWscTrigger)) {
 							pAd->ApCfg.ApCliTab[j].Enable = TRUE;
 							break;
 						}

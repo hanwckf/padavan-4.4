@@ -721,7 +721,14 @@ typedef struct _RTMP_CHIP_CAP {
 	UCHAR band_cnt;
 	UCHAR *ba_range;
 	BOOLEAN tx_delay_support;
+#ifdef OCE_SUPPORT
+	BOOLEAN FdFrameFwOffloadEnabled;
+#endif /* OCE_SUPPORT */
 } RTMP_CHIP_CAP;
+
+#ifdef OCE_SUPPORT
+#define IS_FD_FRAME_FW_MODE(_CAP)	((_CAP)->FdFrameFwOffloadEnabled)
+#endif /* OCE_SUPPORT */
 
 /*
   *   EEPROM operation related marcos

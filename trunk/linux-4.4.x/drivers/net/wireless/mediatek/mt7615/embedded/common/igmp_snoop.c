@@ -314,9 +314,7 @@ BOOLEAN MulticastFilterTableInsertEntry(
 #ifdef IGMP_TVM_SUPPORT
 				pEntry->AgeOutTime = AgeOutTime;
 #endif /* IGMP_TVM_SUPPORT */
-				pEntry->type = (MulticastFilterEntryType)(((UINT8)type) & GROUP_ENTRY_TYPE_BITMASK); /* remove member detail*/
-				initList(&pEntry->MemberList);
-
+				pEntry->type = type;
 				if (pMemberAddr != NULL)
 					InsertIgmpMember(pMulticastFilterTable, &pEntry->MemberList, pMemberAddr, type);
 
@@ -2405,7 +2403,11 @@ NDIS_STATUS IgmpPktClone(
 #endif /* IGMP_TVM_SUPPORT */
 
 		if (pMacEntry && (Sst == SST_ASSOC) &&
-			(pAd->MacTab.tr_entry[pMacEntry->wcid].PortSecured == WPA_802_1X_PORT_SECURED)) {
+			(pAd->MacTab.tr_entry[pMacEntry->wcid].PortSecured == WPA_802_1X_PORT_SECURED)
+#ifdef A4_CONN
+			&&(!isMemberOnMWDSLink(pMemberEntry))
+#endif
+		) {
 			tr_entry = &pAd->MacTab.tr_entry[pMacEntry->wcid];
 			OS_PKT_CLONE(pAd, pPacket, pSkbClone, MEM_ALLOC_FLAG);
 

@@ -1767,36 +1767,8 @@ PNDIS_PACKET mtd_pci_get_pkt_from_rx_resource(
 			}
 		}
 	} else {
-		PCI_UNMAP_SINGLE(pAd, pRxCell->DmaBuf.AllocPa, pRxCell->DmaBuf.AllocSize, RTMP_PCI_DMA_FROMDEVICE);
-		/* flush dcache if no consistent memory is supported */
-		RTMP_DCACHE_FLUSH(pRxCell->DmaBuf.AllocPa, pRxCell->DmaBuf.AllocSize);
-
-		if (RxRingNo == HIF_RX_IDX0) {
-#ifdef CONFIG_WIFI_BUILD_SKB
-			DEV_FREE_FRAG_BUF(pRxCell->pNdisPacket);
-#else
-			RELEASE_NDIS_PACKET(pAd, pRxCell->pNdisPacket, NDIS_STATUS_SUCCESS);
-#endif
-
-			pRxCell->pNdisPacket = RTMP_AllocateRxPacketBuffer(pRxRing,
-					((POS_COOKIE)(pAd->OS_Cookie))->pDev,
-					DYNAMIC_PAGE_ALLOC,
-					pRxCell->DmaBuf.AllocSize,
-					&pRxCell->DmaBuf.AllocVa, &pRxCell->DmaBuf.AllocPa);
-		} else if (RxRingNo == HIF_RX_IDX1) {
-			pkt_alloc_fail_handle(pAd, pRxCell->pNdisPacket);
-			free_rx_buf_1k(pRxRing);
-			pRxCell->pNdisPacket = RTMP_AllocateRxPacketBuffer(pRxRing,
-					((POS_COOKIE)(pAd->OS_Cookie))->pDev,
-					PRE_SLAB_ALLOC,
-					pRxCell->DmaBuf.AllocSize,
-					&pRxCell->DmaBuf.AllocVa, &pRxCell->DmaBuf.AllocPa);
-		}
-
-		pRxD->SDP0 = pRxCell->DmaBuf.AllocPa;
-		pRxD->SDL0 = pRxRing->RxBufferSize;
-		pRxPacket = NULL;
 		bReschedule = TRUE;
+		goto done;
 	}
 
 	pRxD->DDONE = 0;
@@ -2020,36 +1992,8 @@ PNDIS_PACKET mtd_pci_get_pkt_from_rx_resource_io(
 			}
 		}
 	} else {
-		PCI_UNMAP_SINGLE(pAd, pRxCell->DmaBuf.AllocPa, pRxCell->DmaBuf.AllocSize, RTMP_PCI_DMA_FROMDEVICE);
-		/* flush dcache if no consistent memory is supported */
-		RTMP_DCACHE_FLUSH(pRxCell->DmaBuf.AllocPa, pRxCell->DmaBuf.AllocSize);
-
-		if (RxRingNo == HIF_RX_IDX0) {
-#ifdef CONFIG_WIFI_BUILD_SKB
-			DEV_FREE_FRAG_BUF(pRxCell->pNdisPacket);
-#else
-			RELEASE_NDIS_PACKET(pAd, pRxCell->pNdisPacket, NDIS_STATUS_SUCCESS);
-#endif
-
-			pRxCell->pNdisPacket = RTMP_AllocateRxPacketBuffer(pRxRing,
-					((POS_COOKIE)(pAd->OS_Cookie))->pDev,
-					DYNAMIC_PAGE_ALLOC,
-					pRxCell->DmaBuf.AllocSize,
-					&pRxCell->DmaBuf.AllocVa, &pRxCell->DmaBuf.AllocPa);
-		} else if (RxRingNo == HIF_RX_IDX1) {
-			pkt_alloc_fail_handle(pAd, pRxCell->pNdisPacket);
-			free_rx_buf_1k(pRxRing);
-			pRxCell->pNdisPacket = RTMP_AllocateRxPacketBuffer(pRxRing,
-					((POS_COOKIE)(pAd->OS_Cookie))->pDev,
-					PRE_SLAB_ALLOC,
-					pRxCell->DmaBuf.AllocSize,
-					&pRxCell->DmaBuf.AllocVa, &pRxCell->DmaBuf.AllocPa);
-		}
-
-		pRxD->SDP0 = pRxCell->DmaBuf.AllocPa;
-		pRxD->SDL0 = pRxRing->RxBufferSize;
-		pRxPacket = NULL;
 		bReschedule = TRUE;
+		goto done;
 	}
 
 	*pRxPending = *pRxPending - 1;

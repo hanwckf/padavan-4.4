@@ -74,6 +74,9 @@ VOID APPeerProbeReqAction(
 	extern UCHAR			OSEN_IE[];
 	extern UCHAR			OSEN_IELEN;
 #endif /* CONFIG_HOTSPOT_R2 */
+#ifdef OCE_SUPPORT
+	P_OCE_CTRL pOceCtrl = NULL;
+#endif
 	struct DOT11_H *pDot11h = NULL;
 #ifdef WSC_AP_SUPPORT
 	UCHAR Addr3[MAC_ADDR_LEN];
@@ -102,11 +105,22 @@ VOID APPeerProbeReqAction(
 		pDot11h = wdev->pDot11_H;
 		if (pDot11h == NULL)
 			continue;
+#ifdef OCE_SUPPORT
+		if (ProbeReqParam.bProbeSupp[apidx]) {
+			ProbeReqParam.bProbeSupp[apidx] = FALSE;
+			continue;
+		}
+#endif
 		cfg_ht_bw = wlan_config_get_ht_bw(wdev);
 		op_ht_bw = wlan_operate_get_ht_bw(wdev);
 		hc_radio_query_by_channel(pAd, wdev->channel, &oper);
 		if ((wdev->if_dev == NULL) || ((wdev->if_dev != NULL) &&
-									   !(RTMP_OS_NETDEV_STATE_RUNNING(wdev->if_dev)))) {
+			(!(RTMP_OS_NETDEV_STATE_RUNNING(wdev->if_dev))
+#ifdef CONFIG_MAP_SUPPORT
+			|| (wdev->bcn_buf.bBcnSntReq == FALSE)
+#endif
+
+		))) {
 			/* the interface is down, so we can not send probe response */
 			continue;
 		}
@@ -159,6 +173,18 @@ VOID APPeerProbeReqAction(
 			return;
 	}
 #endif /* BAND_STEERING */
+#ifdef OCE_SUPPORT
+	pOceCtrl = &wdev->OceCtrl;
+		/* Saidul: Fix for APUT broadcast Probe Response and Probe Suppression test, BcnPrd and MaxCannelTime under parenthesis */
+	if (ProbeReqParam.MaxChannelTime && (pOceCtrl->MaxChannelTimesUp ||
+	(pAd->CommonCfg.BeaconPeriod <= ProbeReqParam.MaxChannelTime))) {
+		pOceCtrl->MaxChannelTimesUp = FALSE;
+		pOceCtrl->MaxChannelTimerRunning = FALSE;
+		continue;
+	}
+	pOceCtrl->MaxChannelTimesUp = FALSE;
+	pOceCtrl->MaxChannelTimerRunning = FALSE;
+#endif /* OCE_SUPPORT */
 #ifdef CONFIG_STEERING_API_SUPPORT
 	if (BlackList_StaLookup(pAd,ProbeReqParam.Addr2))
 		return;
@@ -192,6 +218,14 @@ VOID APPeerProbeReqAction(
 		if (NStatus != NDIS_STATUS_SUCCESS)
 			return;
 
+#ifdef OCE_SUPPORT
+		if (IS_OCE_ENABLE(wdev)
+			&& MAC_ADDR_EQUAL(ProbeReqParam.Addr1, BROADCAST_ADDR)
+			&& ProbeReqParam.IsOceCapability) /* broadcast probe request && is OCE STA*/
+			MgtMacHeaderInit(pAd, &ProbeRspHdr, SUBTYPE_PROBE_RSP, 0, BROADCAST_ADDR,
+					wdev->if_addr, wdev->bssid); /* broadcast probe response */
+		else
+#endif
 		MgtMacHeaderInit(pAd, &ProbeRspHdr, SUBTYPE_PROBE_RSP, 0, ProbeReqParam.Addr2,
 						 wdev->if_addr, wdev->bssid);
 		{
@@ -221,7 +255,7 @@ VOID APPeerProbeReqAction(
 			MakeOutgoingFrame(pOutBuffer + FrameLen,      &TmpLen,
 							  1,                        &ErpIe,
 							  1,                        &ErpIeLen,
-							  1,                        &pAd->ApCfg.ErpIeContent,
+							  1,                        &mbss->ErpIeContent,
 							  1,                        &ExtRateIe,
 							  1,                        &rate->ExtRateLen,
 							  rate->ExtRateLen, rate->ExtRate,
@@ -341,7 +375,7 @@ VOID APPeerProbeReqAction(
 				FrameLen += QBSS_LoadElementAppend_HSTEST(pAd, pOutBuffer + FrameLen, apidx);
 			else if (pAd->ApCfg.MBSSID[apidx].HotSpotCtrl.QLoadTestEnable == 0)
 #endif
-				FrameLen += QBSS_LoadElementAppend(pAd, pOutBuffer + FrameLen, pQloadCtrl);
+				FrameLen += QBSS_LoadElementAppend(pAd, pOutBuffer + FrameLen, pQloadCtrl, apidx);
 		}
 
 #endif /* AP_QLOAD_SUPPORT */
@@ -381,7 +415,6 @@ VOID APPeerProbeReqAction(
 			}
 #endif /* !EXT_BUILD_CHANNEL_LIST */
 
-			os_alloc_mem(NULL, (UCHAR **)&TmpFrame, 256);
 			if (TmpFrame != NULL) {
 				NdisZeroMemory(TmpFrame, 256);
 
@@ -493,21 +526,27 @@ VOID APPeerProbeReqAction(
 #endif
 
 #ifdef DOT11K_RRM_SUPPORT
-
-		if (IS_RRM_ENABLE(wdev))
+		if (IS_RRM_ENABLE(wdev)) {
 			RRM_InsertRRMEnCapIE(pAd, pOutBuffer + FrameLen, &FrameLen, apidx);
-
-		InsertChannelRepIE(pAd, pOutBuffer + FrameLen, &FrameLen,
+			InsertChannelRepIE(pAd, pOutBuffer + FrameLen, &FrameLen,
 						   (RTMP_STRING *)pAd->CommonCfg.CountryCode,
 						   get_regulatory_class(pAd, mbss->wdev.channel, mbss->wdev.PhyMode, &mbss->wdev),
-						   NULL, PhyMode);
+						   NULL, PhyMode, wdev->func_idx);
 #ifndef APPLE_11K_IOT
-		/* Insert BSS AC Access Delay IE. */
-		RRM_InsertBssACDelayIE(pAd, pOutBuffer + FrameLen, &FrameLen);
-		/* Insert BSS Available Access Capacity IE. */
-		RRM_InsertBssAvailableACIE(pAd, pOutBuffer + FrameLen, &FrameLen);
+			/* Insert BSS AC Access Delay IE. */
+			RRM_InsertBssACDelayIE(pAd, pOutBuffer + FrameLen, &FrameLen);
+			/* Insert BSS Available Access Capacity IE. */
+			RRM_InsertBssAvailableACIE(pAd, pOutBuffer + FrameLen, &FrameLen);
 #endif /* !APPLE_11K_IOT */
+		}
 #endif /* DOT11K_RRM_SUPPORT */
+#ifdef OCE_SUPPORT
+		if (IS_OCE_ENABLE(wdev)) { /* some OCE STA may only have files ie(without oce CAP.)*/
+			ie_info.frame_buf = (UCHAR *)(pOutBuffer + FrameLen);
+			FrameLen += oce_build_ies(pAd, &ie_info, (MAC_ADDR_EQUAL(ProbeReqParam.Addr1, BROADCAST_ADDR)
+						&& ProbeReqParam.IsOceCapability));
+		}
+#endif /* OCE_SUPPORT */
 
 #ifndef VENDOR_FEATURE7_SUPPORT
 		/* add Country IE and power-related IE */
@@ -760,9 +799,12 @@ VOID APPeerProbeReqAction(
 		FrameLen += build_vendor_ie(pAd, wdev, (pOutBuffer + FrameLen), VIE_PROBE_RESP
 								);
 #ifdef MBO_SUPPORT
-	if (IS_MBO_ENABLE(wdev)) {
-		MakeMboOceIE(pAd, wdev, pOutBuffer+FrameLen, &FrameLen, MBO_FRAME_TYPE_PROBE_RSP);
-	}
+	if (IS_MBO_ENABLE(wdev)
+#ifdef OCE_SUPPORT
+		|| IS_OCE_ENABLE(wdev)
+#endif /* OCE_SUPPORT */
+		)
+		MakeMboOceIE(pAd, wdev, NULL, pOutBuffer+FrameLen, &FrameLen, MBO_FRAME_TYPE_PROBE_RSP);
 #endif /* MBO_SUPPORT */
 		{
 			/* Question to Rorscha: bit4 in old chip is used? but currently is using for 2.4G 256QAM */
@@ -997,6 +1039,11 @@ VOID APPeerBeaconAction(
 	BCN_IE_LIST *ie_list = NULL;
 	PMAC_TABLE_ENTRY pEntry = NULL;
 	UCHAR Channel = 0;
+#ifdef OCE_SUPPORT
+	struct wifi_dev *wdev = Elem->wdev;
+	P_OCE_CTRL      pOceCtrl = &wdev->OceCtrl;
+	int OceBOnlyPresentOldValue;
+#endif /* OCE_SUPPORT */
 	struct freq_oper oper;
 #ifdef VENDOR10_CUSTOM_RSSI_FEATURE
 	POS_COOKIE pObj = (POS_COOKIE) pAd->OS_Cookie;
@@ -1042,6 +1089,7 @@ VOID APPeerBeaconAction(
 						   );
 
 	if (PeerBeaconAndProbeRspSanity(pAd,
+									Elem->wdev,
 									Elem->Msg,
 									Elem->MsgLen,
 									Elem->Channel,
@@ -1218,6 +1266,23 @@ VOID APPeerBeaconAction(
 			LegacyBssExist = TRUE;
 		else
 			LegacyBssExist = FALSE;
+
+#ifdef OCE_SUPPORT
+		if (!pOceCtrl->Scan11bOceAPTimerRunning) {
+			if (WMODE_CAP_2G(wdev->PhyMode) && RatesLen <= 4) {
+				OceBOnlyPresentOldValue = OCE_GET_CONTROL_FIELD(pOceCtrl->OceCapIndication,
+				OCE_11B_ONLY_PRESENT_MASK, OCE_11B_ONLY_PRESENT_OFFSET);
+				OCE_SET_CONTROL_FIELD(pOceCtrl->OceCapIndication,
+				1, OCE_11B_ONLY_PRESENT_MASK, OCE_11B_ONLY_PRESENT_OFFSET);
+
+				if (OceBOnlyPresentOldValue != OCE_GET_CONTROL_FIELD(pOceCtrl->OceCapIndication,
+					OCE_11B_ONLY_PRESENT_MASK, OCE_11B_ONLY_PRESENT_OFFSET))
+					OceSendFilsDiscoveryAction(pAd, wdev);
+			}
+			RTMPSetTimer(&pOceCtrl->Scan11bOceAPTimer, OCE_SCAN_11BOCEAP_PERIOD_TIME);
+						pOceCtrl->Scan11bOceAPTimerRunning = TRUE;
+		}
+#endif
 
 		if (LegacyBssExist && pAd->CommonCfg.DisableOLBCDetect == 0) {
 			pAd->ApCfg.LastOLBCDetectTime = pAd->Mlme.Now32;
@@ -1431,6 +1496,17 @@ VOID APScanTimeout(
  */
 VOID APScanTimeoutAction(RTMP_ADAPTER *pAd, MLME_QUEUE_ELEM *Elem)
 {
+#ifdef NEIGHBORING_AP_STAT
+		UCHAR idx, bandidx, index, lastChannel = pAd->ScanCtrl.Channel;
+		INT32 crVal, temp[11], total;
+		SCAN_RPI_HIST *rpiData;
+		UINT32 band_offset;
+		INT16 NF_Power[11] = {-92, -89, -86, -83, -80, -75, -70, -65, -60, -55, -52};
+		INT32 xNF = 0;
+#endif
+#ifdef MAP_R2
+UINT32	CrValue;
+#endif
 #ifdef OFFCHANNEL_SCAN_FEATURE
 	OFFCHANNEL_SCAN_MSG Rsp;
 
@@ -1493,13 +1569,81 @@ VOID APScanTimeoutAction(RTMP_ADAPTER *pAd, MLME_QUEUE_ELEM *Elem)
 	update the current index of the channel
 	*/
 #ifndef OFFCHANNEL_SCAN_FEATURE
-		if (pAd->ApCfg.bAutoChannelAtBootup == TRUE) {
+		if (pAd->ApCfg.bAutoChannelAtBootup[BandIdx] == TRUE) {
 #endif
 			MTWF_LOG(DBG_CAT_PROTO, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 			("[%s] pAd->ApCfg.current_channel_index = %d\n",
 			__func__, pAd->ApCfg.current_channel_index));
 			/* update current channel info */
-			UpdateChannelInfo(pAd, pAd->ApCfg.current_channel_index, pAd->ApCfg.AutoChannelAlg, wdev);
+			UpdateChannelInfo(pAd, pAd->ApCfg.current_channel_index, pAd->ApCfg.AutoChannelAlg[BandIdx], wdev);
+#ifdef NEIGHBORING_AP_STAT
+		if (lastChannel != pAd->ScanCtrl.Channel) {
+			bandidx = HcGetBandByChannel(pAd, lastChannel);
+			if (lastChannel <= 14)
+				index = SCAN_RESULT_2G;
+			else
+				index = SCAN_RESULT_5G;
+			/*support for band0 RPI only*/
+			if (bandidx == DBDC_BAND0) {
+				band_offset = 0x12250;
+			} else {
+				band_offset = 0x12a44;
+			}
+			total = 0;
+			if (pAd->ScanTab.ScanResult[index].rpi_cnt < MAX_RPI_CHANNEL_CNT) {
+				int regcount = 0;
+				rpiData = &pAd->ScanTab.ScanResult[index].rpi[pAd->ScanTab.ScanResult[index].rpi_cnt];
+				rpiData->channel = lastChannel;
+				if (pAd->ScanTab.Ipi == 1)
+					regcount = 11;
+				else
+					regcount = 8;
+				for (idx = 0; idx < regcount; idx++) {
+					RTMP_IO_READ32(pAd, band_offset + idx * 4, &crVal);
+					total += (crVal & 0x7FFFFF);
+					temp[idx] = (crVal & 0x7FFFFF);
+					if (pAd->ScanTab.Ipi) {
+						xNF += (NF_Power[idx] * temp[idx]);
+					}
+				}
+				for (idx = 0; idx < regcount; idx++) {
+					rpiData->hist[idx] = temp[idx];
+				}
+				MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("[APScanTimeoutAction]BandIdx : %d index : %d\n",
+				bandidx, index));
+				/* print RXTD 17-24 */
+				if (pAd->ScanTab.Ipi) {
+					rpiData->NF = xNF/(INT32)total;
+#ifdef OFFCHANNEL_SCAN_FEATURE
+					pAd->ChannelInfo.AvgNF = rpiData->NF;
+#endif
+					MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("Average NF Power :%d\n", rpiData->NF));
+					MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("IPI Histogram:\n"));
+					MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("Hist: %3d, %3d, %3d, %3d, %3d, %3d, %3d, %3d, %3d, %3d, %3d\n",\
+					rpiData->hist[0], rpiData->hist[1],\
+					rpiData->hist[2], rpiData->hist[3],\
+					rpiData->hist[4], rpiData->hist[5],\
+					rpiData->hist[6], rpiData->hist[7],\
+					rpiData->hist[8], rpiData->hist[9],
+					rpiData->hist[10]));
+				} else	{
+					MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("RPI Histogram:\n"));
+					MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("Hist: %3d, %3d, %3d, %3d, %3d, %3d, %3d, %3d\n",\
+					rpiData->hist[0], rpiData->hist[1],\
+					rpiData->hist[2], rpiData->hist[3],\
+					rpiData->hist[4], rpiData->hist[5],\
+					rpiData->hist[6], rpiData->hist[7]));
+				}
+					pAd->ScanTab.ScanResult[index].rpi_cnt++;
+			}
+					/* restor ctrl cr value */
+			if (bandidx == DBDC_BAND0)
+				RTMP_IO_WRITE32(pAd, PHY_BAND0_PHYMUX_5, pAd->ScanTab.ScanResult[index].ctr_cr[bandidx]);
+			else
+				RTMP_IO_WRITE32(pAd, PHY_BAND1_PHYMUX_5, pAd->ScanTab.ScanResult[index].ctr_cr[bandidx]);
+		}
+#endif
+
 #ifdef OFFCHANNEL_SCAN_FEATURE
 			if (pAd->ScanCtrl.state == OFFCHANNEL_SCAN_START) {
 				MTWF_LOG(DBG_CAT_PROTO, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
@@ -1517,6 +1661,11 @@ VOID APScanTimeoutAction(RTMP_ADAPTER *pAd, MLME_QUEUE_ELEM *Elem)
 				Rsp.data.channel_data.channel_idx = pAd->ApCfg.current_channel_index;
 				/* This value to be used by application to calculate  channel busy percentage */
 				Rsp.data.channel_data.actual_measured_time = pAd->ScanCtrl.ScanTimeActualDiff;
+#ifdef MAP_R2
+				/* EDCCA time */
+				RTMP_IO_READ32(pAd, MIB_M0SDR18, &CrValue);
+				Rsp.data.channel_data.edcca = CrValue;
+#endif
 				RtmpOSWrielessEventSend(
 					pAd->net_dev,
 					RT_WLAN_EVENT_CUSTOM,
@@ -1860,6 +2009,9 @@ VOID APMlmeScanReqAction(RTMP_ADAPTER *pAd, MLME_QUEUE_ELEM *Elem)
 	UCHAR BandIdx = HcGetBandByWdev(wdev);
 	CHANNEL_CTRL *pChCtrl = hc_get_channel_ctrl(pAd->hdev_ctrl, BandIdx);
 #endif
+#ifdef MAP_R2
+UINT32	CrValue;
+#endif
 #ifdef CONFIG_INIT_RADIO_ONOFF
 	if (!RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_SYSEM_READY))
 		return;
@@ -1904,6 +2056,10 @@ find_next_channel:
 								("[%s][%d] start offchannel scan on %d : channel list index = %d\n",
 									__func__, __LINE__, pAd->ScanCtrl.Channel, pAd->ScanCtrl.CurrentGivenChan_Index));
 							pAd->ScanCtrl.state = OFFCHANNEL_SCAN_START;
+#ifdef MAP_R2
+							/* EDCCA time Read and Clear here*/
+							RTMP_IO_READ32(pAd, MIB_M0SDR18, &CrValue);
+#endif
 					} else
 #endif
 						pAd->ScanCtrl.Channel = FindScanChannel(pAd, 0, wdev);
@@ -1941,7 +2097,7 @@ find_next_channel:
 #endif
 #ifdef CONFIG_AP_SUPPORT
 		IF_DEV_CONFIG_OPMODE_ON_AP(pAd) {
-			if (pAd->ApCfg.bAutoChannelAtBootup == TRUE) { /* iwpriv set auto channel selection */
+			if (pAd->ApCfg.bAutoChannelAtBootup[BandIdx] == TRUE) { /* iwpriv set auto channel selection */
 				APAutoChannelInit(pAd, wdev);
 				pAd->ApCfg.AutoChannel_Channel = pChCtrl->ChList[0].Channel;
 			}
@@ -1975,7 +2131,7 @@ VOID APPeerBeaconAtScanAction(RTMP_ADAPTER *pAd, MLME_QUEUE_ELEM *Elem)
 	struct wifi_dev *wdev = pAd->ApCfg.ScanReqwdev;
 #endif
 #endif
-#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT)
+#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT) || defined(NEIGHBORING_AP_STAT)
 	UCHAR Snr[4] = {0};
 	CHAR  rssi[4] = {0};
 	Snr[0] = ConvertToSnr(pAd, Elem->rssi_info.raw_Snr[0]);
@@ -2011,7 +2167,7 @@ VOID APPeerBeaconAtScanAction(RTMP_ADAPTER *pAd, MLME_QUEUE_ELEM *Elem)
 	pVIE = (PNDIS_802_11_VARIABLE_IEs) VarIE;
 	pVIE->Length = 0;
 
-	if (PeerBeaconAndProbeRspSanity(pAd,
+	if (PeerBeaconAndProbeRspSanity(pAd, Elem->wdev,
 									Elem->Msg, Elem->MsgLen, Elem->Channel,
 									ie_list, &LenVIE, pVIE, FALSE, FALSE)) {
 		ULONG Idx;
@@ -2141,7 +2297,7 @@ VOID APPeerBeaconAtScanAction(RTMP_ADAPTER *pAd, MLME_QUEUE_ELEM *Elem)
 			Rssi = RealRssi + pAd->BbpRssiToDbmDelta;
 
 		Idx = BssTableSetEntry(pAd, &pAd->ScanTab, ie_list, Rssi, LenVIE, pVIE
-#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT)
+#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT) || defined(NEIGHBORING_AP_STAT)
 								, Snr, rssi
 #endif /* CONFIG_AP_SUPPORT */
 							);
@@ -2270,6 +2426,7 @@ VOID ApCliSiteSurvey(
 	IN	struct wifi_dev		*wdev)
 {
 	MLME_SCAN_REQ_STRUCT    ScanReq;
+	UCHAR BandIdx = HcGetBandByWdev(wdev);
 
 	if (RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_BSS_SCAN_IN_PROGRESS)) {
 			/* Still scanning, ignore this scan */
@@ -2292,7 +2449,7 @@ VOID ApCliSiteSurvey(
 	}
 	ScanReq.BssType = BSS_ANY;
 	ScanReq.ScanType = ScanType;
-	pAd->ApCfg.bAutoChannelAtBootup = ChannelSel;
+	pAd->ApCfg.bAutoChannelAtBootup[BandIdx] = ChannelSel;
 
 	MlmeEnqueue(pAd, AP_SYNC_STATE_MACHINE, APMT2_MLME_SCAN_REQ, sizeof(MLME_SCAN_REQ_STRUCT), &ScanReq, (ULONG)wdev);
 	RTMP_MLME_HANDLER(pAd);
@@ -2360,7 +2517,7 @@ VOID ApSiteSurvey(
 
 	ScanReq.BssType = BSS_ANY;
 	ScanReq.ScanType = ScanType;
-	pAd->ApCfg.bAutoChannelAtBootup = ChannelSel;
+	pAd->ApCfg.bAutoChannelAtBootup[BAND0] = ChannelSel;
 	MlmeEnqueue(pAd, AP_SYNC_STATE_MACHINE, APMT2_MLME_SCAN_REQ, sizeof(MLME_SCAN_REQ_STRUCT), &ScanReq, 0);
 	RTMP_MLME_HANDLER(pAd);
 }
@@ -2388,16 +2545,43 @@ VOID ApSiteSurvey_by_wdev(
 #ifdef MT_DFS_SUPPORT
 		&& (pAd->CommonCfg.DfsParameter.bDfsEnable == 1)
 #endif
-	)
+	) {
 #ifdef CONFIG_MAP_SUPPORT
-	if ((pDot11hTest->RDMode == RD_SILENCE_MODE) && (wdev->wdev_type != WDEV_TYPE_APCLI)) {
+	if (pDot11hTest->RDMode == RD_SILENCE_MODE) {
+		if (wdev->wdev_type != WDEV_TYPE_APCLI) {
+			MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
+				("INFO::AP is in Silent Mode.DFS CAC is under process!\n"));
+			return;
+		} else if (pAd->bMAPAvoidScanDuringCac == 1) {
+#if defined(DBDC_MODE)
+			if (pAd->CommonCfg.dbdc_mode == TRUE) {
+				UCHAR BandIdx = 0;
+
+				if (WMODE_CAP_2G(wdev->PhyMode))
+					BandIdx = 0;
+				if (WMODE_CAP_5G(wdev->PhyMode))
+					BandIdx = 1;
+				BssTableInitByBand(&pAd->ScanTab, BandIdx);
+			} else
+#endif
+			BssTableInit(&pAd->ScanTab);
+			if ((wdev->WscControl.WscConfMode != WSC_DISABLE) && (wdev->WscControl.bWscTrigger == TRUE))
+				wapp_send_wsc_scan_complete_notification(pAd, wdev);
+			else
+				wapp_send_scan_complete_notification(pAd, wdev);
+			MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
+							("INFO::AP is in Silent Mode.DFS CAC is under process!\n"));
+			return;
+		}
+	}
 #else
 	if (pDot11hTest->RDMode == RD_SILENCE_MODE) {
-#endif
 		MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
 			("INFO::AP is in Silent Mode.DFS CAC is under process!\n"));
 		return;
 	}
+#endif
+}
 	if (pDot11hTest->RDMode != RD_SILENCE_MODE) {
 		AsicDisableSync(pAd, HW_BSSID_0);
 		/* Disable beacon tx for BSS with same band */
@@ -2436,6 +2620,20 @@ VOID ApSiteSurvey_by_wdev(
 			} else
 			#endif /* defined(DBDC_MODE) && defined(DOT11K_RRM_SUPPORT) */
 				BssTableInit(&pAd->ScanTab);
+#ifdef NEIGHBORING_AP_STAT
+			{
+				UINT8 index = 0;
+				if (wdev->channel <= 14)
+					index = SCAN_RESULT_2G;
+				else
+					index = SCAN_RESULT_5G;
+				pAd->ScanTab.ScanResult[index].rpi_cnt = 0;
+				pAd->ScanTab.ScanResult[index].item_ctr = 0;
+				RTMPZeroMemory(pAd->ScanTab.ScanResult[index].items, MAX_LEN_OF_BSS_TABLE * sizeof(SCAN_RPT_ITEM));
+				RTMPZeroMemory(pAd->ScanTab.ScanResult[index].rpi, MAX_RPI_CHANNEL_CNT * sizeof(SCAN_RPI_HIST));
+				MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("(%s)::Current channel : %d \n", __FUNCTION__, wdev->channel));
+			}
+#endif
 		}
 
 	pAd->Mlme.ApSyncMachine.CurrState = AP_SYNC_IDLE;
@@ -2457,7 +2655,7 @@ VOID ApSiteSurvey_by_wdev(
 
 	ScanReq.BssType = BSS_ANY;
 	ScanReq.ScanType = ScanType;
-	pAd->ApCfg.bAutoChannelAtBootup = ChannelSel;
+	pAd->ApCfg.bAutoChannelAtBootup[BandIdx] = ChannelSel;
 	MlmeEnqueue(pAd, AP_SYNC_STATE_MACHINE, APMT2_MLME_SCAN_REQ, sizeof(MLME_SCAN_REQ_STRUCT), &ScanReq, (ULONG)wdev);
 	RTMP_MLME_HANDLER(pAd);
 }
@@ -2602,6 +2800,7 @@ INT ApSiteSurveyNew_by_wdev(
 	struct wifi_dev 	*wdev)
 {
 			MLME_SCAN_REQ_STRUCT    ScanReq;
+	UCHAR BandIdx = HcGetBandByWdev(wdev);
 
 	RTMPZeroMemory(&ScanReq, sizeof(ScanReq));;
 	AsicDisableSync(pAd, HW_BSSID_0);
@@ -2617,7 +2816,7 @@ INT ApSiteSurveyNew_by_wdev(
 		pAd->ScanCtrl.ScanTime[0] = timeout;
 		pAd->ScanCtrl.ScanGivenChannel[0] = channel;
 	}
-	pAd->ApCfg.bAutoChannelAtBootup = ChannelSel;
+	pAd->ApCfg.bAutoChannelAtBootup[BandIdx] = ChannelSel;
 	pAd->ChannelInfo.bandidx = HcGetBandByChannel(pAd, channel);
 	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 			("%s : bandidx :%d!! \n", __func__, pAd->ChannelInfo.bandidx));

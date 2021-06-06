@@ -2150,6 +2150,10 @@ BOOLEAN ApCliPeerAssocRspSanity(
 	ULONG         Length = 0;
 #ifdef CONFIG_MAP_SUPPORT
 	unsigned char map_cap;
+#ifdef MAP_R2
+	UCHAR map_profile;
+	UINT16 map_vid;
+#endif
 #endif
 
 	*pNewExtChannelOffset = 0xff;
@@ -2258,8 +2262,18 @@ BOOLEAN ApCliPeerAssocRspSanity(
 		/* case IE_CCX_V2: */
 		case IE_VENDOR_SPECIFIC:
 #ifdef CONFIG_MAP_SUPPORT
-			if (map_check_cap_ie(pEid, &map_cap) == TRUE)
+			if (map_check_cap_ie(pEid, &map_cap
+#ifdef MAP_R2
+				, &map_profile, &map_vid
+#endif
+				) == TRUE) {
 				ie_list->MAP_AttriValue = map_cap;
+#ifdef MAP_R2
+				ie_list->MAP_ProfileValue = map_profile;
+				ie_list->MAP_default_vid = map_vid;
+
+#endif
+			}
 #endif /* CONFIG_MAP_SUPPORT */
 
 			/* handle WME PARAMTER ELEMENT */
@@ -2467,6 +2481,9 @@ INT apcli_fp_tx_pkt_allowed(
 #ifdef MAC_REPEATER_SUPPORT
 	UINT Ret = 0;
 #endif
+#ifdef MAP_TS_TRAFFIC_SUPPORT
+	MAC_TABLE_ENTRY *peer_entry = NULL;
+#endif
 	UCHAR wcid = RTMP_GET_PACKET_WCID(pkt);
 	UCHAR frag_nums;
 
@@ -2511,6 +2528,13 @@ INT apcli_fp_tx_pkt_allowed(
 	}
 
 	if (allowed) {
+#ifdef MAP_TS_TRAFFIC_SUPPORT
+		if (pAd->bTSEnable) {
+			peer_entry = &pAd->MacTab.Content[wcid];
+			if (!map_ts_tx_process(pAd, wdev, pkt, peer_entry))
+				return FALSE;
+		}
+#endif
 		RTMP_SET_PACKET_WCID(pkt, wcid);
 		frag_nums = get_frag_num(pAd, wdev, pkt);
 		RTMP_SET_PACKET_FRAGMENTS(pkt, frag_nums);
@@ -2535,6 +2559,9 @@ INT apcli_tx_pkt_allowed(
 	APCLI_STRUCT *apcli_entry;
 #ifdef MAC_REPEATER_SUPPORT
 	UINT Ret = 0;
+#endif
+#ifdef MAP_TS_TRAFFIC_SUPPORT
+	MAC_TABLE_ENTRY *peer_entry = NULL;
 #endif
 	UCHAR wcid = RTMP_GET_PACKET_WCID(pkt);
 	UCHAR frag_nums;
@@ -2579,6 +2606,13 @@ INT apcli_tx_pkt_allowed(
 	}
 
 	if (allowed) {
+#ifdef MAP_TS_TRAFFIC_SUPPORT
+		if (pAd->bTSEnable) {
+			peer_entry = &pAd->MacTab.Content[wcid];
+			if (!map_ts_tx_process(pAd, wdev, pkt, peer_entry))
+				return FALSE;
+		}
+#endif
 		RTMP_SET_PACKET_WCID(pkt, wcid);
 		frag_nums = get_frag_num(pAd, wdev, pkt);
 		RTMP_SET_PACKET_FRAGMENTS(pkt, frag_nums);
@@ -2780,7 +2814,7 @@ BOOLEAN ApCliValidateRSNIE(
 
 		case IE_RSN:
 			pRsnHeader = (PRSN_IE_HEADER_STRUCT) pTmp;
-			res = wpa_rsne_sanity(pTmp, le2cpu16(pRsnHeader->Length) + 2, &end_field);
+			res = wpa_rsne_sanity(pTmp, pRsnHeader->Length + 2, &end_field);
 
 			if (res == FALSE)
 				break;
@@ -2902,7 +2936,11 @@ BOOLEAN ApCliValidateRSNIE(
 			while (Count > 0) {
 				pAKM = (PAKM_SUITE_STRUCT) pTmp;
 
-				if (!RTMPEqualMemory(pTmp, RSN_OUI, 3))
+				if (!RTMPEqualMemory(pTmp, RSN_OUI, 3)
+#ifdef DPP_SUPPORT
+					&& !RTMPEqualMemory(pTmp, DPP_OUI, 3)
+#endif /* DPP_SUPPORT */
+					)
 					break;
 
 				switch (pAKM->Type) {
@@ -2915,7 +2953,14 @@ BOOLEAN ApCliValidateRSNIE(
 					break;
 
 				case 2:
+#ifdef DPP_SUPPORT
+					if (RTMPEqualMemory(pTmp, RSN_OUI, 3))
+						SET_AKM_WPA2PSK(pApCliEntry->MlmeAux.AKMMap);
+					else if (RTMPEqualMemory(pTmp, DPP_OUI, 3))
+						SET_AKM_DPP(pApCliEntry->MlmeAux.AKMMap);
+#else
 					SET_AKM_WPA2PSK(pApCliEntry->MlmeAux.AKMMap);
+#endif /* DPP_SUPPORT */
 					break;
 
 				case 3:
@@ -3463,6 +3508,22 @@ VOID ApCliPeerCsaAction(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, BCN_IE_LIST *i
 
 		MTWF_LOG(DBG_CAT_CLIENT, CATCLIENT_APCLI, DBG_LVL_ERROR,
 		("Channel Change due to csa\n"));
+#endif
+#if defined(CONFIG_MAP_SUPPORT)
+		if (IS_MAP_TURNKEY_ENABLE(pAd) && (pAd->bMAPAvoidScanDuringCac == 1)) {
+#if defined(DBDC_MODE)
+			if (pAd->CommonCfg.dbdc_mode == TRUE) {
+				UCHAR Band = 0;
+
+				if (WMODE_CAP_2G(wdev->PhyMode))
+					Band = 0;
+				if (WMODE_CAP_5G(wdev->PhyMode))
+					Band = 1;
+				BssTableInitByBand(&pAd->ScanTab, Band);
+			} else
+#endif
+				BssTableInit(&pAd->ScanTab);
+		}
 #endif
 		rtmp_set_channel(pAd, wdev, ie_list->NewChannel);
 #if defined(WAPP_SUPPORT) && defined(CONFIG_MAP_SUPPORT)
@@ -4280,7 +4341,9 @@ INT apcli_inf_open(struct wifi_dev *wdev)
 #endif /* TX_POWER_CONTROL_SUPPORT */
 	}
 
-
+#ifdef DPP_SUPPORT
+	DlListInit(&wdev->dpp_frame_event_list);
+#endif /* DPP_SUPPORT */
 	return TRUE;
 }
 
@@ -5218,12 +5281,15 @@ INT Set_ApCliPMFMFPC_Proc(
 
 	if ((IS_AKM_WPA2_Entry(wdev) || IS_AKM_WPA2PSK_Entry(wdev)
 #ifdef APCLI_SAE_SUPPORT
-|| IS_AKM_WPA3PSK_Entry(wdev)
+				|| IS_AKM_WPA3PSK_Entry(wdev)
+#ifdef DPP_SUPPORT
+				|| IS_AKM_DPP_Entry(wdev)
+#endif /* DPP_SUPPORT */
 #endif
 #ifdef APCLI_OWE_SUPPORT
 				|| IS_AKM_OWE_Entry(wdev)
 #endif
-)
+				)
 		&& IS_CIPHER_AES_Entry(wdev)) {
 		pPmfCfg->PMFSHA256 = pPmfCfg->Desired_PMFSHA256;
 
@@ -5696,6 +5762,10 @@ INT apcli_add_pmkid_cache(
 	if (cached_idx != INVALID_PMKID_IDX) {
 		MTWF_LOG(DBG_CAT_SEC, CATSEC_SAE, DBG_LVL_OFF,
 			("%s :PMKID found, %d\n", __func__, cached_idx));
+		/* Update the values here also, may have been updated
+		 * No meaning of deletion and then insertion.
+		 */
+		update_pmkid = TRUE;
 	} else {
 /* Find free cache entry */
 		for (cached_idx = 0; cached_idx < PMKID_NO; cached_idx++) {

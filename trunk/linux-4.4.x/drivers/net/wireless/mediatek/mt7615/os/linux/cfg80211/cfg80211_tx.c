@@ -210,7 +210,7 @@ VOID ProbeResponseHandler(
 			MakeOutgoingFrame(pOutBuffer+FrameLen,		&TmpLen,
 							  1,						&ErpIe,
 							  1,						&ErpIeLen,
-							  1,						&pAd->ApCfg.ErpIeContent,
+							  1,						&mbss->ErpIeContent,
 							  1,						&ExtRateIe,
 							  1,						&rate->ExtRateLen,
 							  rate->ExtRateLen, 		rate->ExtRate,
@@ -342,7 +342,7 @@ VOID ProbeResponseHandler(
 				FrameLen += QBSS_LoadElementAppend_HSTEST(pAd, pOutBuffer + FrameLen, apidx);
 			else if (pAd->ApCfg.MBSSID[apidx].HotSpotCtrl.QLoadTestEnable == 0)
 #endif
-				FrameLen += QBSS_LoadElementAppend(pAd, pOutBuffer + FrameLen, pQloadCtrl);
+				FrameLen += QBSS_LoadElementAppend(pAd, pOutBuffer + FrameLen, pQloadCtrl, apidx);
 		}
 #endif /* AP_QLOAD_SUPPORT */
 
@@ -495,21 +495,19 @@ VOID ProbeResponseHandler(
 
 #ifdef DOT11K_RRM_SUPPORT
 
-		if (IS_RRM_ENABLE(wdev))
+		if (IS_RRM_ENABLE(wdev)) {
 			RRM_InsertRRMEnCapIE(pAd, pOutBuffer + FrameLen, &FrameLen, apidx);
-
-		InsertChannelRepIE(pAd, pOutBuffer + FrameLen, &FrameLen,
+			InsertChannelRepIE(pAd, pOutBuffer + FrameLen, &FrameLen,
 						   (RTMP_STRING *)pAd->CommonCfg.CountryCode,
 						   get_regulatory_class(pAd, mbss->wdev.channel, mbss->wdev.PhyMode, &mbss->wdev),
-						   NULL, PhyMode);
+						   NULL, PhyMode, wdev->func_idx);
 #ifndef APPLE_11K_IOT
-		/* Insert BSS AC Access Delay IE. */
-		RRM_InsertBssACDelayIE(pAd, pOutBuffer+FrameLen, &FrameLen);
-
-		/* Insert BSS Available Access Capacity IE. */
-		RRM_InsertBssAvailableACIE(pAd, pOutBuffer+FrameLen, &FrameLen);
+			/* Insert BSS AC Access Delay IE. */
+			RRM_InsertBssACDelayIE(pAd, pOutBuffer+FrameLen, &FrameLen);
+			/* Insert BSS Available Access Capacity IE. */
+			RRM_InsertBssAvailableACIE(pAd, pOutBuffer+FrameLen, &FrameLen);
 #endif /* !APPLE_11K_IOT */
-
+		}
 #endif /* DOT11K_RRM_SUPPORT */
 
 #ifndef VENDOR_FEATURE7_SUPPORT
@@ -899,7 +897,7 @@ BOOLEAN CFG80211_SyncPacketWmmIe(RTMP_ADAPTER *pAd, VOID *pData, ULONG dataLen)
 #if defined(HOSTAPD_11R_SUPPORT) || defined(HOSTAPD_SAE_SUPPORT)
 VOID CFG80211_AuthRespHandler(RTMP_ADAPTER *pAd, VOID *pData, ULONG Data)
 {
-	AUTH_FRAME_INFO auth_info;	/* auth info from hostapd */
+	AUTH_FRAME_INFO *auth_info = NULL;	/* auth info from hostapd */
 	MAC_TABLE_ENTRY *pEntry;
 	STA_TR_ENTRY *tr_entry;
 #ifdef DOT11R_FT_SUPPORT
@@ -914,6 +912,15 @@ VOID CFG80211_AuthRespHandler(RTMP_ADAPTER *pAd, VOID *pData, ULONG Data)
 	UINT8 apidx = get_apidx_by_addr(pAd, mgmt->sa);
 
 	MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("AUTH - %s\n", __func__));
+
+	os_alloc_mem_suspend(pAd, (UCHAR **)&auth_info, sizeof(AUTH_FRAME_INFO));
+
+	if (!auth_info) {
+		MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("auth_info: Mem Alloc fail!\n"));
+		return;
+	}
+
+    os_zero_mem(auth_info, sizeof(AUTH_FRAME_INFO));
 
 
 	pMbss = &pAd->ApCfg.MBSSID[apidx];
@@ -956,11 +963,11 @@ SendAuth:
 
 		if (pEntry != NULL) {
 			/* fill auth info from upper layer response */
-			COPY_MAC_ADDR(auth_info.addr2, mgmt->da);
-			COPY_MAC_ADDR(auth_info.addr1, wdev->if_addr);
-			auth_info.auth_alg = mgmt->u.auth.auth_alg;
-			auth_info.auth_seq = mgmt->u.auth.auth_transaction;
-			auth_info.auth_status = mgmt->u.auth.status_code;
+			COPY_MAC_ADDR(auth_info->addr2, mgmt->da);
+			COPY_MAC_ADDR(auth_info->addr1, wdev->if_addr);
+			auth_info->auth_alg = mgmt->u.auth.auth_alg;
+			auth_info->auth_seq = mgmt->u.auth.auth_transaction;
+			auth_info->auth_status = mgmt->u.auth.status_code;
 
 			/* os_alloc_mem(pAd, (UCHAR **)&pFtInfoBuf, sizeof(FT_INFO)); */
 			pFtInfo = &(pEntry->auth_info_resp.FtInfo);
@@ -1026,10 +1033,12 @@ SendAuth:
 			}
 
 			if (mgmt->u.auth.status_code == MLME_SUCCESS) {
-				NdisMoveMemory(&pEntry->MdIeInfo, &auth_info.FtInfo.MdIeInfo, sizeof(FT_MDIE_INFO));
+				NdisMoveMemory(&pEntry->MdIeInfo, &auth_info->FtInfo.MdIeInfo, sizeof(FT_MDIE_INFO));
 
 				pEntry->AuthState = AS_AUTH_OPEN;
-				pEntry->Sst = SST_AUTH;
+				/*According to specific, if it already in SST_ASSOC, it can not go back */
+				if (pEntry->Sst != SST_ASSOC)
+					pEntry->Sst = SST_AUTH;
 #ifdef RADIUS_MAC_AUTH_SUPPORT
 				if (pEntry->wdev->radius_mac_auth_enable)
 					pEntry->bAllowTraffic = TRUE;
@@ -1045,6 +1054,7 @@ SendAuth:
 			}
 #endif
 		}
+		os_free_mem(auth_info);
 		return;
 	} else
 #endif /* DOT11R_FT_SUPPORT */
@@ -1059,7 +1069,9 @@ SendAuth:
 		if (pEntry) {
 			if (mgmt->u.auth.status_code == MLME_SUCCESS) {
 				pEntry->AuthState = AS_AUTH_OPEN;
-				pEntry->Sst = SST_AUTH;
+				/*According to specific, if it already in SST_ASSOC, it can not go back */
+				if (pEntry->Sst != SST_ASSOC)
+					pEntry->Sst = SST_AUTH;
 #ifdef RADIUS_MAC_AUTH_SUPPORT
 				if (pEntry->wdev->radius_mac_auth_enable)
 					pEntry->bAllowTraffic = TRUE;
@@ -1075,10 +1087,10 @@ SendAuth:
 		}
 	} else
 #endif
-	if ((auth_info.auth_alg == AUTH_MODE_OPEN) &&
+	if ((auth_info->auth_alg == AUTH_MODE_OPEN) &&
 		(!IS_AKM_SHARED(pMbss->wdev.SecConfig.AKMMap))) {
 		if (!pEntry)
-			pEntry = MacTableInsertEntry(pAd, auth_info.addr2, wdev, ENTRY_CLIENT, OPMODE_AP, TRUE);
+			pEntry = MacTableInsertEntry(pAd, auth_info->addr2, wdev, ENTRY_CLIENT, OPMODE_AP, TRUE);
 
 		if (pEntry) {
 			tr_entry = &pAd->MacTab.tr_entry[pEntry->wcid];
@@ -1088,7 +1100,9 @@ SendAuth:
 #endif /* DOT11W_PMF_SUPPORT */
 			{
 				pEntry->AuthState = AS_AUTH_OPEN;
-				pEntry->Sst = SST_AUTH; /* what if it already in SST_ASSOC ??????? */
+				/*According to specific, if it already in SST_ASSOC, it can not go back */
+				if (pEntry->Sst != SST_ASSOC)
+					pEntry->Sst = SST_AUTH;
 			}
 			MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s: pEntry created: auth state:%d, Sst:%d", __func__, pEntry->AuthState, pEntry->Sst));
 			/* APPeerAuthSimpleRspGenAndSend(pAd, pRcvHdr, auth_info.auth_alg, auth_info.auth_seq + 1, MLME_SUCCESS); */
@@ -1104,8 +1118,9 @@ SendAuth:
 			MacTableDeleteEntry(pAd, pEntry->wcid, pEntry->Addr);
 
 		MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("AUTH - Alg=%d, Seq=%d\n",
-				auth_info.auth_alg, auth_info.auth_seq));
+				auth_info->auth_alg, auth_info->auth_seq));
 	}
+	os_free_mem(auth_info);
 }
 
 VOID CFG80211_AssocRespHandler(RTMP_ADAPTER *pAd, VOID *pData, ULONG Data)
@@ -1141,6 +1156,7 @@ VOID CFG80211_AssocRespHandler(RTMP_ADAPTER *pAd, VOID *pData, ULONG Data)
 #ifdef DOT11R_FT_SUPPORT
 	PFT_CFG pFtCfg = NULL;
 	PFT_INFO pFtInfoBuf = NULL; 	/*Wframe-larger-than=1024 warning  removal*/
+	PEID_STRUCT pFtIe = NULL;
 #endif /* DOT11R_FT_SUPPORT */
 #ifdef HOSTAPD_OWE_SUPPORT
 		PEID_STRUCT pEcdhIe = NULL;
@@ -1281,6 +1297,7 @@ VOID CFG80211_AssocRespHandler(RTMP_ADAPTER *pAd, VOID *pData, ULONG Data)
 						break;
 
 					case IE_FT_FTIE:
+						pFtIe = eid_ptr;
 						FT_FillFtIeInfo(eid_ptr, &pFtInfoBuf->FtIeInfo);
 						break;
 
@@ -1454,6 +1471,8 @@ VOID CFG80211_AssocRespHandler(RTMP_ADAPTER *pAd, VOID *pData, ULONG Data)
 		RRM_InsertRRMEnCapIE(pAd, pOutBuffer + FrameLen, &FrameLen, pEntry->func_tb_idx);
 
 #endif /* DOT11K_RRM_SUPPORT */
+
+	ie_info.wdev = wdev;
 
 	/* add WMM IE here */
 	/* printk("%s()=>bWmmCapable=%d,CLINE=%d\n",__FUNCTION__,wdev->bWmmCapable,CLIENT_STATUS_TEST_FLAG(pEntry, fCLIENT_STATUS_WMM_CAPABLE)); */
@@ -1759,10 +1778,10 @@ VOID CFG80211_AssocRespHandler(RTMP_ADAPTER *pAd, VOID *pData, ULONG Data)
 	if ((pFtCfg != NULL) && (pFtCfg->FtCapFlag.Dot11rFtEnable)) {
 		PUINT8	mdie_ptr;
 		UINT8	mdie_len;
-		PUINT8	ftie_ptr = NULL;
-		UINT8	ftie_len = 0;
-		PUINT8  ricie_ptr = NULL;
-		UINT8   ricie_len = 0;
+		/*PUINT8	ftie_ptr = NULL;*/
+		/*UINT8	ftie_len = 0;*/
+		/*PUINT8  ricie_ptr = NULL;*/
+		/*UINT8   ricie_len = 0;*/
 		/* struct _SECURITY_CONFIG *pSecConfig = &pEntry->SecConfig; */
 
 		/* Insert RSNIE if necessary */
@@ -1782,52 +1801,17 @@ VOID CFG80211_AssocRespHandler(RTMP_ADAPTER *pAd, VOID *pData, ULONG Data)
 			pFtInfoBuf->MdIeInfo.MdId,
 			pFtInfoBuf->MdIeInfo.FtCapPlc);
 
+
 		/* Insert FTIE. */
-		if (pFtInfoBuf->FtIeInfo.Len != 0) {
-			ftie_ptr = pOutBuffer+FrameLen;
-			ftie_len = (2 + pFtInfoBuf->FtIeInfo.Len);
-			FT_InsertFTIE(pAd, pOutBuffer+FrameLen, &FrameLen,
-				pFtInfoBuf->FtIeInfo.Len,
-				pFtInfoBuf->FtIeInfo.MICCtr,
-				pFtInfoBuf->FtIeInfo.MIC,
-				pFtInfoBuf->FtIeInfo.ANonce,
-				pFtInfoBuf->FtIeInfo.SNonce);
-		}
-		/* Insert R1KH IE into FTIE. */
-		if (pFtInfoBuf->FtIeInfo.R1khIdLen != 0)
-			FT_FTIE_InsertKhIdSubIE(pAd, pOutBuffer+FrameLen,
-					&FrameLen,
-					FT_R1KH_ID,
-					pFtInfoBuf->FtIeInfo.R1khId,
-					pFtInfoBuf->FtIeInfo.R1khIdLen);
+		if (pFtIe) {
+			ULONG TmpLen = 0;
 
-		/* Insert GTK Key info into FTIE. */
-		if (pFtInfoBuf->FtIeInfo.GtkLen != 0)
-			FT_FTIE_InsertGTKSubIE(pAd, pOutBuffer+FrameLen,
-					&FrameLen,
-					pFtInfoBuf->FtIeInfo.GtkSubIE,
-					pFtInfoBuf->FtIeInfo.GtkLen);
-
-		/* Insert R0KH IE into FTIE. */
-		if (pFtInfoBuf->FtIeInfo.R0khIdLen != 0)
-			FT_FTIE_InsertKhIdSubIE(pAd, pOutBuffer+FrameLen,
-					&FrameLen,
-					FT_R0KH_ID,
-					pFtInfoBuf->FtIeInfo.R0khId,
-					pFtInfoBuf->FtIeInfo.R0khIdLen);
-
-		/* Insert RIC. */
-		if (ie_list->FtInfo.RicInfo.Len) {
-			ULONG TempLen;
-
-			FT_RIC_ResourceRequestHandle(pAd, pEntry,
-						(PUCHAR)ie_list->FtInfo.RicInfo.pRicInfo,
-						ie_list->FtInfo.RicInfo.Len,
-						(PUCHAR)pOutBuffer+FrameLen,
-						(PUINT32)&TempLen);
-			ricie_ptr = (PUCHAR)(pOutBuffer+FrameLen);
-			ricie_len = TempLen;
-			FrameLen += TempLen;
+			MakeOutgoingFrame(pOutBuffer+FrameLen,
+							  &TmpLen,
+							  pFtIe->Len + 2,
+							  pFtIe,
+							  END_OF_ARGS);
+			FrameLen += TmpLen;
 		}
 
 	}
@@ -2744,9 +2728,12 @@ VOID CFG80211_ParseBeaconIE(RTMP_ADAPTER *pAd, BSS_STRUCT *pMbss, struct wifi_de
 
 						NdisMoveMemory(&RsnCap, pTmp, sizeof(RSN_CAPABILITIES));
 						RsnCap.word = cpu2le16(RsnCap.word);
-						if (RsnCap.field.MFPC == 1)
+						if (RsnCap.field.MFPC == 1) {
+                                                        wdev->SecConfig.PmfCfg.MFPC = 1;
 							wdev->SecConfig.PmfCfg.Desired_MFPC = 1;
-							if (RsnCap.field.MFPR == 1) {
+                                                }
+						if (RsnCap.field.MFPR == 1) {
+                                                                wdev->SecConfig.PmfCfg.MFPR = 1;
 								wdev->SecConfig.PmfCfg.Desired_MFPR = 1;
 								wdev->SecConfig.PmfCfg.Desired_PMFSHA256 = 1;
 						}

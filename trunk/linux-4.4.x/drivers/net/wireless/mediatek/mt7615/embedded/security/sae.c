@@ -28,33 +28,13 @@ const SAE_GROUP_OP ffc_group_op = {
 };
 
 static DH_GROUP_INFO dh_groups[] = {
-	DH_GROUP(5, 1),
-	DH_GROUP(1, 1),
-	DH_GROUP(2, 1),
-	DH_GROUP(14, 1),
 	DH_GROUP(15, 1),
-	DH_GROUP(16, 1),
-	DH_GROUP(17, 1),
-	DH_GROUP(18, 1),
-	DH_GROUP(22, 0),
-	DH_GROUP(23, 0),
-	DH_GROUP(24, 0)
 };
 
 
 
 static DH_GROUP_INFO_BI dh_groups_bi[] = {
-	DH_GROUP_BI(5, 1),
-	DH_GROUP_BI(1, 1),
-	DH_GROUP_BI(2, 1),
-	DH_GROUP_BI(14, 1),
 	DH_GROUP_BI(15, 1),
-	DH_GROUP_BI(16, 1),
-	DH_GROUP_BI(17, 1),
-	DH_GROUP_BI(18, 1),
-	DH_GROUP_BI(22, 0),
-	DH_GROUP_BI(23, 0),
-	DH_GROUP_BI(24, 0)
 };
 
 #ifdef BI_POOL_DBG
@@ -65,7 +45,7 @@ int SAE_DEBUG_LEVEL = DBG_LVL_LOUD;
 int SAE_DEBUG_LEVEL2 = DBG_LVL_TRACE;
 int SAE_COST_TIME_DBG_LVL = DBG_LVL_INFO;
 
-UCHAR sae_support_group_list[] = {19, 20, 25, 26};
+UCHAR sae_support_group_list[] = {19, 20};
 
 static UCHAR delete_all_removable_sae_instance(
 	IN SAE_CFG * pSaeCfg)
@@ -110,6 +90,9 @@ INT show_sae_info_proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 
 	if (arg != NULL)
 		input = os_str_toul(arg, 0, 10);
+
+	MTWF_LOG(DBG_CAT_SEC, CATSEC_SAE, DBG_LVL_OFF, ("k iteration varieble: %d, anti clogging th: %d\n",
+							pSaeCfg->k_iteration_var, pSaeCfg->sae_anti_clogging_threshold));
 
 	MTWF_LOG(DBG_CAT_SEC, CATSEC_SAE, DBG_LVL_OFF, ("total ins: %d\n", pSaeCfg->total_ins));
 
@@ -159,6 +142,7 @@ VOID sae_cfg_init(
 	pSaeCfg->dot11RSNASAERetransPeriod = 2;
 	pSaeCfg->total_ins = 0;
 	pSaeCfg->sae_anti_clogging_threshold = 10;
+	pSaeCfg->k_iteration_var = 40;
 	pSaeCfg->last_token_key_time = 0;
 	NdisZeroMemory(&pSaeCfg->token_key, SAE_TOKEN_KEY_LEN);
 
@@ -789,7 +773,7 @@ UCHAR sae_handle_auth(
 
 			} else if (auth_status == MLME_FINITE_CYCLIC_GROUP_NOT_SUPPORTED) {
 				USHORT sae_group;
-				USHORT new_sae_group;
+				USHORT new_sae_group = 0;
 				UCHAR *pos = &Fr->Octet[6];
 				/* 12.4.8.6.4 If the Status code is 77, the protocol instance shall check the finite cyclic group field being rejected.*/
 				/* Check Finite Cyclic Group */
@@ -801,18 +785,32 @@ UCHAR sae_handle_auth(
 					sae_set_retransmit_timer(pSaeIns);
 					goto unfinished;
 				} else {
+					BOOL discard = FALSE;
 					/* If the rejected group matches the last offered group,
 					  * the protocol instance shall choose a different group and generate the PWE and the secret
 					  * values according to 12.4.5.2; it then generates and transmits a new Commit Message to the peer,
 					  * zeros Sync, sets the t0 (retransmission) timer, and remains in Committed state.
 					  */
-					new_sae_group = pSaeCfg->support_group[++pSaeIns->support_group_idx];
 
 					/*If there are no other groups to choose,
 					the protocol instance shall send a Del event to the parent process and transitions back to Nothing state. */
-					if ((new_sae_group != 0)
-						&& (sae_group_allowed(pSaeIns, pSaeCfg->support_group, new_sae_group) != MLME_SUCCESS)
-						&& (sae_prepare_commit(pSaeIns) != MLME_SUCCESS)) {
+
+					pSaeIns->support_group_idx++;
+					if (pSaeIns->support_group_idx < MAX_SIZE_OF_ALLOWED_GROUP)
+						new_sae_group = pSaeCfg->support_group[pSaeIns->support_group_idx];
+
+					if (new_sae_group != 0) {
+
+						if (sae_group_allowed(pSaeIns, pSaeCfg->support_group, new_sae_group) != MLME_SUCCESS)
+							discard = TRUE;
+
+						if (!discard && (sae_prepare_commit(pSaeIns) != MLME_SUCCESS))
+							discard = TRUE;
+
+					}
+					/*If there are no other groups to choose,
+					the protocol instance shall send a Del event to the parent process and transitions back to Nothing state. */
+					if ((new_sae_group == 0) || (discard == TRUE)) {
 						delete_sae_instance(pSaeIns);
 						pSaeIns= NULL;
 						goto unfinished;
@@ -862,6 +860,7 @@ UCHAR sae_handle_auth(
 			if (pSaeIns->state == SAE_NOTHING) {
 				delete_sae_instance(pSaeIns);
 				pSaeIns = NULL;
+				break;
 			}
 			/* 12.4.8.6.4(COMMITTED) If the Status is zero, the finite cyclic group field is checked. If the group is not supported, BadGrp shall be set and the value of Sync shall be checked.
 			  * -If Sync is greater than dot11RSNASAESync, the protocol instance shall send a Del event to the parent process and transitions back to Nothing state.
@@ -1408,9 +1407,11 @@ USHORT sae_parse_commit_scalar(
 		&& SAE_BN_UCMP(peer_scalar, pSaeIns->peer_commit_scalar))
 		pSaeIns->need_recalculate_key = TRUE;
 
-	/* If the scalar value is greater than zero (0) and less than the order, r, of the negotiated group, scalar validation succeeds */
-	/* 0 < scalar < r */
+	/* 12.4.5.4 If the scalar value is greater than zero (0) and less than the order, r, of the negotiated group, scalar validation succeeds */
+	/* according to test plan 4.2.6, we should reject peer if scalar value is 1*/
+	/* 1 < scalar < r */
 	if (SAE_BN_IS_ZERO(peer_scalar)
+		|| SAE_BN_IS_ONE(peer_scalar)
 		|| (SAE_BN_UCMP(peer_scalar, pSaeIns->order) >= 0)) {
 		MTWF_LOG(DBG_CAT_SEC, CATSEC_SAE, DBG_LVL_ERROR,
 				 ("%s(): Invalid peer scalar\n", __func__));
@@ -1504,7 +1505,7 @@ USHORT sae_derive_commit(
 		/* commit-scalar = (rand + mask) modulo r */
 		SAE_BN_MOD_ADD(pSaeIns->sae_rand, mask, pSaeIns->order, &pSaeIns->own_commit_scalar);
 	} while (SAE_BN_IS_ZERO(pSaeIns->own_commit_scalar)
-			 /*|| SAE_BN_IS_ONE(pSaeIns->own_commit_scalar)*/);
+			 || SAE_BN_IS_ONE(pSaeIns->own_commit_scalar));
 
 	sae_record_time_end("derive_commit_scalar_time", &pSaeIns->sae_cost_time.derive_commit_scalar_time);
 	sae_record_time_begin(&pSaeIns->sae_cost_time.derive_commit_element_time);
@@ -1848,6 +1849,28 @@ SAE_BN *sae_gen_rand(
 	return NULL;
 }
 
+INT sae_set_k_iteration(
+	IN struct _RTMP_ADAPTER *ad,
+	IN RTMP_STRING * arg)
+{
+	if (arg == NULL)
+		return FALSE;
+	ad->SaeCfg.k_iteration_var = os_str_tol(arg, 0, 10);
+
+	return TRUE;
+}
+
+INT sae_set_anti_clogging_th(
+	IN struct _RTMP_ADAPTER *ad,
+	IN RTMP_STRING * arg)
+{
+	if (arg == NULL)
+		return FALSE;
+
+	ad->SaeCfg.sae_anti_clogging_threshold = os_str_tol(arg, 0, 10);
+
+	return TRUE;
+}
 
 USHORT sae_group_allowed(
 	IN SAE_INSTANCE *pSaeIns,
@@ -2407,7 +2430,7 @@ USHORT sae_derive_pwe_ecc(
 	IN SAE_INSTANCE *pSaeIns)
 {
 	UCHAR counter = 0;
-	/*UCHAR k = 50;*/
+	UCHAR k = pSaeIns->pParentSaeCfg->k_iteration_var;
 	UCHAR addrs[2 * MAC_ADDR_LEN];
 	BIG_INTEGER_EC_POINT *res = NULL;
 	UCHAR base[LEN_PSK + 1];
@@ -2437,7 +2460,7 @@ USHORT sae_derive_pwe_ecc(
 	ec_group = (EC_GROUP_INFO *)pSaeIns->group_info;
 	ec_group_bi = (EC_GROUP_INFO_BI *)pSaeIns->group_info_bi;
 
-	for (counter = 1; /*counter <= k ||*/ !res; counter++) {
+	for (counter = 1; counter <= k || !res; counter++) {
 		UCHAR shift_idx;
 		SAE_BN *y = NULL;
 		UINT32 i;

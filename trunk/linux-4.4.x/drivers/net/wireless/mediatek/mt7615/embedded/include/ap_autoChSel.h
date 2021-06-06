@@ -204,5 +204,10 @@ UINT8 SelectBestChannel_From_List(
 
 VOID AutoChSelRelease(
 	IN PRTMP_ADAPTER pAd);
+
+VOID auto_ch_select_set_cfg(
+	IN RTMP_ADAPTER *pAd,
+	IN RTMP_STRING *buffer);
+
 #endif /* __AUTOCHSELECT_H__ */
 

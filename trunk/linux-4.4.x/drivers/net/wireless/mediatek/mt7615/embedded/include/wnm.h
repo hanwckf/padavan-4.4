@@ -316,10 +316,10 @@ enum BTM_STATE BTMPeerCurrentState(
 VOID ReceiveWNMNotifyReq(IN PRTMP_ADAPTER pAd,
 			  IN MLME_QUEUE_ELEM *Elem);
 
-#ifndef CONFIG_HOTSPOT_R2/* #ifdef WNM_NEW_API */
+
 NDIS_STATUS wnm_handle_command(IN PRTMP_ADAPTER pAd,
 										IN struct wnm_command *pCmd_data);
-#endif
+
 void WNM_ReadParametersFromFile(
 	IN PRTMP_ADAPTER pAd,
 	RTMP_STRING *tmpbuf,
@@ -460,6 +460,18 @@ VOID RRM_InsertPreferenceSubIE(
 INT Set_SendBTMReq_Proc(
 	IN PRTMP_ADAPTER pAd,
 	IN RTMP_STRING	*arg);
+#endif
+#ifdef MAP_R2
+void SendBTMQueryEvent(PNET_DEV net_dev,
+			const char *peer_mac_addr,
+			const char *btm_query,
+			UINT16 btm_query_len,
+			UINT8 ipc_type);
+
+void SendWNMNotifyEvent(PNET_DEV net_dev,
+			const char *peer_mac_addr,
+			const char *wnm_req,
+			UINT16 wnm_req_len);
 #endif
 #endif /* __WNM_H__ */
 

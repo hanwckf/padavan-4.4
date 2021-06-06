@@ -75,7 +75,7 @@ static INT32 chip_dump_ps_table(struct hdev_ctrl *ctrl, UINT32 ent_type, BOOLEAN
 	ext_bmc_cnt[12] = regValue & 0xff;
 	ext_bmc_cnt[13] = (regValue & 0xff00) >> 8;
 	ext_bmc_cnt[14] = (regValue & 0xff0000) >> 16;
-	MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("PS_info:\n"));
+	MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("PAUSE_info:\n"));
 	MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%08x %08x %08x %08x\n", ps_stat[0], ps_stat[1], ps_stat[2],
 			 ps_stat[3]));
 

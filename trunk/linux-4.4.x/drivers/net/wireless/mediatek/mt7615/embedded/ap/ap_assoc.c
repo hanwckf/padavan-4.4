@@ -754,6 +754,10 @@ BOOLEAN PeerAssocReqCmmSanity(
 	UCHAR i;
 #ifdef CONFIG_MAP_SUPPORT
 	unsigned char map_cap;
+#ifdef MAP_R2
+	UCHAR map_profile;
+	UINT16 map_vid;
+#endif
 #endif
 #ifdef ASUS_AC68_FIX
 	BOOLEAN isFTPossible = TRUE;
@@ -906,8 +910,16 @@ BOOLEAN PeerAssocReqCmmSanity(
 #endif /* IGMP_TVM_SUPPORT */
 
 #ifdef CONFIG_MAP_SUPPORT
-			if (map_check_cap_ie(eid_ptr, &map_cap) == TRUE)
+			if (map_check_cap_ie(eid_ptr, &map_cap
+#ifdef MAP_R2
+				, &map_profile, &map_vid
+#endif
+				) == TRUE) {
 				ie_lists->MAP_AttriValue = map_cap;
+#ifdef MAP_R2
+				ie_lists->MAP_ProfileValue = map_profile;
+#endif
+			}
 #endif /* CONFIG_MAP_SUPPORT */
 
 		case IE_WPA2:
@@ -1240,6 +1252,43 @@ static BOOLEAN is_controller_found(struct wifi_dev *wdev)
 }
 #endif
 
+/*
+    ==========================================================================
+    Description:
+	peer assoc req handling procedure
+    Parameters:
+	Adapter - Adapter pointer
+	Elem - MLME Queue Element
+    Pre:
+	the station has been authenticated and the following information is stored
+    Post  :
+	-# An association response frame is generated and sent to the air
+    ==========================================================================
+ */
+VOID APPeerAssocReqAction(RTMP_ADAPTER *pAd, MLME_QUEUE_ELEM *Elem)
+{
+	ap_cmm_peer_assoc_req_action(pAd, Elem, 0);
+}
+
+/*
+    ==========================================================================
+    Description:
+	mlme reassoc req handling procedure
+    Parameters:
+	Elem -
+    Pre:
+	-# SSID  (Adapter->ApCfg.ssid[])
+	-# BSSID (AP address, Adapter->ApCfg.bssid)
+	-# Supported rates (Adapter->ApCfg.supported_rates[])
+	-# Supported rates length (Adapter->ApCfg.supported_rates_len)
+	-# Tx power (Adapter->ApCfg.tx_power)
+    ==========================================================================
+ */
+VOID APPeerReassocReqAction(RTMP_ADAPTER *pAd, MLME_QUEUE_ELEM *Elem)
+{
+	ap_cmm_peer_assoc_req_action(pAd, Elem, 1);
+}
+
 VOID ap_cmm_peer_assoc_req_action(
 	IN PRTMP_ADAPTER pAd,
 	IN MLME_QUEUE_ELEM * Elem,
@@ -1273,7 +1322,7 @@ VOID ap_cmm_peer_assoc_req_action(
 	BOOLEAN bACLReject = FALSE;
 #ifdef DOT11R_FT_SUPPORT
 	PFT_CFG pFtCfg = NULL;
-	FT_INFO FtInfoBuf = {0};
+	PFT_INFO FtInfoBuf = NULL;
 #endif /* DOT11R_FT_SUPPORT */
 #ifdef WSC_AP_SUPPORT
 	WSC_CTRL *wsc_ctrl;
@@ -1295,6 +1344,20 @@ VOID ap_cmm_peer_assoc_req_action(
 	UINT16 wapp_assoc_fail = NOT_FAILURE;
 #endif /* WAPP_SUPPORT */
 
+#ifdef DOT11R_FT_SUPPORT
+	os_alloc_mem_suspend(NULL, (UCHAR **)&FtInfoBuf, sizeof(FT_INFO));
+
+	if (FtInfoBuf == NULL) {
+		MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
+				 ("%s(): mem alloc failed\n", __func__));
+#ifdef WAPP_SUPPORT
+		wapp_assoc_fail = MLME_NO_RESOURCE;
+#endif /* WAPP_SUPPORT */
+		goto assoc_check;
+	}
+
+	NdisZeroMemory(FtInfoBuf, sizeof(FT_INFO));
+#endif
 
 
 	/* disallow new association */
@@ -1416,6 +1479,17 @@ VOID ap_cmm_peer_assoc_req_action(
 		goto LabelOK;
 	}
 
+#ifdef OCE_FILS_SUPPORT
+	if ((pEntry->filsInfo.is_post_assoc == TRUE) &&
+		(pEntry->filsInfo.auth_algo == AUTH_MODE_FILS) &&
+		IS_AKM_FILS(wdev->SecConfig.AKMMap) &&
+		IS_AKM_FILS(pEntry->SecConfig.AKMMap)) {
+
+		StatusCode = pEntry->filsInfo.status;
+		pEntry->filsInfo.is_post_assoc = FALSE;
+		goto assoc_post;
+	}
+#endif /* OCE_FILS_SUPPORT */
 
 	ie_info.frame_subtype = SUBTYPE_ASSOC_RSP;
 	ie_info.channel = wdev->channel;
@@ -1458,12 +1532,12 @@ VOID ap_cmm_peer_assoc_req_action(
 		if (IS_MAP_ENABLE(pAd)) {
 			MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_INFO,
 					("%s():Assoc Req len=%ld, ASSOC_REQ_LEN = %d\n",
-						__func__, (Elem->MsgLen - LENGTH_802_11), ASSOC_REQ_LEN));
-			if ((Elem->MsgLen - LENGTH_802_11) > ASSOC_REQ_LEN)
-				pEntry->assoc_req_len = ASSOC_REQ_LEN;
+						__func__, Elem->MsgLen, ASSOC_REQ_LEN_MAX));
+			if (Elem->MsgLen > ASSOC_REQ_LEN_MAX)
+				pEntry->assoc_req_len = ASSOC_REQ_LEN_MAX;
 			else
-				pEntry->assoc_req_len = (Elem->MsgLen - LENGTH_802_11);
-			NdisMoveMemory(pEntry->assoc_req_frame, (Elem->Msg + LENGTH_802_11), pEntry->assoc_req_len);
+				pEntry->assoc_req_len = Elem->MsgLen;
+			NdisMoveMemory(pEntry->assoc_req_frame, Elem->Msg, pEntry->assoc_req_len);
 		}
 #endif
 
@@ -1479,6 +1553,47 @@ VOID ap_cmm_peer_assoc_req_action(
 	}
 #endif /* MBO_SUPPORT */
 
+	/* YF@20120419: Refuse the weak signal of AssocReq */
+	rssi = RTMPMaxRssi(pAd,
+					ConvertToRssi(pAd, &Elem->rssi_info, RSSI_IDX_0),
+					ConvertToRssi(pAd, &Elem->rssi_info, RSSI_IDX_1),
+					ConvertToRssi(pAd, &Elem->rssi_info, RSSI_IDX_2)
+#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT)
+					, ConvertToRssi(pAd, &Elem->rssi_info, RSSI_IDX_3)
+#endif
+					);
+	MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_INFO,
+			("ra[%d] ASSOC_REQ Threshold = %d, PktMaxRssi=%d\n",
+			pEntry->func_tb_idx, pAd->ApCfg.MBSSID[pEntry->func_tb_idx].AssocReqRssiThreshold,
+			rssi));
+
+	if ((pAd->ApCfg.MBSSID[pEntry->func_tb_idx].AssocReqRssiThreshold != 0) &&
+		(rssi < pAd->ApCfg.MBSSID[pEntry->func_tb_idx].AssocReqRssiThreshold)) {
+		MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
+				("Reject this ASSOC_REQ due to Weak Signal.\n"));
+#ifdef OCE_SUPPORT
+		if (IS_OCE_ENABLE(wdev)) {
+			struct oce_info *oceInfo = &pEntry->oceInfo;
+			CHAR rssiThres = pAd->ApCfg.MBSSID[pEntry->func_tb_idx].AssocReqRssiThreshold;
+
+			oceInfo->DeltaAssocRSSI = (rssiThres > rssi) ?
+				(rssiThres - rssi) : 0;
+			StatusCode = MLME_DISASSOC_LOW_ACK;
+#ifdef WAPP_SUPPORT
+			wapp_assoc_fail = MLME_UNABLE_HANDLE_STA;
+#endif /* WAPP_SUPPORT */
+			MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_OFF,
+				("%s: Reject the AssocReq and DeltaRssi :%d\n",
+				__func__, oceInfo->DeltaAssocRSSI));
+
+			goto SendAssocResponse;
+		} else
+#endif /* OCE_SUPPORT */
+			bAssocSkip = TRUE;
+	} else {
+		MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("Accept RSSI: ===> %d, %d\n",
+			pAd->ApCfg.MBSSID[pEntry->func_tb_idx].AssocReqRssiThreshold, rssi));
+	}
 #ifdef DOT11W_PMF_SUPPORT
 
 	if ((tr_entry->PortSecured == WPA_802_1X_PORT_SECURED)
@@ -1486,6 +1601,9 @@ VOID ap_cmm_peer_assoc_req_action(
 #ifdef DOT11R_FT_SUPPORT
 		&& (!IS_FT_RSN_STA(pEntry))
 #endif /* DOT11R_FT_SUPPORT */
+#ifdef OCE_FILS_SUPPORT
+		&& (pEntry->filsInfo.auth_algo != AUTH_MODE_FILS)
+#endif /* OCE_FILS_SUPPORT */
 		) {
 		StatusCode = MLME_ASSOC_REJ_TEMPORARILY;
 #ifdef WAPP_SUPPORT
@@ -1501,21 +1619,27 @@ VOID ap_cmm_peer_assoc_req_action(
 #ifdef DOT11R_FT_SUPPORT
 	&& (!IS_FT_STA(pEntry))
 #endif /* DOT11R_FT_SUPPORT */
+#ifdef OCE_FILS_SUPPORT
+		&& (pEntry->filsInfo.auth_algo != AUTH_MODE_FILS)
+#endif /* OCE_FILS_SUPPORT */
 		&& ((!IS_AKM_OPEN(pEntry->SecConfig.AKMMap)) || (!IS_AKM_SHARED(pEntry->SecConfig.AKMMap))
 #ifdef DOT1X_SUPPORT
 			|| IS_IEEE8021X(&pEntry->SecConfig)
 #endif /* DOT1X_SUPPORT */
 		   )) {
-		ASIC_SEC_INFO Info = {0};
+		ASIC_SEC_INFO *Info;
 		/* clear GTK state */
 		pEntry->SecConfig.Handshake.GTKState = REKEY_NEGOTIATING;
 		NdisZeroMemory(&pEntry->SecConfig.PTK, LEN_MAX_PTK);
 		/* Set key material to Asic */
-		os_zero_mem(&Info, sizeof(ASIC_SEC_INFO));
-		Info.Operation = SEC_ASIC_REMOVE_PAIRWISE_KEY;
-		Info.Wcid = pEntry->wcid;
+
+		os_alloc_mem(pAd, (UCHAR **)&Info, sizeof(ASIC_SEC_INFO));
+		os_zero_mem(Info, sizeof(ASIC_SEC_INFO));
+
+		Info->Operation = SEC_ASIC_REMOVE_PAIRWISE_KEY;
+		Info->Wcid = pEntry->wcid;
 		/* Set key material to Asic */
-		HW_ADDREMOVE_KEYTABLE(pAd, &Info);
+		HW_ADDREMOVE_KEYTABLE(pAd, Info);
 #if defined(DOT1X_SUPPORT) && !defined(RADIUS_ACCOUNTING_SUPPORT)
 
 		/* Notify 802.1x daemon to clear this sta info */
@@ -1524,6 +1648,7 @@ VOID ap_cmm_peer_assoc_req_action(
 			DOT1X_InternalCmdAction(pAd, pEntry, DOT1X_DISCONNECT_ENTRY);
 
 #endif /* DOT1X_SUPPORT */
+		os_free_mem(Info);
 	}
 
 #ifdef WSC_AP_SUPPORT
@@ -1635,7 +1760,7 @@ VOID ap_cmm_peer_assoc_req_action(
 		if ((pFtCfg->FtCapFlag.Dot11rFtEnable)
 			&& (StatusCode == MLME_SUCCESS))
 			StatusCode = FT_AssocReqHandler(pAd, isReassoc, pFtCfg, pEntry,
-											&ie_list->FtInfo, &FtInfoBuf);
+											&ie_list->FtInfo, FtInfoBuf);
 
 #ifdef WAPP_SUPPORT
 		if (StatusCode != MLME_SUCCESS)
@@ -1695,9 +1820,8 @@ VOID ap_cmm_peer_assoc_req_action(
 	}
 #endif /* IGMP_TVM_SUPPORT */
 
-#ifdef DOT11W_PMF_SUPPORT
 SendAssocResponse:
-#endif /* DOT11W_PMF_SUPPORT */
+
 	/* 3. send Association Response */
 	NStatus = MlmeAllocateMemory(pAd, &pOutBuffer);
 
@@ -1731,27 +1855,6 @@ SendAssocResponse:
 	/* TODO: need to check rate in support rate element, not number */
 	if (FlgIs11bSta == 1)
 		SupRateLen = 4;
-
-	/* YF@20120419: Refuse the weak signal of AssocReq */
-	rssi = RTMPMaxRssi(pAd,
-					   ConvertToRssi(pAd, &Elem->rssi_info, RSSI_IDX_0),
-					   ConvertToRssi(pAd, &Elem->rssi_info, RSSI_IDX_1),
-					   ConvertToRssi(pAd, &Elem->rssi_info, RSSI_IDX_2)
-#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT)
-					   , ConvertToRssi(pAd, &Elem->rssi_info, RSSI_IDX_3)
-#endif
-					   );
-	MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_INFO,
-			 ("ra[%d] ASSOC_REQ Threshold = %d, PktMaxRssi=%d\n",
-			  pEntry->func_tb_idx, pAd->ApCfg.MBSSID[pEntry->func_tb_idx].AssocReqRssiThreshold,
-			  rssi));
-
-	if ((pAd->ApCfg.MBSSID[pEntry->func_tb_idx].AssocReqRssiThreshold != 0) &&
-		(rssi < pAd->ApCfg.MBSSID[pEntry->func_tb_idx].AssocReqRssiThreshold)) {
-		MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
-				 ("Reject this ASSOC_REQ due to Weak Signal.\n"));
-		bAssocSkip = TRUE;
-	}
 
 	if (bACLReject == TRUE || bAssocSkip) {
 		MgtMacHeaderInit(pAd, &AssocRspHdr, SubType, 0, ie_list->Addr2,
@@ -1816,10 +1919,15 @@ SendAssocResponse:
 #ifdef CONFIG_MAP_SUPPORT
 	if (IS_MAP_ENABLE(pAd)) {
 		pEntry->DevPeerRole = ie_list->MAP_AttriValue;
+#ifdef MAP_R2
+		pEntry->profile = ie_list->MAP_ProfileValue;
+#endif
 		if ((IS_MAP_TURNKEY_ENABLE(pAd)) &&
-		    ((pEntry->DevPeerRole & BIT(MAP_ROLE_BACKHAUL_STA)) &&
+		    (((pEntry->DevPeerRole & BIT(MAP_ROLE_BACKHAUL_STA)) &&
 		    (wdev->MAPCfg.DevOwnRole & BIT(MAP_ROLE_BACKHAUL_BSS)) &&
-		    !(is_controller_found(wdev)))) {
+		    !(is_controller_found(wdev))) ||
+		    ((!ie_list->MAP_AttriValue) &&
+			(!(wdev->MAPCfg.DevOwnRole & BIT(MAP_ROLE_FRONTHAUL_BSS)))))) {
 			MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_OFF,
 				("disallowing connection, DevOwnRole=%u,DevPeerRole=%u,controller=%d\n",
 				wdev->MAPCfg.DevOwnRole, pEntry->DevPeerRole, is_controller_found(wdev)));
@@ -1959,114 +2067,27 @@ SendAssocResponse:
 		}
 	}
 
-	/* 7.3.2.27 Extended Capabilities IE */
-	{
-		ULONG TmpLen, infoPos;
-		PUCHAR pInfo;
-		UCHAR extInfoLen;
-		BOOLEAN bNeedAppendExtIE = FALSE;
-		EXT_CAP_INFO_ELEMENT extCapInfo;
-#ifdef RT_BIG_ENDIAN
-		UCHAR *pextCapInfo;
-#endif
-
-		extInfoLen = sizeof(EXT_CAP_INFO_ELEMENT);
-		NdisZeroMemory(&extCapInfo, extInfoLen);
-#ifdef DOT11_N_SUPPORT
-#ifdef DOT11N_DRAFT3
-
-		/* P802.11n_D1.10, HT Information Exchange Support */
-		if (WMODE_CAP_N(wdev->PhyMode)
-			&& (wdev->channel <= 14)
-			&& (pAd->CommonCfg.bBssCoexEnable == TRUE)
-		   )
-			extCapInfo.BssCoexistMgmtSupport = 1;
-
-#endif /* DOT11N_DRAFT3 */
-#endif /* DOT11_N_SUPPORT */
+	ie_info.frame_buf = (UCHAR *)(pOutBuffer + FrameLen);
+	FrameLen += build_extended_cap_ie(pAd, &ie_info);
 #ifdef CONFIG_DOT11V_WNM
 		/* #ifdef CONFIG_HOTSPOT_R2 Remove for WNM independance */
-
 		if (ie_list->ExtCapInfo.BssTransitionManmt == 1) {
 			pEntry->bBSSMantSTASupport = TRUE;
-			if (pMbss->WNMCtrl.WNMBTMEnable)
-				extCapInfo.BssTransitionManmt = 1;
 		}
-		/* #endif CONFIG_HOTSPOT_R2 */
 #endif /* CONFIG_DOT11V_WNM */
 
-#ifdef CONFIG_DOT11U_INTERWORKING
-	    if (pMbss->GASCtrl.b11U_enable)
-		extCapInfo.interworking = 1;
-#endif /* CONFIG_DOT11U_INTERWORKING */
 
-#ifdef DOT11_VHT_AC
-
-		if (WMODE_CAP_AC(wdev->PhyMode) &&
-			(wdev->channel > 14))
-			extCapInfo.operating_mode_notification = 1;
-
-#endif /* DOT11_VHT_AC */
-#ifdef FTM_SUPPORT
-
-		/* add IE_EXT_CAPABILITY IE here */
-		if (pAd->pFtmCtrl->bSetCivicRpt)
-			extCapInfo.civic_location = 1;
-
-		if (pAd->pFtmCtrl->bSetLciRpt)
-			extCapInfo.geospatial_location = 1;
-
-		/* 802.11mc D3.0: 10.24.6.2 (p.1717):
-			"A STA in which dot11FineTimingMsmtRespActivated is true shall set the Fine Timing Measurement
-			Responder field of the Extended Capabilities element to 1."
-		*/
-		/* 8.4.2.26 Extended Capabilities element (p.817):
-			Capabilities field= 70: Fine Timing Measurement Responder (p.823)
-		*/
-		extCapInfo.ftm_resp = 1;
-#endif /* FTM_SUPPORT */
-#ifdef RT_BIG_ENDIAN
-		pextCapInfo = (UCHAR *)&extCapInfo;
-		*((UINT32 *)pextCapInfo) = cpu2le32(*((UINT32 *)pextCapInfo));
-		pextCapInfo = (UCHAR *)&extCapInfo;
-		*((UINT32 *)(pextCapInfo + 4)) = cpu2le32(*((UINT32 *)(pextCapInfo + 4)));
-#endif
-
-		pInfo = (UCHAR *)(&extCapInfo);
-
-		for (infoPos = 0; infoPos < extInfoLen; infoPos++) {
-			if (pInfo[infoPos] != 0) {
-				bNeedAppendExtIE = TRUE;
-				break;
-			}
-		}
-
-		if (bNeedAppendExtIE == TRUE) {
-			for (infoPos = (extInfoLen - 1); infoPos >= EXT_CAP_MIN_SAFE_LENGTH; infoPos--) {
-				if (pInfo[infoPos] == 0)
-					extInfoLen--;
-				else
-					break;
-			}
-#ifdef RT_BIG_ENDIAN
-			RTMPEndianChange((UCHAR *)&extCapInfo, 8);
-#endif
-
-			MakeOutgoingFrame(pOutBuffer + FrameLen, &TmpLen,
-							  1,			&ExtCapIe,
-							  1,			&extInfoLen,
-							  extInfoLen,	&extCapInfo,
-							  END_OF_ARGS);
-			FrameLen += TmpLen;
-		}
-	}
 	/* add Ralink-specific IE here - Byte0.b0=1 for aggregation, Byte0.b1=1 for piggy-back */
 	FrameLen += build_vendor_ie(pAd, wdev, (pOutBuffer + FrameLen), VIE_ASSOC_RESP
 							   );
 
 #ifdef MBO_SUPPORT
-	if (IS_MBO_ENABLE(wdev))
-		MakeMboOceIE(pAd, wdev, pOutBuffer+FrameLen, &FrameLen, MBO_FRAME_TYPE_ASSOC_RSP);
+	if (IS_MBO_ENABLE(wdev)
+#ifdef OCE_SUPPORT
+		|| IS_OCE_ENABLE(wdev)
+#endif /* OCE_SUPPORT */
+		)
+		MakeMboOceIE(pAd, wdev, pEntry, pOutBuffer+FrameLen, &FrameLen, MBO_FRAME_TYPE_ASSOC_RSP);
 #endif /* MBO_SUPPORT */
 
 #ifdef WSC_AP_SUPPORT
@@ -2127,11 +2148,11 @@ SendAssocResponse:
 		struct _SECURITY_CONFIG *pSecConfig = &pEntry->SecConfig;
 
 		/* Insert RSNIE if necessary */
-		if (FtInfoBuf.RSNIE_Len != 0) {
+		if (FtInfoBuf->RSNIE_Len != 0) {
 			ULONG TmpLen;
 
 			MakeOutgoingFrame(pOutBuffer + FrameLen,      &TmpLen,
-							  FtInfoBuf.RSNIE_Len,		FtInfoBuf.RSN_IE,
+							  FtInfoBuf->RSNIE_Len,		FtInfoBuf->RSN_IE,
 							  END_OF_ARGS);
 			FrameLen += TmpLen;
 		}
@@ -2140,54 +2161,54 @@ SendAssocResponse:
 		mdie_ptr = pOutBuffer + FrameLen;
 		mdie_len = 5;
 		/* Insert MdId only if the Peer has sent one */
-		if (FtInfoBuf.MdIeInfo.Len != 0) {
+		if (FtInfoBuf->MdIeInfo.Len != 0) {
 			FT_InsertMdIE(pAd, pOutBuffer + FrameLen,
 						  &FrameLen,
-						  FtInfoBuf.MdIeInfo.MdId,
-						  FtInfoBuf.MdIeInfo.FtCapPlc);
+					  FtInfoBuf->MdIeInfo.MdId,
+					  FtInfoBuf->MdIeInfo.FtCapPlc);
 		}
 		/* Insert FTIE. */
-		if (FtInfoBuf.FtIeInfo.Len != 0) {
+		if (FtInfoBuf->FtIeInfo.Len != 0) {
 			ftie_ptr = pOutBuffer + FrameLen;
-			ftie_len = (2 + FtInfoBuf.FtIeInfo.Len);
+			ftie_len = (2 + FtInfoBuf->FtIeInfo.Len);
 			FT_InsertFTIE(pAd, pOutBuffer + FrameLen, &FrameLen,
-						  FtInfoBuf.FtIeInfo.Len,
-						  FtInfoBuf.FtIeInfo.MICCtr,
-						  FtInfoBuf.FtIeInfo.MIC,
-						  FtInfoBuf.FtIeInfo.ANonce,
-						  FtInfoBuf.FtIeInfo.SNonce);
+						  FtInfoBuf->FtIeInfo.Len,
+						  FtInfoBuf->FtIeInfo.MICCtr,
+						  FtInfoBuf->FtIeInfo.MIC,
+						  FtInfoBuf->FtIeInfo.ANonce,
+						  FtInfoBuf->FtIeInfo.SNonce);
 		}
 
 		/* Insert R1KH IE into FTIE. */
-		if (FtInfoBuf.FtIeInfo.R1khIdLen != 0)
+		if (FtInfoBuf->FtIeInfo.R1khIdLen != 0)
 			FT_FTIE_InsertKhIdSubIE(pAd, pOutBuffer + FrameLen,
 									&FrameLen,
 									FT_R1KH_ID,
-									FtInfoBuf.FtIeInfo.R1khId,
-									FtInfoBuf.FtIeInfo.R1khIdLen);
+									FtInfoBuf->FtIeInfo.R1khId,
+									FtInfoBuf->FtIeInfo.R1khIdLen);
 
 		/* Insert GTK Key info into FTIE. */
-		if (FtInfoBuf.FtIeInfo.GtkLen != 0)
+		if (FtInfoBuf->FtIeInfo.GtkLen != 0)
 			FT_FTIE_InsertGTKSubIE(pAd, pOutBuffer + FrameLen,
 								   &FrameLen,
-								   FtInfoBuf.FtIeInfo.GtkSubIE,
-								   FtInfoBuf.FtIeInfo.GtkLen);
+								   FtInfoBuf->FtIeInfo.GtkSubIE,
+								   FtInfoBuf->FtIeInfo.GtkLen);
 
 		/* Insert R0KH IE into FTIE. */
-		if (FtInfoBuf.FtIeInfo.R0khIdLen != 0)
+		if (FtInfoBuf->FtIeInfo.R0khIdLen != 0)
 			FT_FTIE_InsertKhIdSubIE(pAd, pOutBuffer + FrameLen,
 									&FrameLen,
 									FT_R0KH_ID,
-									FtInfoBuf.FtIeInfo.R0khId,
-									FtInfoBuf.FtIeInfo.R0khIdLen);
+									FtInfoBuf->FtIeInfo.R0khId,
+									FtInfoBuf->FtIeInfo.R0khIdLen);
 
 		/* Insert IGTK Key info into FTIE. */
 
-		if (FtInfoBuf.FtIeInfo.IGtkLen != 0) {
+		if (FtInfoBuf->FtIeInfo.IGtkLen != 0) {
 			FT_FTIE_InsertIGTKSubIE(pAd, pOutBuffer+FrameLen,
 					&FrameLen,
-					FtInfoBuf.FtIeInfo.IGtkSubIE,
-					FtInfoBuf.FtIeInfo.IGtkLen);
+					FtInfoBuf->FtIeInfo.IGtkSubIE,
+					FtInfoBuf->FtIeInfo.IGtkLen);
 		}
 
 		/* Insert RIC. */
@@ -2205,7 +2226,7 @@ SendAssocResponse:
 		}
 
 		/* Calculate the FT MIC for FT procedure */
-		if (FtInfoBuf.FtIeInfo.MICCtr.field.IECnt) {
+		if (FtInfoBuf->FtIeInfo.MICCtr.field.IECnt) {
 			UINT8	ft_mic[FT_MIC_LEN];
 			PFT_FTIE	pFtIe;
 
@@ -2213,8 +2234,8 @@ SendAssocResponse:
 							wdev->bssid,
 							pEntry->FT_PTK,
 							6,
-							FtInfoBuf.RSN_IE,
-							FtInfoBuf.RSNIE_Len,
+							FtInfoBuf->RSN_IE,
+							FtInfoBuf->RSNIE_Len,
 							mdie_ptr,
 							mdie_len,
 							ftie_ptr,
@@ -2253,6 +2274,10 @@ SendAssocResponse:
 
 #endif /* DOT11R_FT_SUPPORT */
 
+#ifdef OCE_FILS_SUPPORT
+	ie_info.frame_buf = (UCHAR *)(pOutBuffer + FrameLen);
+	FrameLen += oce_build_ies(pAd, &ie_info, TRUE);
+#endif /*OCE_FILS_SUPPORT */
 #ifdef CONFIG_OWE_SUPPORT
 	if (IS_AKM_OWE_Entry(pEntry) && (StatusCode == MLME_SUCCESS)) {
 		BOOLEAN need_ecdh_ie = FALSE;
@@ -2289,8 +2314,72 @@ SendAssocResponse:
 	MakeTVMIE(pAd, wdev, pOutBuffer, &FrameLen);
 #endif /* IGMP_TVM_SUPPORT*/
 
+#ifdef OCE_FILS_SUPPORT
+	if (StatusCode == MLME_SUCCESS && (pEntry->Sst == SST_ASSOC)) {
+		if ((pEntry->filsInfo.auth_algo == AUTH_MODE_FILS) &&
+			IS_AKM_FILS(wdev->SecConfig.AKMMap) &&
+			IS_AKM_FILS(pEntry->SecConfig.AKMMap)) {
+			struct fils_info *filsInfo = &pEntry->filsInfo;
+			PFRAME_802_11 Fr = (PFRAME_802_11)Elem->Msg;
+
+			if (!filsInfo->is_pending_assoc) {
+				MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_OFF,
+						 ("STA - %02x:%02x:%02x:%02x:%02x:%02x do FILS assoc with Pending\n",
+						  PRINT_MAC(ie_list->Addr2)));
+
+				if (filsInfo->pending_ie) {
+					os_free_mem(filsInfo->pending_ie);
+					filsInfo->pending_ie_len = 0;
+					filsInfo->pending_ie = NULL;
+				}
+
+				if (filsInfo->extra_ie) {
+					os_free_mem(filsInfo->extra_ie);
+					filsInfo->extra_ie_len = 0;
+					filsInfo->extra_ie = NULL;
+				}
+
+				filsInfo->pending_ie_len = Elem->MsgLen;
+				os_alloc_mem(NULL, (UCHAR **)&filsInfo->pending_ie, filsInfo->pending_ie_len);
+				if (!filsInfo->pending_ie)
+					goto LabelOK;
+
+				NdisMoveMemory(filsInfo->pending_ie, Elem->Msg, filsInfo->pending_ie_len);
+
+				filsInfo->extra_ie_len = FrameLen;
+				os_alloc_mem(NULL, (UCHAR **)&filsInfo->extra_ie, filsInfo->extra_ie_len);
+				if (!filsInfo->extra_ie) {
+					goto LabelOK;
+				}
+				NdisMoveMemory(filsInfo->extra_ie, pOutBuffer, filsInfo->extra_ie_len);
+
+				NdisMoveMemory(&filsInfo->rssi_info, &Elem->rssi_info, sizeof(struct raw_rssi_info));
+				if (isReassoc)
+					filsInfo->pending_action = APPeerReassocReqAction;
+				else
+					filsInfo->pending_action = APPeerAssocReqAction;
+
+				filsInfo->is_pending_assoc = TRUE;
+				filsInfo->last_pending_id = Fr->Hdr.Sequence;
+
+				DOT1X_InternalCmdAction(pAd, pEntry, DOT1X_MLME_EVENT);
+				goto free_check;
+			} else {
+				MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_OFF,
+						 ("STA - %02x:%02x:%02x:%02x:%02x:%02x skip FILS assoc in Pending\n",
+						  PRINT_MAC(ie_list->Addr2)));
+				goto free_check;
+			}
+		}
+	}
+#endif /* OCE_FILS_SUPPORT */
 	MiniportMMRequest(pAd, 0, pOutBuffer, FrameLen);
 	MlmeFreeMemory((PVOID) pOutBuffer);
+
+#ifdef OCE_FILS_SUPPORT
+assoc_post:
+#endif /* OCE_FILS_SUPPORT */
+
 #ifdef DOT11W_PMF_SUPPORT
 
 	if (StatusCode == MLME_ASSOC_REJ_TEMPORARILY)
@@ -2322,16 +2411,17 @@ SendAssocResponse:
 				Do not do any check here.
 				We need to send MOVE-Req frame to AP1 even open mode.
 			*/
-			/*		if (IS_FT_RSN_STA(pEntry) && (FtInfo.FtIeInfo.Len != 0)) */
-			if (isReassoc == 1) {
-				/* only for reassociation frame */
-				FT_KDP_EVT_REASSOC EvtReAssoc;
+			if (IS_FT_RSN_STA(pEntry) && (ie_list->FtInfo.FtIeInfo.Len != 0)) {
+				if (isReassoc == 1) {
+					/* only for reassociation frame */
+					FT_KDP_EVT_REASSOC EvtReAssoc;
 
-				EvtReAssoc.SeqNum = 0;
-				NdisMoveMemory(EvtReAssoc.MacAddr, pEntry->Addr, MAC_ADDR_LEN);
-				NdisMoveMemory(EvtReAssoc.OldApMacAddr, ie_list->ApAddr, MAC_ADDR_LEN);
-				FT_KDP_EVENT_INFORM(pAd, pEntry->func_tb_idx, FT_KDP_SIG_FT_REASSOCIATION,
-									&EvtReAssoc, sizeof(EvtReAssoc), NULL);
+					EvtReAssoc.SeqNum = 0;
+					NdisMoveMemory(EvtReAssoc.MacAddr, pEntry->Addr, MAC_ADDR_LEN);
+					NdisMoveMemory(EvtReAssoc.OldApMacAddr, ie_list->ApAddr, MAC_ADDR_LEN);
+					FT_KDP_EVENT_INFORM(pAd, pEntry->func_tb_idx, FT_KDP_SIG_FT_REASSOCIATION,
+										&EvtReAssoc, sizeof(EvtReAssoc), NULL);
+				}
 			}
 		}
 
@@ -2385,21 +2475,25 @@ SendAssocResponse:
 #endif
 
 					if (IS_CIPHER_WEP(pEntry->SecConfig.PairwiseCipher)) {
-						ASIC_SEC_INFO Info = {0};
-						/* Set key material to Asic */
-						os_zero_mem(&Info, sizeof(ASIC_SEC_INFO));
-						Info.Operation = SEC_ASIC_ADD_PAIRWISE_KEY;
-						Info.Direction = SEC_ASIC_KEY_BOTH;
-						Info.Wcid = pEntry->wcid;
-						Info.BssIndex = pEntry->func_tb_idx;
-						Info.KeyIdx = pEntry->SecConfig.PairwiseKeyId;
-						Info.Cipher = pEntry->SecConfig.PairwiseCipher;
-						Info.KeyIdx = pEntry->SecConfig.PairwiseKeyId;
-						os_move_mem(&Info.Key,
+					        ASIC_SEC_INFO *Info;
+                                                os_alloc_mem(pAd, (UCHAR **)&Info, sizeof(ASIC_SEC_INFO));
+						os_zero_mem(Info, sizeof(ASIC_SEC_INFO));
+
+						/* Set key material to Asic */						
+						Info->Operation = SEC_ASIC_ADD_PAIRWISE_KEY;
+						Info->Direction = SEC_ASIC_KEY_BOTH;
+						Info->Wcid = pEntry->wcid;
+						Info->BssIndex = pEntry->func_tb_idx;
+						Info->KeyIdx = pEntry->SecConfig.PairwiseKeyId;
+						Info->Cipher = pEntry->SecConfig.PairwiseCipher;
+						Info->KeyIdx = pEntry->SecConfig.PairwiseKeyId;
+						os_move_mem(&Info->Key,
 							    &pEntry->SecConfig.WepKey[pEntry->SecConfig.PairwiseKeyId],
 							    sizeof(SEC_KEY_INFO));
-						os_move_mem(&Info.PeerAddr[0], pEntry->Addr, MAC_ADDR_LEN);
-						HW_ADDREMOVE_KEYTABLE(pAd, &Info);
+						os_move_mem(&Info->PeerAddr[0], pEntry->Addr, MAC_ADDR_LEN);
+						HW_ADDREMOVE_KEYTABLE(pAd, Info);
+
+						os_free_mem(Info);
 					}
 				}
 
@@ -2458,6 +2552,9 @@ SendAssocResponse:
 					os_move_mem(&pEntry->SecConfig.Handshake.SAddr, pEntry->Addr, MAC_ADDR_LEN);
 
 					if (!IS_AKM_WPA3PSK(pEntry->SecConfig.AKMMap) &&
+#ifdef DPP_SUPPORT
+						!(IS_AKM_DPP(pEntry->SecConfig.AKMMap)) &&
+#endif /* DPP_SUPPORT */
 					    !(IS_AKM_OWE(pEntry->SecConfig.AKMMap)))
 						os_move_mem(&pEntry->SecConfig.PMK, &wdev->SecConfig.PMK, LEN_PMK);
 
@@ -2675,52 +2772,21 @@ assoc_check:
 #ifdef WAPP_SUPPORT
 	if (StatusCode != MLME_SUCCESS && wapp_assoc_fail != NOT_FAILURE)
 		wapp_send_sta_connect_rejected(pAd, wdev, ie_list->Addr2,
-			ie_list->Addr1, wapp_cnnct_stage, wapp_assoc_fail);
+			ie_list->Addr1, wapp_cnnct_stage, wapp_assoc_fail, StatusCode, 0);
 #endif /* WAPP_SUPPORT */
 
+#ifdef OCE_FILS_SUPPORT
+free_check:
+#endif /* OCE_FILS_SUPPORT */
 	if (ie_list != NULL)
 		os_free_mem(ie_list);
+#ifdef DOT11R_FT_SUPPORT
+	if (FtInfoBuf != NULL)
+		os_free_mem(FtInfoBuf);
+#endif
 	return;
 }
 
-
-
-/*
-    ==========================================================================
-    Description:
-	peer assoc req handling procedure
-    Parameters:
-	Adapter - Adapter pointer
-	Elem - MLME Queue Element
-    Pre:
-	the station has been authenticated and the following information is stored
-    Post  :
-	-# An association response frame is generated and sent to the air
-    ==========================================================================
- */
-VOID APPeerAssocReqAction(RTMP_ADAPTER *pAd, MLME_QUEUE_ELEM *Elem)
-{
-	ap_cmm_peer_assoc_req_action(pAd, Elem, 0);
-}
-
-/*
-    ==========================================================================
-    Description:
-	mlme reassoc req handling procedure
-    Parameters:
-	Elem -
-    Pre:
-	-# SSID  (Adapter->ApCfg.ssid[])
-	-# BSSID (AP address, Adapter->ApCfg.bssid)
-	-# Supported rates (Adapter->ApCfg.supported_rates[])
-	-# Supported rates length (Adapter->ApCfg.supported_rates_len)
-	-# Tx power (Adapter->ApCfg.tx_power)
-    ==========================================================================
- */
-VOID APPeerReassocReqAction(RTMP_ADAPTER *pAd, MLME_QUEUE_ELEM *Elem)
-{
-	ap_cmm_peer_assoc_req_action(pAd, Elem, 1);
-}
 
 
 /*
@@ -2827,6 +2893,14 @@ VOID APPeerDisassocReqAction(RTMP_ADAPTER *pAd, MLME_QUEUE_ELEM *Elem)
 			DiagConnError(pAd, pEntry->func_tb_idx, pEntry->Addr,
 				DIAG_CONN_DEAUTH, REASON_DEAUTH_STA_LEAVING);
 #endif
+	/*	printk("APPeerDisassocReqAction normal\n");*/
+
+		if (IS_ENTRY_CLIENT(pEntry)) {
+#ifdef MAP_R2
+			wapp_send_sta_disassoc_stats_event(pAd, pEntry, Reason);
+		/*	// TODO: if the port secured is not true, then send failed assoc.*/
+#endif
+		}
 		MacTableDeleteEntry(pAd, Elem->Wcid, Addr2);
 #ifdef MAC_REPEATER_SUPPORT
 
@@ -2962,6 +3036,10 @@ VOID APMlmeKickOutSta(RTMP_ADAPTER *pAd, UCHAR *pStaAddr, UCHAR Wcid, USHORT Rea
 		if (NStatus != NDIS_STATUS_SUCCESS)
 			return;
 
+#ifdef MAP_R2
+		wapp_handle_sta_disassoc(pAd, Wcid, Reason);
+#endif
+
 		MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 				 ("ASSOC - MLME disassociates %02x:%02x:%02x:%02x:%02x:%02x; Send DISASSOC request\n",
 				  PRINT_MAC(pStaAddr)));
@@ -3083,6 +3161,10 @@ VOID APCls3errAction(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk)
 		if (IS_ENTRY_CLIENT(pEntry))
 			DiagConnError(pAd, pEntry->func_tb_idx, pEntry->Addr, DIAG_CONN_DEAUTH, Reason);
 #endif
+#ifdef MAP_R2
+		wapp_handle_sta_disassoc(pAd, pEntry->wcid, Reason);
+#endif
+
 		/*ApLogEvent(pAd, pAddr, EVENT_DISASSOCIATED); */
 		mac_entry_delete(pAd, pEntry);
 	}

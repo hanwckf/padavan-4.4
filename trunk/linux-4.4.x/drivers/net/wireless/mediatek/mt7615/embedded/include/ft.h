@@ -32,7 +32,10 @@
 #define INOUT
 
 /* Macro */
-#define IS_FT_STA(__A) ((__A)->MdIeInfo.Len != 0)
+#define IS_FT_STA(__A) \
+	(((__A) && ((__A)->MdIeInfo.Len != 0) && IS_AKM_OPEN (__A->SecConfig.AKMMap)) \
+	|| IS_FT_RSN_STA(__A))
+
 #define IS_FT_ACTION_FRAME(__A) ((*(__A + 13) == 0x89) && (*(__A + 14) == 0x0d))
 
 /* ASCII to Integer */

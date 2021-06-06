@@ -189,7 +189,8 @@ VOID InsertChannelRepIE(
 	IN RTMP_STRING *pCountry,
 	IN UINT8 RegulatoryClass,
 	IN UINT8 *ChReptList,
-	IN UCHAR PhyMode
+	IN UCHAR PhyMode,
+	IN UINT8 IfIdx
 );
 
 VOID InsertBcnReportIndicationReqIE(

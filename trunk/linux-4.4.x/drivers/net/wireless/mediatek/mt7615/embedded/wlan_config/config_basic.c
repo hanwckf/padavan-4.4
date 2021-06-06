@@ -186,6 +186,17 @@ VOID wpf_init(struct _RTMP_ADAPTER *ad)
 		}
 
 #endif /*APCLI_SUPPORT*/
+#ifdef SNIFFER_SUPPORT
+		for (i = 0; i < MONITOR_MAX_DEV_NUM; i++) {
+			wdev = &ad->monitor_ctrl[i].wdev;
+			if (wpf_config_acquire(ad, wdev) < 0) {
+				MTWF_LOG(DBG_CAT_TX, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
+					 ("%s:[ERROR] wdev_cfg is full!\n",
+					  __func__));
+				return;
+			}
+		}
+#endif
 	}
 #endif /*CONFIG_AP_SUPPORT*/
 }
@@ -235,6 +246,17 @@ VOID wpf_exit(struct _RTMP_ADAPTER *ad)
 		}
 
 #endif /*APCLI_SUPPORT*/
+#ifdef SNIFFER_SUPPORT
+		for (i = 0; i < MONITOR_MAX_DEV_NUM; i++) {
+			wdev = &ad->monitor_ctrl[i].wdev;
+			if (wpf_config_release(ad, wdev) < 0) {
+				MTWF_LOG(DBG_CAT_TX, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
+					 ("%s:[ERROR] wdev_cfg is full!\n",
+					  __func__));
+				return;
+			}
+		}
+#endif
 	}
 #endif /*CONFIG_AP_SUPPORT*/
 }

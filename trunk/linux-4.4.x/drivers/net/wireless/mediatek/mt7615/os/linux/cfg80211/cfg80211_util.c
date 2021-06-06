@@ -154,7 +154,83 @@ static const UINT32 CipherSuites[] = {
 #endif
 #endif
 };
-
+/*Changes to support 4_19 kernel version*/
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
+static struct ieee80211_sband_iftype_data iwl_he_capa = {
+	.types_mask = BIT(NL80211_IFTYPE_STATION) | BIT(NL80211_IFTYPE_AP),
+	.he_cap = {
+		.has_he = true,
+		.he_cap_elem = {
+			.mac_cap_info[0] =
+				IEEE80211_HE_MAC_CAP0_HTC_HE,
+			.mac_cap_info[1] =
+				IEEE80211_HE_MAC_CAP1_TF_MAC_PAD_DUR_16US |
+				IEEE80211_HE_MAC_CAP1_MULTI_TID_AGG_QOS_8,
+			.mac_cap_info[2] =
+				IEEE80211_HE_MAC_CAP2_32BIT_BA_BITMAP |
+				IEEE80211_HE_MAC_CAP2_ACK_EN,
+			.mac_cap_info[3] =
+				IEEE80211_HE_MAC_CAP3_GRP_ADDR_MULTI_STA_BA_DL_MU |
+				IEEE80211_HE_MAC_CAP3_MAX_A_AMPDU_LEN_EXP_VHT_2,
+			.mac_cap_info[4] = IEEE80211_HE_MAC_CAP4_AMDSU_IN_AMPDU,
+			.phy_cap_info[0] =
+				IEEE80211_HE_PHY_CAP0_DUAL_BAND |
+				IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_40MHZ_IN_2G |
+				IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_40MHZ_80MHZ_IN_5G |
+				IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_160MHZ_IN_5G,
+			.phy_cap_info[1] =
+				IEEE80211_HE_PHY_CAP1_DEVICE_CLASS_A |
+				IEEE80211_HE_PHY_CAP1_LDPC_CODING_IN_PAYLOAD |
+				IEEE80211_HE_PHY_CAP1_MIDAMBLE_RX_MAX_NSTS,
+			.phy_cap_info[2] =
+				IEEE80211_HE_PHY_CAP2_NDP_4x_LTF_AND_3_2US |
+				IEEE80211_HE_PHY_CAP2_STBC_TX_UNDER_80MHZ |
+				IEEE80211_HE_PHY_CAP2_STBC_RX_UNDER_80MHZ,
+			.phy_cap_info[3] =
+				IEEE80211_HE_PHY_CAP3_DCM_MAX_CONST_TX_BPSK |
+				IEEE80211_HE_PHY_CAP3_DCM_MAX_TX_NSS_1 |
+				IEEE80211_HE_PHY_CAP3_DCM_MAX_CONST_RX_BPSK |
+				IEEE80211_HE_PHY_CAP3_DCM_MAX_RX_NSS_1,
+			.phy_cap_info[4] =
+				IEEE80211_HE_PHY_CAP4_SU_BEAMFORMEE |
+				IEEE80211_HE_PHY_CAP4_BEAMFORMEE_MAX_STS_ABOVE_80MHZ_8 |
+				IEEE80211_HE_PHY_CAP4_BEAMFORMEE_MAX_STS_UNDER_80MHZ_8,
+			.phy_cap_info[5] =
+				IEEE80211_HE_PHY_CAP5_BEAMFORMEE_NUM_SND_DIM_UNDER_80MHZ_2 |
+				IEEE80211_HE_PHY_CAP5_BEAMFORMEE_NUM_SND_DIM_ABOVE_80MHZ_2,
+			.phy_cap_info[6] =
+				IEEE80211_HE_PHY_CAP6_PPE_THRESHOLD_PRESENT,
+			.phy_cap_info[7] =
+				IEEE80211_HE_PHY_CAP7_POWER_BOOST_FACTOR_AR |
+				IEEE80211_HE_PHY_CAP7_HE_SU_MU_PPDU_4XLTF_AND_08_US_GI |
+				IEEE80211_HE_PHY_CAP7_MAX_NC_7,
+			.phy_cap_info[8] =
+				IEEE80211_HE_PHY_CAP8_HE_ER_SU_PPDU_4XLTF_AND_08_US_GI |
+				IEEE80211_HE_PHY_CAP8_20MHZ_IN_40MHZ_HE_PPDU_IN_2G |
+				IEEE80211_HE_PHY_CAP8_20MHZ_IN_160MHZ_HE_PPDU |
+				IEEE80211_HE_PHY_CAP8_80MHZ_IN_160MHZ_HE_PPDU,
+		},
+		/*
+		 * Set default Tx/Rx HE MCS NSS Support field. Indicate support
+		 * for up to 2 spatial streams and all MCS, without any special
+		 * cases
+		 */
+		.he_mcs_nss_supp = {
+			.rx_mcs_80 = cpu_to_le16(0xfffa),
+			.tx_mcs_80 = cpu_to_le16(0xfffa),
+			.rx_mcs_160 = cpu_to_le16(0xfffa),
+			.tx_mcs_160 = cpu_to_le16(0xfffa),
+			.rx_mcs_80p80 = cpu_to_le16(0xffff),
+			.tx_mcs_80p80 = cpu_to_le16(0xffff),
+		},
+		/*
+		 * Set default PPE thresholds, with PPET16 set to 0, PPET8 set
+		 * to 7
+		 */
+		.ppe_thres = {0x61, 0x1c, 0xc7, 0x71},
+	},
+};
+#endif
 static BOOLEAN IsRadarChannel(UCHAR ch)
 {
 	UINT idx = 0;
@@ -443,6 +519,10 @@ BOOLEAN CFG80211_SupBandInit(
 		pBand->ht_cap.mcs.rx_mask[4] = 0x01; /* 40MHz*/
 		pBand->ht_cap.mcs.tx_params = IEEE80211_HT_MCS_TX_DEFINED;
 #endif /* DOT11_N_SUPPORT */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
+		pBand->n_iftype_data = 1;
+		pBand->iftype_data = &iwl_he_capa;
+#endif
 		pWiphy->bands[IEEE80211_BAND_2GHZ] = pBand;
 	} else {
 		pWiphy->bands[IEEE80211_BAND_2GHZ] = NULL;
@@ -515,6 +595,10 @@ BOOLEAN CFG80211_SupBandInit(
 							 IEEE80211_VHT_CAP_MAX_A_MPDU_LENGTH_EXPONENT_MASK |
 					IEEE80211_VHT_CAP_RXSTBC_MASK;
 #endif /* DOT11_VHT_AC */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
+		pBand->n_iftype_data = 1;
+		pBand->iftype_data = &iwl_he_capa;
+#endif
 		pWiphy->bands[IEEE80211_BAND_5GHZ] = pBand;
 	} else {
 		pWiphy->bands[IEEE80211_BAND_5GHZ] = NULL;
@@ -931,8 +1015,17 @@ VOID CFG80211OS_ScanEnd(
 	NdisAcquireSpinLock(&pCfg80211_CB->scan_notify_lock);
 
 	if (pCfg80211_CB->pCfg80211_ScanReq) {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
+		struct cfg80211_scan_info info = {
+			.aborted = FlgIsAborted,
+		};
+#endif
 		CFG80211DBG(DBG_LVL_ERROR, ("80211> cfg80211_scan_done\n"));
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
+		cfg80211_scan_done(pCfg80211_CB->pCfg80211_ScanReq, &info);
+#else
 		cfg80211_scan_done(pCfg80211_CB->pCfg80211_ScanReq, FlgIsAborted);
+#endif
 		pCfg80211_CB->pCfg80211_ScanReq = NULL;
 	} else
 		CFG80211DBG(DBG_LVL_ERROR, ("80211> cfg80211_scan_done ==> NULL\n"));
@@ -1085,33 +1178,37 @@ VOID CFG80211OS_TxStatus(IN PNET_DEV pNetDev, IN INT32 cookie, IN PUCHAR frame, 
 
 VOID CFG80211OS_NewSta(IN PNET_DEV pNetDev, IN const PUCHAR mac_addr, IN const PUCHAR assoc_frame, IN UINT32 assoc_len, IN BOOLEAN isReassoc)
 {
-	struct station_info sinfo;
+	struct station_info *sinfo = NULL;
 	struct ieee80211_mgmt *mgmt;
 
-	os_zero_mem(&sinfo, sizeof(sinfo));
+	os_alloc_mem(NULL, (UCHAR **)&sinfo, sizeof(struct station_info));
 
+	if (!sinfo)
+		return;
+
+	os_zero_mem(sinfo, sizeof(struct station_info));
 
 /* If get error here, be sure patch the cfg80211_new_sta.patch into kernel. */
 	if (pNetDev->ieee80211_ptr->iftype != RT_CMD_80211_IFTYPE_ADHOC) {
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 0, 0))
 		/*no option available in latest implementation, to fill this var*/
 #else
-		sinfo.filled = STATION_INFO_ASSOC_REQ_IES;
+		sinfo->filled = STATION_INFO_ASSOC_REQ_IES;
 #endif
 		mgmt = (struct ieee80211_mgmt *) assoc_frame;
 		if (isReassoc) {
-			sinfo.assoc_req_ies_len = assoc_len - 24 - 10;
-			sinfo.assoc_req_ies = mgmt->u.reassoc_req.variable;
+			sinfo->assoc_req_ies_len = assoc_len - 24 - 10;
+			sinfo->assoc_req_ies = mgmt->u.reassoc_req.variable;
 		} else {
-			sinfo.assoc_req_ies_len = assoc_len - 24 - 4;
-			sinfo.assoc_req_ies = mgmt->u.assoc_req.variable;
+			sinfo->assoc_req_ies_len = assoc_len - 24 - 4;
+			sinfo->assoc_req_ies = mgmt->u.assoc_req.variable;
 		}
 	}
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 34))
-	return cfg80211_new_sta(pNetDev, mac_addr, &sinfo, GFP_ATOMIC);
+	cfg80211_new_sta(pNetDev, mac_addr, sinfo, GFP_ATOMIC);
 #endif /* LINUX_VERSION_CODE: 2.6.34 */
-
+	os_free_mem(sinfo);
 }
 
 
@@ -1136,14 +1233,29 @@ VOID CFG80211OS_Roamed(
 	IN UCHAR *pReqIe, IN UINT32 ReqIeLen,
 	IN UCHAR *pRspIe, IN UINT32 RspIeLen)
 {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
+	struct cfg80211_roam_info roam_info = {
+		.channel = NULL,
+		.bssid = pBSSID,
+		.req_ie = pReqIe,
+		.req_ie_len = ReqIeLen,
+		.resp_ie = pRspIe,
+		.resp_ie_len = RspIeLen,
+	};
+#endif
 	cfg80211_roamed(pNetDev,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
+			&roam_info, GFP_KERNEL
+#else
 #if (KERNEL_VERSION(2, 6, 39) < LINUX_VERSION_CODE)
 					NULL,
 #endif /* LINUX_VERSION_CODE: 2.6.39 */
 					pBSSID,
 					pReqIe, ReqIeLen,
 					pRspIe, RspIeLen,
-					GFP_KERNEL);
+					GFP_KERNEL
+#endif
+	);
 }
 
 

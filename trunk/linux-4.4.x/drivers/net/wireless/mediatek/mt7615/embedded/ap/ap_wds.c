@@ -617,7 +617,7 @@ MAC_TABLE_ENTRY *FindWdsEntry(
 					  pRxBlk->rx_signal.raw_rssi[1],
 					  pRxBlk->rx_signal.raw_rssi[2],
 					  pRxBlk->rx_signal.raw_rssi[3],
-#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT)
+#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT) || defined(NEIGHBORING_AP_STAT)
 					  pRxBlk->rx_signal.raw_snr[0],
 					  pRxBlk->rx_signal.raw_snr[1],
 					  pRxBlk->rx_signal.raw_snr[2],
@@ -1675,7 +1675,9 @@ INT wds_inf_open(struct wifi_dev *wdev)
 	if (wds_entry->Valid)
 		AsicUpdateWdsRxWCIDTable(pAd, wdev->func_idx);
 
-
+#ifdef DPP_SUPPORT
+	DlListInit(&wdev->dpp_frame_event_list);
+#endif /* DPP_SUPPORT */
 	return TRUE;
 }
 

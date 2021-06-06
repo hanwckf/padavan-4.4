@@ -69,7 +69,7 @@
 #define DMA_VTR24			(WF_DMA_BASE + 0x0F0)
 #define DMA_VTR_GET_ADDR(_omac) \
 			((_omac < 0x10) ? (DMA_VTR0 + ((_omac >> 1) << 2)) : \
-				(_omac < 0x34) ? (DMA_VTR2 + (((_omac - 0x10) >> 1) << 2)) : \
+				(_omac < 0x34) ? (DMA_VTR2 + (((_omac - 0x11) >> 1) << 2)) : \
 					(_omac < 0x3c) ? (DMA_VTR20 + (((_omac - 0x34) >> 1) << 2)) : \
 						(DMA_VTR24 + (((_omac - 0x3c) >> 1) << 2)))
 #define DMA_VTR_SET_VID(_omac, _tci, _vid) \

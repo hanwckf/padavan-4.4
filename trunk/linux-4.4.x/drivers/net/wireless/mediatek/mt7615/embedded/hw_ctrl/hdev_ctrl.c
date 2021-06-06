@@ -861,6 +861,16 @@ AUTO_CH_CTRL *HcGetAutoChCtrlbyBandIdx(RTMP_ADAPTER *pAd, UCHAR BandIdx)
 }
 #endif
 
+#ifdef CHANNEL_SWITCH_MONITOR_CONFIG
+struct ch_switch_cfg *HcGetChanSwitchMonbyBandIdx(RTMP_ADAPTER *pAd, UCHAR BandIdx)
+{
+	struct hdev_ctrl *ctrl = pAd->hdev_ctrl;
+	HD_RESOURCE_CFG *pHwResource =  &ctrl->HwResourceCfg;
+
+	return &pHwResource->PhyCtrl[BandIdx].ch_sw_cfg;
+}
+#endif
+
 /*
 *
 */
@@ -1251,6 +1261,12 @@ BOOLEAN hc_radio_res_request(struct wifi_dev *wdev, struct radio_res *res)
 {
 	struct hdev_obj *obj = wdev->pHObj;
 	struct radio_dev *rdev;
+#ifdef ANTENNA_CONTROL_SUPPORT
+	UINT8 BandIdx = 0;
+	struct _RTMP_ADAPTER *pAd = (struct _RTMP_ADAPTER *)wdev->sys_handle;
+
+	BandIdx = HcGetBandByWdev(wdev);
+#endif /* ANTENNA_CONTROL_SUPPORT */
 #ifdef MT_WOW_SUPPORT
 	struct _RTMP_ADAPTER *ad = (struct _RTMP_ADAPTER *)wdev->sys_handle;
 #endif /*MT_WOW_SUPPORT*/
@@ -1271,8 +1287,11 @@ BOOLEAN hc_radio_res_request(struct wifi_dev *wdev, struct radio_res *res)
 	}
 
 	rdev = obj->rdev;
-
-	if (rc_radio_equal(rdev, res->oper)) {
+	if (
+#ifdef ANTENNA_CONTROL_SUPPORT
+		(!pAd->bAntennaSetAPEnable[BandIdx]) &&
+#endif /* ANTENNA_CONTROL_SUPPORT */
+		(rc_radio_equal(rdev, res->oper))) {
 		MTWF_LOG(DBG_CAT_HW, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("%s(): radio is equal, prim_ch=%d!\n", __func__, res->oper->prim_ch));
 		return TRUE;
 	}
@@ -1463,7 +1482,9 @@ inline struct _RTMP_CHIP_CAP *hc_get_chip_cap(void *hdev_ctrl)
 	struct hdev_ctrl *ctrl = hdev_ctrl;
 	return &ctrl->chip_cap;
 }
+#ifndef MT76XX_COMBO_DUAL_DRIVER_SUPPORT
 EXPORT_SYMBOL(hc_get_chip_cap);
+#endif /* MT76XX_COMBO_DUAL_DRIVER_SUPPORT */
 
 /*
 *
@@ -1474,8 +1495,9 @@ struct _RTMP_CHIP_OP *hc_get_chip_ops(void *hdev_ctrl)
 
 	return &ctrl->chip_ops;
 }
+#ifndef MT76XX_COMBO_DUAL_DRIVER_SUPPORT
 EXPORT_SYMBOL(hc_get_chip_ops);
-
+#endif /* MT76XX_COMBO_DUAL_DRIVER_SUPPORT */
 /*
 *
 */

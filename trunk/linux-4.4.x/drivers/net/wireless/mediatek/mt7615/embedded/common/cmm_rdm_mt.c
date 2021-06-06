@@ -40,7 +40,7 @@ DFS_RADAR_THRESHOLD_PARAM g_arRadarThresholdParam[4] = {
 	/* CE */
 	{
 		/* Pulse threshold parameters DFS_PULSE_THRESHOLD_PARAM */
-		{40, -10, -80, 800, 3360, 128, 5200},
+		{110, -10, -80, 40, 5200, 128, 5200},
 		/* Valid RADAR Types BOOLEAN*/
 		{1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0},
 		{
@@ -66,7 +66,7 @@ DFS_RADAR_THRESHOLD_PARAM g_arRadarThresholdParam[4] = {
 	/* FCC */
 	{
 		/* Pulse threshold parameters DFS_PULSE_THRESHOLD_PARAM */
-		{40, -10, -80, 800, 3360, 128, 5200},
+		{110, -10, -80, 40, 5200, 128, 5200},
 		/* Valid RADAR Types BOOLEAN*/
 		{1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 		{
@@ -92,27 +92,28 @@ DFS_RADAR_THRESHOLD_PARAM g_arRadarThresholdParam[4] = {
 	/* JAPAN */
 	{
 		/* Pulse threshold parameters DFS_PULSE_THRESHOLD_PARAM */
-		{40, -10, -80, 800, 3360, 128, 5200},
+		{110, -10, -80, 40, 5200, 128, 5200},
 		/* Valid RADAR Types BOOLEAN*/
-		{1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		{1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0},
 		{
 			/* RADAR detection threshold values SW_RADAR_TYPE_T*/
-/* FCC-0,1, W53-Fixed Pulse 1, W56 Fixed Pulse 1,2 */
-					{0, 1, 0, 8,  PPB_SIZE, 28, 0, 13, 508, 3076, 1, 1, 0, 0, 0},
+/* W53-Fixed Pulse 1, W56 Fixed Pulse 1,2 */
+					{0, 1, 0, 5,  PPB_SIZE, 28, 0, 13, 508, 3076, 1, 1, 0, 0, 0},
 /* FCC -2, W56 Variable Pulse 4 */
 					{0, 1, 0, 12, PPB_SIZE, 28, 0, 17, 140, 240,  1, 1, 0, 0, 0},
 /* FCC -3, W56 Variable Pulse 5 */
 					{0, 1, 0, 8,  PPB_SIZE, 28, 0, 22, 190, 510,  1, 1, 0, 0, 0},
 /* FCC -4, W56 Variable Pulse 6 */
-					{0, 1, 0, 6,  PPB_SIZE, 28, 0, 32, 190, 510,  1, 1, 0, 0, 0},
+					{0, 1, 0, 12,  PPB_SIZE, 28, 0, 110, 615, 5010,  1, 1, 0, 0, 0},
 /* FCC type-6, W56 hopping */
 					{0, 1, 0, 9,  PPB_SIZE, 28, 0, 13, 323, 343,  1, 32, 0, 0, 0},
 /* W53 Fixed Pulse 2 */
-					{0, 1, 0, 8,  PPB_SIZE, 28, 0, 14, 3836, 3856, 1, 1, 0, 0, 0},
+					{0, 1, 0, 5,  PPB_SIZE, 28, 0, 14, 3836, 3856, 1, 1, 0, 0, 0},
 /* W56 Fixed Pulse 3 */
 					{0, 1, 0, 8,  PPB_SIZE, 28, 0, 14, 3990, 4010, 1, 1, 0, 0, 0},
-/* Reserved */		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-/* Reserved */		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+/* NEW JAPAN RADAR */
+					{0, 1, 1, 0, 0, 0, 0, 110, 45, 5010, 0, 0, 24, PPB_SIZE, 28},
+/* Reserved*/		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 /* Reserved */		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 /* Reserved */		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 /* Reserved */		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -125,7 +126,7 @@ DFS_RADAR_THRESHOLD_PARAM g_arRadarThresholdParam[4] = {
 	/* ALL AREA */
 	{
 		/* Pulse threshold parameters DFS_PULSE_THRESHOLD_PARAM */
-		{40, -10, -80, 800, 3360, 128, 5200},
+		{110, -10, -80, 40, 5200, 128, 5200},
 		/* Valid RADAR Types BOOLEAN*/
 		{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0},
 		{
@@ -149,6 +150,83 @@ DFS_RADAR_THRESHOLD_PARAM g_arRadarThresholdParam[4] = {
 		}
 	}
 };
+
+DFS_RT_MATCHING_LIST g_rRadarTypeMatchingList[4][RT_NUM] = {
+				/*Radar Type*/		/*Matching Type*/
+/* CE */	{
+				{"ETSI-1",			NULL},
+				{"ETSI-2",			NULL},
+				{"ETSI-3",			NULL},
+				{"ETSI-4",			NULL},
+				{"ETSI-5, 2PRI",		NULL},
+				{"ETSI-5, 3PRI",		NULL},
+				{"ETSI-6, 2PRI",		NULL},
+				{"ETSI-6, 3PRI",		NULL},
+				{NULL,				NULL},
+				{NULL,				NULL},
+				{NULL,				NULL},
+				{NULL,				NULL},
+				{NULL,				NULL},
+				{NULL,				NULL},
+				{NULL,				NULL},
+				{NULL,				NULL}
+		},
+/* FCC */	{
+				{"FCC-0,1",			NULL},
+				{"FCC-2",			"JP-1"},
+				{"FCC-3",			"JP-2"},
+				{"FCC-4",			"JP-3"},
+				{"FCC-6",			"JP-4"},
+				{NULL,				NULL},
+				{NULL,				NULL},
+				{NULL,				NULL},
+				{NULL,				NULL},
+				{NULL,				NULL},
+				{NULL,				NULL},
+				{NULL,				NULL},
+				{NULL,				NULL},
+				{NULL,				NULL},
+				{NULL,				NULL},
+				{NULL,				NULL}
+		},
+/* JP*/		{
+				{"JP-0",			NULL},
+				{"JP-1",			"FCC-2"},
+				{"JP-2",			"FCC-3"},
+				{"JP-3",			"FCC-4"},
+				{"JP-4",			"FCC-6"},
+				{"JP-5",			NULL},
+				{"JP-6",			NULL},
+				{"JP-7",			NULL},
+				{NULL,				NULL},
+				{NULL,				NULL},
+				{NULL,				NULL},
+				{NULL,				NULL},
+				{NULL,				NULL},
+				{NULL,				NULL},
+				{NULL,				NULL},
+				{NULL,				NULL}
+		},
+/* ALL AREA */	{
+				{"FCC-0,1",			NULL},
+				{"FCC-2",			"JP-1"},
+				{"FCC-3",			"JP-2"},
+				{"FCC-4",			"JP-3"},
+				{"FCC-6",			"JP-4"},
+				{"ETSI-1",			NULL},
+				{"ETSI-2",			NULL},
+				{"ETSI-3",			NULL},
+				{"ETSI-4",			NULL},
+				{"ETSI-5, 2PRI",		NULL},
+				{"ETSI-5, 3PRI",		NULL},
+				{"ETSI-6, 2PRI",		NULL},
+				{"ETSI-6, 3PRI",		NULL},
+				{NULL,				NULL},
+				{NULL,				NULL},
+				{NULL,				NULL}
+		}
+};
+
 #endif /* CUSTOMISE_RDD_THRESHOLD_SUPPORT */
 
 /*******************************************************************************
@@ -185,10 +263,11 @@ void k_ZeroWait_DFS_NOP_Timeout_Report_Callback_Function_Registeration(_k_ARC_Ze
 {
     DfsNopTimeOutCallBack = callback_NOP_Timeout_func;
 }
-
+#ifndef MT76XX_COMBO_DUAL_DRIVER_SUPPORT
 EXPORT_SYMBOL(k_ZeroWait_DFS_Collision_Report_Callback_Function_Registeration);
 EXPORT_SYMBOL(k_ZeroWait_DFS_CAC_Time_Meet_Report_Callback_Function_Registeration);
 EXPORT_SYMBOL(k_ZeroWait_DFS_NOP_Timeout_Report_Callback_Function_Registeration);
+#endif /* MT76XX_COMBO_DUAL_DRIVER_SUPPORT */
 
 static VOID ZeroWaitDfsEnable(
 	PRTMP_ADAPTER pAd,
@@ -541,6 +620,9 @@ INT ZeroWaitDfsQueryCmdHandler(
 	INT status = NDIS_STATUS_SUCCESS;
 	union dfs_zero_wait_msg msg;
 	os_zero_mem(&msg, sizeof(union dfs_zero_wait_msg));
+#ifdef MAP_R2
+		msg.aval_channel_list_msg.Action = QUERY_AVAL_CH_LIST;
+#endif
 	ZeroWaitDfsQueryMsgHandle(pAd, (CHAR *)&msg);
 	wrq->u.data.length = sizeof(union dfs_zero_wait_msg);
 
@@ -897,6 +979,7 @@ VOID DfsThresholdParamInit(
 	if (pDfsParam->fgRDRegionConfigured == TRUE) {
 			switch (pAd->CommonCfg.RDDurRegion) {
 			case CE:
+				pDfsParam->u2FCC_LPN_MIN = 500; /*to avoid FCC5 Radar detection in CE region*/
 				NdisCopyMemory(prRadarThresholdParam, &g_arRadarThresholdParam[CE], sizeof(DFS_RADAR_THRESHOLD_PARAM));
 				break;
 			case FCC:
@@ -905,6 +988,7 @@ VOID DfsThresholdParamInit(
 			case JAP:
 			case JAP_W53:
 			case JAP_W56:
+				pDfsParam->u2FCC_LPN_MIN = 500; /*to avoid FCC5 Radar detection in JAP region*/
 				NdisCopyMemory(prRadarThresholdParam, &g_arRadarThresholdParam[JAP], sizeof(DFS_RADAR_THRESHOLD_PARAM));
 				break;
 			default: /* All Area */
@@ -1640,6 +1724,31 @@ NTSTATUS DfsChannelSwitchTimeoutAction(
 	return 0;
 }
 
+NTSTATUS DfsSwitchChAfterRadarDetected(
+	PRTMP_ADAPTER pAd, PCmdQElmt CMDQelmt)
+{
+	UINT_32 SetChInfo;
+	BSS_STRUCT *pMbss;
+	struct wifi_dev *wdev;
+	UINT8 bandIdx;
+	UINT8 BssIdx;
+	UINT8 NextCh;
+
+	NdisMoveMemory(&SetChInfo, CMDQelmt->buffer, sizeof(UINT_32));
+
+	bandIdx = (SetChInfo >> 16) & 0xff;
+	BssIdx = (SetChInfo >> 8) & 0xff;
+	NextCh = SetChInfo & 0xff;
+
+	MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("[%s] bandIdx: %d, BssIdx: %d, NextCh: %d\n",
+		__func__, bandIdx, BssIdx, NextCh));
+
+	pMbss = &pAd->ApCfg.MBSSID[BssIdx];
+	wdev = &pMbss->wdev;
+	rtmp_set_channel(pAd, wdev, NextCh);
+	return 0;
+}
+
 NTSTATUS DfsAPRestart(
 	PRTMP_ADAPTER pAd, PCmdQElmt CMDQelmt)
 {
@@ -2213,6 +2322,17 @@ VOID WrapDfsRddReportHandle(/*handle the event of EXT_EVENT_ID_RDD_REPORT*/
 #else
 	Rsp.data.operating_ch_info.is4x4Mode = 1;
 #endif
+#ifdef DFS_CAC_R2
+	for (BssIdx = 0; BssIdx < pAd->ApCfg.BssidNum; BssIdx++) {
+		pMbss = &pAd->ApCfg.MBSSID[BssIdx];
+		wdev = &pMbss->wdev;
+		if (wdev->pHObj == NULL)
+			continue;
+		if (HcGetBandByWdev(wdev) != bandIdx)
+			continue;
+		Rsp.ifIndex = RtmpOsGetNetIfIndex(wdev->if_dev);
+	}
+#endif
 	RtmpOSWrielessEventSend(
 			pAd->net_dev,
 			RT_WLAN_EVENT_CUSTOM,
@@ -2302,7 +2422,7 @@ VOID WrapDfsRddReportHandle(/*handle the event of EXT_EVENT_ID_RDD_REPORT*/
 			pDfsParam->OutBandBw = pDfsParam->Bw;
 			/* Switch to 2x2 Mode */
 			SET_ONDEMAND_DFS_MODE(pAd, ONDEMAND_2x2MODE);
-			pAd->ApCfg.bAutoChannelAtBootup = TRUE;
+			pAd->ApCfg.bAutoChannelAtBootup[bandIdx] = TRUE;
 			/* Non-DFS InBand Channel */
 			pDfsParam->Band0Ch = pDfsParam->PrimCh = DfsOnDemandSelectBestChannel (pAd, TRUE);
 		} else {
@@ -2406,7 +2526,11 @@ VOID WrapDfsRddReportHandle(/*handle the event of EXT_EVENT_ID_RDD_REPORT*/
 					 __func__,
 					 NextCh,
 					 NextBw));
-			rtmp_set_channel(pAd, wdev, NextCh);
+			SetChInfo |= NextCh;
+			SetChInfo |= (BssIdx << 8);
+			SetChInfo |= (bandIdx << 16);
+			RTEnqueueInternalCmd(pAd, CMDTHRED_DFS_RADAR_DETECTED_SW_CH, &SetChInfo, sizeof(UINT_32));
+			RTMP_MLME_HANDLER(pAd);
 		} else if (pDfsParam->Dot11_H[bandIdx].RDMode == RD_SILENCE_MODE) {
 			pDfsParam->DfsChBand[0] = FALSE;
 			pDfsParam->DfsChBand[1] = FALSE;
@@ -2980,7 +3104,7 @@ USHORT DfsV10SelectBestChannel(/*Select the Channel from Rank List by ACS*/
 	pAutoChCtrl = HcGetAutoChCtrlbyBandIdx(pAd, BandIdx);
 
 	/* New Channel Identification */
-	if (pAd->ApCfg.bAutoChannelAtBootup) {
+	if (pAd->ApCfg.bAutoChannelAtBootup[BandIdx]) {
 		/* Pick AutoCh2 Update from List */
 		BwChannel = SelectBestV10Chnl_From_List(pAd);
 	} else {
@@ -3005,7 +3129,7 @@ VOID DfsV10AddWeighingFactor(
 	AUTO_CH_CTRL *pAutoChCtrl = HcGetAutoChCtrlbyBandIdx(pAd, BandIdx);
 
 	/* ACS Disable: Weighing Factor Not Required */
-	if (!pAd->ApCfg.bAutoChannelAtBootup)
+	if (!pAd->ApCfg.bAutoChannelAtBootup[BandIdx])
 		return;
 
 	for (channelIdx = 0; channelIdx < pAutoChCtrl->AutoChSelCtrl.ChListNum; channelIdx++) {
@@ -4785,6 +4909,52 @@ VOID DfsSetNewChInit(IN PRTMP_ADAPTER pAd)
 }
 
 #ifdef RDM_FALSE_ALARM_DEBUG_SUPPORT
+VOID Show_MatchingRadarTypes(
+	PRTMP_ADAPTER pAd,
+	UINT8 ucRadarTypeIdx
+)
+{
+	UCHAR ucRDDurRegionIdx = 0;
+	PDFS_RT_MATCHING_LIST pRtMatchingElement = NULL;
+
+	if (ucRadarTypeIdx >= RT_NUM) {
+		MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF,
+				("[%s]:Invalid radar type number %d\n", __func__, ucRadarTypeIdx));
+		return;
+	}
+
+	if (pAd->CommonCfg.DfsParameter.fgRDRegionConfigured == TRUE) {
+		switch (pAd->CommonCfg.RDDurRegion) {
+		case CE:
+			ucRDDurRegionIdx = CE;
+			break;
+		case FCC:
+			ucRDDurRegionIdx = FCC;
+			break;
+		case JAP:
+		case JAP_W53:
+		case JAP_W56:
+			ucRDDurRegionIdx = JAP;
+			break;
+		default: /* All Area */
+			ucRDDurRegionIdx = 3;
+		}
+	} else /* All Area */
+		ucRDDurRegionIdx = 3;
+
+	pRtMatchingElement = &g_rRadarTypeMatchingList[ucRDDurRegionIdx][ucRadarTypeIdx];
+
+	if (pRtMatchingElement->pRadarType != NULL) {
+		MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF,
+				("Detected Radar signal of type: %s\n", pRtMatchingElement->pRadarType));
+		if (pRtMatchingElement->pMatchingRadarType != NULL)
+			MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF,
+				("Matching Radar Type(s): %s\n", pRtMatchingElement->pMatchingRadarType));
+	}
+
+	return;
+}
+
 INT Show_DFS_Debug_Proc(
 	PRTMP_ADAPTER pAd,
 	RTMP_STRING *arg)
@@ -4897,40 +5067,45 @@ VOID DumpRadarSwPulsesInfo(
 					prRadarReport->ucRddIdx, prRadarReport->ucRadarTypeIdx, prRadarReport->ucStaggeredPRFDetected));
 			ucRadarTypeIdx = prRadarReport->ucRadarTypeIdx;
 			prRadarType = &prRadarThresholdParam->arRadarType[ucRadarTypeIdx];
+			Show_MatchingRadarTypes(pAd, ucRadarTypeIdx);
 			MTWF_LOG(DBG_CAT_PROTO, CATPROTO_DFS, DBG_LVL_OFF,
 						("SPN = %d\n", prRadarReport->ucOutSPN));
-			MTWF_LOG(DBG_CAT_PROTO, CATPROTO_DFS, DBG_LVL_OFF,
-				("CRPN = %d \t(RT_CRPN_MIN = %d, RT_CRPN_MAX = %d)\n",
-					prRadarReport->ucOutCRPN, prRadarType->ucRT_CRPN_MIN, prRadarType->ucRT_CRPN_MAX));
-			MTWF_LOG(DBG_CAT_PROTO, CATPROTO_DFS, DBG_LVL_OFF,
-				("CRPR = %d/%d \t(RT_CRPR_MIN = %d/%d)\n",
-				prRadarReport->ucOutCRPN, prRadarReport->ucPeriodicPulseNum, prRadarType->ucRT_CRPR_MIN, PPB_SIZE));
-			MTWF_LOG(DBG_CAT_PROTO, CATPROTO_DFS, DBG_LVL_OFF,
-				("CRPW = %d \t(RT_PW_MIN = %d, RT_PW_MAX = %d)\n",
-					prRadarReport->ucOutCRPW, prRadarType->ucRT_PW_MIN, prRadarType->ucRT_PW_MAX));
-			MTWF_LOG(DBG_CAT_PROTO, CATPROTO_DFS, DBG_LVL_OFF,
-				("PRI_CONST = %d \t(RT_PRI_MIN = %d, RT_PRI_MAX = %d)\n",
-					prRadarReport->u4OutPRI_CONST, prRadarType->u4RT_PRI_MIN, prRadarType->u4RT_PRI_MAX));
-			MTWF_LOG(DBG_CAT_PROTO, CATPROTO_DFS, DBG_LVL_OFF,
-				("CRBN = %d \t(RT_CRBN_MIN = %d, RT_CRBN_MAX = %d)\n",
-					prRadarReport->ucOutCRBN, prRadarType->ucRT_CRBN_MIN, prRadarType->ucRT_CRBN_MAX));
-			MTWF_LOG(DBG_CAT_PROTO, CATPROTO_DFS, DBG_LVL_OFF,
-				("PRI_STG1 = %d \t(RT_PRI_MIN = %d, RT_PRI_MAX*3 = %d)\n",
-					prRadarReport->u4OutPRI_STG1, prRadarType->u4RT_PRI_MIN, prRadarType->u4RT_PRI_MAX * 3));
-			MTWF_LOG(DBG_CAT_PROTO, CATPROTO_DFS, DBG_LVL_OFF,
-				("PRI_STG2 = %d \t(RT_PRI_MIN = %d, RT_PRI_MAX*3 = %d)\n",
-					prRadarReport->u4OutPRI_STG2, prRadarType->u4RT_PRI_MIN, prRadarType->u4RT_PRI_MAX * 3));
-			MTWF_LOG(DBG_CAT_PROTO, CATPROTO_DFS, DBG_LVL_OFF,
-				("PRI_STG3 = %d\n", prRadarReport->u4OutPRI_STG3));
-			MTWF_LOG(DBG_CAT_PROTO, CATPROTO_DFS, DBG_LVL_OFF,
-				("STGPW = %d \t(RT_PW_MIN = %d, RT_PW_MAX = %d)\n",
-					prRadarReport->ucOutSTGPW, prRadarType->ucRT_PW_MIN, prRadarType->ucRT_PW_MAX));
-			MTWF_LOG(DBG_CAT_PROTO, CATPROTO_DFS, DBG_LVL_OFF,
-				("STGPN = %d \t(RT_STGPN_MIN = %d, RT_STGPN_MAX = %d)\n",
-					prRadarReport->ucOutSTGPN, prRadarType->ucRT_STGPN_MIN, prRadarType->ucRT_STGPN_MAX));
-			MTWF_LOG(DBG_CAT_PROTO, CATPROTO_DFS, DBG_LVL_OFF,
-				("STGPR = %d/%d \t(RT_STGPR_MIN = %d/%d)\n",
-				prRadarReport->ucOutSTGPN, prRadarReport->ucPeriodicPulseNum, prRadarType->ucRT_STGPR_MIN, PPB_SIZE));
+			if (prRadarReport->ucConstantPRFDetected == 1) {
+				MTWF_LOG(DBG_CAT_PROTO, CATPROTO_DFS, DBG_LVL_OFF,
+					("CRPN = %d \t(RT_CRPN_MIN = %d, RT_CRPN_MAX = %d)\n",
+						prRadarReport->ucOutCRPN, prRadarType->ucRT_CRPN_MIN, prRadarType->ucRT_CRPN_MAX));
+				MTWF_LOG(DBG_CAT_PROTO, CATPROTO_DFS, DBG_LVL_OFF,
+					("CRPR = %d/%d \t(RT_CRPR_MIN = %d/%d)\n",
+					prRadarReport->ucOutCRPN, prRadarReport->ucPeriodicPulseNum, prRadarType->ucRT_CRPR_MIN, PPB_SIZE));
+				MTWF_LOG(DBG_CAT_PROTO, CATPROTO_DFS, DBG_LVL_OFF,
+					("CRPW = %d \t(RT_PW_MIN = %d, RT_PW_MAX = %d)\n",
+						prRadarReport->ucOutCRPW, prRadarType->ucRT_PW_MIN, prRadarType->ucRT_PW_MAX));
+				MTWF_LOG(DBG_CAT_PROTO, CATPROTO_DFS, DBG_LVL_OFF,
+					("PRI_CONST = %d \t(RT_PRI_MIN = %d, RT_PRI_MAX = %d)\n",
+						prRadarReport->u4OutPRI_CONST, prRadarType->u4RT_PRI_MIN, prRadarType->u4RT_PRI_MAX));
+				MTWF_LOG(DBG_CAT_PROTO, CATPROTO_DFS, DBG_LVL_OFF,
+					("CRBN = %d \t(RT_CRBN_MIN = %d, RT_CRBN_MAX = %d)\n",
+						prRadarReport->ucOutCRBN, prRadarType->ucRT_CRBN_MIN, prRadarType->ucRT_CRBN_MAX));
+			}
+			if (prRadarReport->ucStaggeredPRFDetected == 1) {
+				MTWF_LOG(DBG_CAT_PROTO, CATPROTO_DFS, DBG_LVL_OFF,
+					("PRI_STG1 = %d \t(RT_PRI_MIN = %d, RT_PRI_MAX*3 = %d)\n",
+						prRadarReport->u4OutPRI_STG1, prRadarType->u4RT_PRI_MIN, prRadarType->u4RT_PRI_MAX * 3));
+				MTWF_LOG(DBG_CAT_PROTO, CATPROTO_DFS, DBG_LVL_OFF,
+					("PRI_STG2 = %d \t(RT_PRI_MIN = %d, RT_PRI_MAX*3 = %d)\n",
+						prRadarReport->u4OutPRI_STG2, prRadarType->u4RT_PRI_MIN, prRadarType->u4RT_PRI_MAX * 3));
+				MTWF_LOG(DBG_CAT_PROTO, CATPROTO_DFS, DBG_LVL_OFF,
+					("PRI_STG3 = %d\n", prRadarReport->u4OutPRI_STG3));
+				MTWF_LOG(DBG_CAT_PROTO, CATPROTO_DFS, DBG_LVL_OFF,
+					("STGPW = %d \t(RT_PW_MIN = %d, RT_PW_MAX = %d)\n",
+						prRadarReport->ucOutSTGPW, prRadarType->ucRT_PW_MIN, prRadarType->ucRT_PW_MAX));
+				MTWF_LOG(DBG_CAT_PROTO, CATPROTO_DFS, DBG_LVL_OFF,
+					("STGPN = %d \t(RT_STGPN_MIN = %d, RT_STGPN_MAX = %d)\n",
+						prRadarReport->ucOutSTGPN, prRadarType->ucRT_STGPN_MIN, prRadarType->ucRT_STGPN_MAX));
+				MTWF_LOG(DBG_CAT_PROTO, CATPROTO_DFS, DBG_LVL_OFF,
+					("STGPR = %d/%d \t(RT_STGPR_MIN = %d/%d)\n",
+					prRadarReport->ucOutSTGPN, prRadarReport->ucPeriodicPulseNum, prRadarType->ucRT_STGPR_MIN, PPB_SIZE));
+			}
 		} else {
 			MTWF_LOG(DBG_CAT_PROTO, CATPROTO_DFS, DBG_LVL_OFF,
 				("===> RDD-%d: No periodic radar is detected\n", prRadarReport->ucRddIdx));

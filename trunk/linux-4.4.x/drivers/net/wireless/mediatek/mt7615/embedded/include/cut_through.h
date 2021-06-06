@@ -84,6 +84,9 @@ typedef struct _PKT_TOKEN_ENTRY {
 	UINT32 Drop;
 	LONG startTime;
 	LONG endTime;
+#ifdef EAP_STATS_SUPPORT
+	struct timeval startTimeTv;
+#endif
 	NDIS_PHYSICAL_ADDRESS pkt_phy_addr;
 	size_t pkt_len;
 	UCHAR wcid;

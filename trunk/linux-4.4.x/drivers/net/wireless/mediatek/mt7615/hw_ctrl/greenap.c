@@ -435,6 +435,11 @@ VOID greenap_suspend(RTMP_ADAPTER *pAd, struct greenap_ctrl *greenap, UINT32 rea
 	UCHAR band_idx = 0;
 	UCHAR amount_of_band = HcGetAmountOfBand(pAd);
 
+	if (!greenap_get_capability(greenap)) {
+		MTWF_LOG(DBG_CAT_HW, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("%s, green ap not enabled\n", __func__));
+		return;
+	}
+
 	MTWF_LOG(DBG_CAT_HW, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 			 ("%s, reason(0x%x)\n",
 			  __func__,
@@ -461,6 +466,11 @@ VOID greenap_resume(RTMP_ADAPTER *pAd, struct greenap_ctrl *greenap, UINT32 reas
 	BOOLEAN allow = FALSE;
 	UCHAR band_idx = 0;
 	UCHAR amount_of_band = HcGetAmountOfBand(pAd);
+
+	if (!greenap_get_capability(greenap)) {
+		MTWF_LOG(DBG_CAT_HW, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("%s, green ap not enabled\n", __func__));
+		return;
+	}
 
 	MTWF_LOG(DBG_CAT_HW, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 			 ("%s, reason(0x%x)\n",

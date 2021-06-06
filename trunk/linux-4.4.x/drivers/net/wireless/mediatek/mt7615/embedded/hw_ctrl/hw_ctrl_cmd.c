@@ -293,6 +293,35 @@ VOID HW_SET_BCN_OFFLOAD(RTMP_ADAPTER *pAd,
 }
 #endif /*BCN_OFFLOAD_SUPPORT*/
 
+#ifdef OCE_SUPPORT
+VOID HW_SET_FD_FRAME_OFFLOAD(RTMP_ADAPTER *pAd,
+				UINT8 WdevIdx,
+				ULONG WholeLength,
+				BOOLEAN Enable,
+				UINT16 TimestampPos,
+				UCHAR *Buf)
+{
+	UINT32 ret;
+	MT_SET_FD_FRAME_OFFLOAD MtSetFdFrameOffload;
+
+	os_zero_mem(&MtSetFdFrameOffload, sizeof(MT_SET_FD_FRAME_OFFLOAD));
+	MtSetFdFrameOffload.WdevIdx = WdevIdx;
+	MtSetFdFrameOffload.ucEnable = Enable;
+
+	if (MtSetFdFrameOffload.ucEnable) {
+		MtSetFdFrameOffload.u2TimestampFieldPos = TimestampPos;
+		MtSetFdFrameOffload.u2PktLength = WholeLength;
+		os_move_mem(MtSetFdFrameOffload.acPktContent, Buf, MtSetFdFrameOffload.u2PktLength);
+	}
+
+	ret = HW_CTRL_BASIC_ENQ(pAd,
+							HWCMD_TYPE_RADIO,
+							HWCMD_ID_SET_FD_FRAME_OFFLOAD,
+							sizeof(MtSetFdFrameOffload),
+							&MtSetFdFrameOffload);
+}
+#endif /* OCE_SUPPORT */
+
 VOID HW_UPDATE_BSSINFO(RTMP_ADAPTER *pAd, BSS_INFO_ARGUMENT_T *BssInfoArgs)
 {
 	UINT32 ret;

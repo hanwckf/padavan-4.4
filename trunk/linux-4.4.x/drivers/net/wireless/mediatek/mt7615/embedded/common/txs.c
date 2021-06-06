@@ -400,6 +400,11 @@ INT32 ParseTxSPacket_v2(RTMP_ADAPTER *pAd, UINT32 Pid, UINT8 Format, CHAR *Data)
 {
 	TXS_STRUC *txs_entry = (TXS_STRUC *)Data;
 	TXS_D_0 *TxSD0 = &txs_entry->TxSD0;
+	TXS_D_2 *TxSD2 = &txs_entry->TxSD2;
+#if defined(WH_EZ_SETUP) || defined(DPP_SUPPORT)
+	TXS_D_3 *TxSD3 = &txs_entry->TxSD3;
+	BOOLEAN TxError = (TxSD0->ME || TxSD0->RE || TxSD0->LE || TxSD0->BE || TxSD0->TxOp || TxSD0->PSBit || TxSD0->BAFail);
+#endif
 
 	if (Format == TXS_FORMAT0) {
 #ifdef FTM_SUPPORT
@@ -408,6 +413,32 @@ INT32 ParseTxSPacket_v2(RTMP_ADAPTER *pAd, UINT32 Pid, UINT8 Format, CHAR *Data)
 			FtmTXSHandler(pAd, Data);
 
 #endif /* FTM_SUPPORT */
+
+		if (Pid == PID_NULL_FRAME) {
+			MAC_TABLE_ENTRY *pEntry = NULL;
+
+			pEntry = &pAd->MacTab.Content[TxSD2->TxS_WlanIdx];
+
+			if (TxSD0->ME || TxSD0->RE || TxSD0->LE) {
+				MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("Tx status for NULL frame in error case wcid:%d\n", TxSD2->TxS_WlanIdx));
+				if (pEntry && pEntry->KeepAliveSend)
+					pEntry->KeepAliveSendError++;
+			} else {
+				pEntry->KeepAliveSendSucess = 1;
+				MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("\n @#@#@#@# NULL SUCCESS for WCID = %d#@#@#@#@#@\n", TxSD2->TxS_WlanIdx));
+			}
+			return 0;
+		}
+#ifdef DPP_SUPPORT
+		if (Pid == PID_MGMT_DPP_FRAME) {
+			MAC_TABLE_ENTRY	*pEntry = NULL;
+			struct wifi_dev *wdev = NULL;
+
+			pEntry = &pAd->MacTab.Content[TxSD2->TxS_WlanIdx];
+			wdev = pEntry->wdev;
+			wext_send_dpp_frame_tx_status(pAd, wdev, TxError, TxSD3->type_0.TxS_SN);
+		}
+#endif /* DPP_SUPPORT */
 
 		if (TxSD0->ME || TxSD0->RE || TxSD0->LE || TxSD0->BE || TxSD0->TxOp || TxSD0->PSBit || TxSD0->BAFail) {
 			DumpTxSFormat(pAd, Format, Data);

@@ -490,7 +490,10 @@ UINT32 wlan_operate_get_frag_thld(struct wifi_dev *wdev)
 
 	return op->ht_oper.frag_thld;
 }
+
+#ifndef MT76XX_COMBO_DUAL_DRIVER_SUPPORT
 EXPORT_SYMBOL(wlan_operate_get_frag_thld);
+#endif /* MT76XX_COMBO_DUAL_DRIVER_SUPPORT */
 
 UCHAR wlan_operate_get_rts_pkt_thld(struct wifi_dev *wdev)
 {

@@ -1171,11 +1171,19 @@ VOID CFG80211_RegRuleApply(
 #endif /* AUTO_CH_SELECT_ENHANCE */
 
 	for (IdBand = 0; IdBand < IEEE80211_NUM_BANDS; IdBand++) {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
+		if (((IdBand == NL80211_BAND_2GHZ) && (pBand24G == NULL)) ||
+			((IdBand == NL80211_BAND_5GHZ) && (pBand5G == NULL)))
+#else
 		if (((IdBand == IEEE80211_BAND_2GHZ) && (pBand24G == NULL)) ||
 			((IdBand == IEEE80211_BAND_5GHZ) && (pBand5G == NULL)))
+#endif
 			continue;
-
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
+		if (IdBand == NL80211_BAND_2GHZ)
+#else
 		if (IdBand == IEEE80211_BAND_2GHZ)
+#endif
 			CFG80211DBG(DBG_LVL_TRACE, ("crda> reset chan/power for 2.4GHz\n"));
 		else
 			CFG80211DBG(DBG_LVL_TRACE, ("crda> reset chan/power for 5GHz\n"));

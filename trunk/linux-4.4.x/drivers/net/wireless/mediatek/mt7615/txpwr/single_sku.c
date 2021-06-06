@@ -156,11 +156,8 @@ INT MtSingleSkuLoadParam(RTMP_ADAPTER *pAd)
 {
 	CHAR *buffer;
 	CHAR *readline, *token;
-#ifdef RF_LOCKDOWN
-#else
 	RTMP_OS_FD_EXT srcf;
 	INT retval = 0;
-#endif /* RF_LOCKDOWN */
 	CHAR *ptr;
 	INT index, i;
 	CH_POWER *StartCh = NULL;
@@ -168,6 +165,9 @@ INT MtSingleSkuLoadParam(RTMP_ADAPTER *pAd)
 	UCHAR channel, *temp;
 	CH_POWER *pwr = NULL;
 	UCHAR *sku_path = NULL;
+#ifdef RF_LOCKDOWN
+	BOOLEAN RF_Lock = FALSE;
+#endif
 
 	/* Link list Init */
 	DlListInit(&pAd->PwrLimitSkuList);
@@ -178,145 +178,150 @@ INT MtSingleSkuLoadParam(RTMP_ADAPTER *pAd)
 		return FALSE;
 
 #ifdef RF_LOCKDOWN
-	pAd->CommonCfg.SKUTableIdx = pAd->EEPROMImage[SINGLE_SKU_TABLE_EFFUSE_ADDRESS] & BITS(0, 6);
-	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, (KBLU "%s: RF_LOCKDOWN Feature ON !!!\n" KNRM, __FUNCTION__));
-	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, (KBLU "%s: SKU Table index = %d \n" KNRM, __FUNCTION__,
-			 pAd->CommonCfg.SKUTableIdx));
-	/* card information file exists so reading the card information */
-	os_zero_mem(buffer, MAX_INI_BUFFER_SIZE);
+	RF_Lock = chip_check_rf_lock_down(pAd);
+	if (RF_Lock) {
+		if (IS_MT7615(pAd))
+			pAd->CommonCfg.SKUTableIdx = pAd->EEPROMImage[SINGLE_SKU_TABLE_EFFUSE_ADDRESS] & BITS(0, 6);
+		else if (IS_MT7622(pAd))
+			pAd->CommonCfg.SKUTableIdx = pAd->EEPROMImage[MT7622_SINGLE_SKU_TABLE_EFFUSE_ADDRESS] & BITS(0, 6);
+		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, (KBLU "%s: RF_LOCKDOWN Feature ON !!!\n" KNRM, __FUNCTION__));
+		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, (KBLU "%s: SKU Table index = %d \n" KNRM, __FUNCTION__,
+				 pAd->CommonCfg.SKUTableIdx));
+		/* card information file exists so reading the card information */
+		os_zero_mem(buffer, MAX_INI_BUFFER_SIZE);
 
-	switch (pAd->CommonCfg.SKUTableIdx) {
-	case SKUTABLE_1:
-		os_move_mem(buffer, SKUvalue_1, MAX_INI_BUFFER_SIZE);
-		break;
+		switch (pAd->CommonCfg.SKUTableIdx) {
+		case SKUTABLE_1:
+			os_move_mem(buffer, SKUvalue_1, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_2:
-		os_move_mem(buffer, SKUvalue_2, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_2:
+			os_move_mem(buffer, SKUvalue_2, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_3:
-		os_move_mem(buffer, SKUvalue_3, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_3:
+			os_move_mem(buffer, SKUvalue_3, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_4:
-		os_move_mem(buffer, SKUvalue_4, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_4:
+			os_move_mem(buffer, SKUvalue_4, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_5:
-		os_move_mem(buffer, SKUvalue_5, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_5:
+			os_move_mem(buffer, SKUvalue_5, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_6:
-		os_move_mem(buffer, SKUvalue_6, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_6:
+			os_move_mem(buffer, SKUvalue_6, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_7:
-		os_move_mem(buffer, SKUvalue_7, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_7:
+			os_move_mem(buffer, SKUvalue_7, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_8:
-		os_move_mem(buffer, SKUvalue_8, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_8:
+			os_move_mem(buffer, SKUvalue_8, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_9:
-		os_move_mem(buffer, SKUvalue_9, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_9:
+			os_move_mem(buffer, SKUvalue_9, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_10:
-		os_move_mem(buffer, SKUvalue_10, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_10:
+			os_move_mem(buffer, SKUvalue_10, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_11:
-		os_move_mem(buffer, SKUvalue_11, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_11:
+			os_move_mem(buffer, SKUvalue_11, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_12:
-		os_move_mem(buffer, SKUvalue_12, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_12:
+			os_move_mem(buffer, SKUvalue_12, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_13:
-		os_move_mem(buffer, SKUvalue_13, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_13:
+			os_move_mem(buffer, SKUvalue_13, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_14:
-		os_move_mem(buffer, SKUvalue_14, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_14:
+			os_move_mem(buffer, SKUvalue_14, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_15:
-		os_move_mem(buffer, SKUvalue_15, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_15:
+			os_move_mem(buffer, SKUvalue_15, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_16:
-		os_move_mem(buffer, SKUvalue_16, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_16:
+			os_move_mem(buffer, SKUvalue_16, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_17:
-		os_move_mem(buffer, SKUvalue_17, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_17:
+			os_move_mem(buffer, SKUvalue_17, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_18:
-		os_move_mem(buffer, SKUvalue_18, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_18:
+			os_move_mem(buffer, SKUvalue_18, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_19:
-		os_move_mem(buffer, SKUvalue_19, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_19:
+			os_move_mem(buffer, SKUvalue_19, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_20:
-		os_move_mem(buffer, SKUvalue_20, MAX_INI_BUFFER_SIZE);;
-		break;
+		case SKUTABLE_20:
+			os_move_mem(buffer, SKUvalue_20, MAX_INI_BUFFER_SIZE);;
+			break;
 
-	default:
-		os_move_mem(buffer, SKUvalue_20, MAX_INI_BUFFER_SIZE);
-		break;
+		default:
+			os_move_mem(buffer, SKUvalue_20, MAX_INI_BUFFER_SIZE);
+			break;
+		}
+	}else
+#endif
+	{
+		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s: RF_LOCKDOWN Feature OFF !!!\n", __FUNCTION__));
+		/* open card information file*/
+		sku_path = get_single_sku_path(pAd);
+		if (sku_path && *sku_path)
+			srcf = os_file_open(sku_path, O_RDONLY, 0);
+		else
+			srcf.Status = 1;
+
+		if (srcf.Status) {
+			/* card information file does not exist */
+			MTWF_LOG(DBG_CAT_POWER, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
+					 ("--> Error opening %s\n", sku_path));
+			goto  free_resource;
+		}
+
+		/* card information file exists so reading the card information */
+		os_zero_mem(buffer, MAX_INI_BUFFER_SIZE);
+		retval = os_file_read(srcf, buffer, MAX_INI_BUFFER_SIZE);
 	}
-
-#else
-	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s: RF_LOCKDOWN Feature OFF !!!\n", __FUNCTION__));
-	/* open card information file*/
-	sku_path = get_single_sku_path(pAd);
-	if (sku_path && *sku_path)
-		srcf = os_file_open(sku_path, O_RDONLY, 0);
-	else
-		srcf.Status = 1;
-
-	if (srcf.Status) {
-		/* card information file does not exist */
-		MTWF_LOG(DBG_CAT_POWER, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
-				 ("--> Error opening %s\n", sku_path));
-		goto  free_resource;
-	}
-
-	/* card information file exists so reading the card information */
-	os_zero_mem(buffer, MAX_INI_BUFFER_SIZE);
-	retval = os_file_read(srcf, buffer, MAX_INI_BUFFER_SIZE);
-
 	if (retval < 0) {
 		/* read fail */
 		MTWF_LOG(DBG_CAT_POWER, DBG_SUBCAT_ALL, DBG_LVL_ERROR, (KRED "--> Read %s error %d\n" KNRM, sku_path,
 				 -retval));
 	} else {
-#endif /* RF_LOCKDOWN */
 #ifdef RF_LOCKDOWN
-
-	for (readline = ptr = buffer, index = 0; (ptr = os_str_chr(readline, '\t')) != NULL; readline = ptr + 1, index++)
+	for (readline = ptr = buffer, index = 0;
+			(((ptr = os_str_chr(readline, '\t')) != NULL) && RF_Lock) ||
+				(((ptr = os_str_chr(readline, '\n')) != NULL) && !RF_Lock);
+						readline = ptr + 1, index++)
 #else
 	for (readline = ptr = buffer, index = 0; (ptr = os_str_chr(readline, '\n')) != NULL; readline = ptr + 1, index++)
 #endif /* RF_LOCKDOWN */
 	{
 		*ptr = '\0';
 #ifdef RF_LOCKDOWN
-
-		if (readline[0] == '!')
-			continue;
-
-#else
-
-		if (readline[0] == '#')
-			continue;
-
-#endif /* RF_LOCKDOWN */
-
+		if (RF_Lock) {
+			if (readline[0] == '!')
+				continue;
+		} else
+#endif
+		{
+			if (readline[0] == '#')
+				continue;
+		}
 		/* Band Info Parsing */
 		if (!strncmp(readline, "Band: ", 6)) {
 			token = rstrtok(readline + 6, " ");
@@ -578,21 +583,18 @@ INT MtSingleSkuLoadParam(RTMP_ADAPTER *pAd)
 		}
 	}
 
-#ifdef RF_LOCKDOWN
-#else
 }
-
-#endif /* RF_LOCKDOWN */
-
 	/* print out Sku table info */
 	MtShowSkuTable(pAd, DBG_LVL_INFO);
 
 #ifdef RF_LOCKDOWN
-#else
+	if(!RF_Lock)
+#endif
+	{
 	/* close file*/
 	retval = os_file_close(srcf);
+	}
 free_resource:
-#endif /* RF_LOCKDOWN */
 	os_free_mem(buffer);
 	return TRUE;
 }
@@ -615,11 +617,8 @@ INT MtBfBackOffLoadParam(RTMP_ADAPTER *pAd)
 {
 	CHAR *buffer;
 	CHAR *readline, *token;
-#ifdef RF_LOCKDOWN
-#else
 	RTMP_OS_FD_EXT srcf;
 	INT retval = 0;
-#endif /* RF_LOCKDOWN */
 	CHAR *ptr;
 	INT index, i;
 	BACKOFF_POWER *StartCh = NULL;
@@ -628,6 +627,9 @@ INT MtBfBackOffLoadParam(RTMP_ADAPTER *pAd)
 	BACKOFF_POWER *pwr = NULL;
 	BACKOFF_POWER *ch, *ch_temp;
 	UCHAR *sku_path = NULL;
+#ifdef RF_LOCKDOWN
+	BOOLEAN RF_Lock = FALSE;
+#endif
 
 	DlListInit(&pAd->PwrLimitBackoffList);
 	/* init*/
@@ -637,144 +639,149 @@ INT MtBfBackOffLoadParam(RTMP_ADAPTER *pAd)
 		return FALSE;
 
 #ifdef RF_LOCKDOWN
-	pAd->CommonCfg.SKUTableIdx = pAd->EEPROMImage[SINGLE_SKU_TABLE_EFFUSE_ADDRESS] & BITS(0, 6);
-	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s: RF_LOCKDOWN Feature ON !!!\n", __FUNCTION__));
-	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s: BFBackoff Table index = %d \n", __FUNCTION__,
-			 pAd->CommonCfg.SKUTableIdx));
-	/* card information file exists so reading the card information */
-	os_zero_mem(buffer, MAX_INI_BUFFER_SIZE);
+	RF_Lock = chip_check_rf_lock_down(pAd);
+	if (RF_Lock) {
+		if (IS_MT7615(pAd))
+			pAd->CommonCfg.SKUTableIdx = pAd->EEPROMImage[SINGLE_SKU_TABLE_EFFUSE_ADDRESS] & BITS(0, 6);
+		else if (IS_MT7622(pAd))
+			pAd->CommonCfg.SKUTableIdx = pAd->EEPROMImage[MT7622_SINGLE_SKU_TABLE_EFFUSE_ADDRESS] & BITS(0, 6);
+		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s: RF_LOCKDOWN Feature ON !!!\n", __FUNCTION__));
+		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s: BFBackoff Table index = %d \n", __FUNCTION__,
+				 pAd->CommonCfg.SKUTableIdx));
+		/* card information file exists so reading the card information */
+		os_zero_mem(buffer, MAX_INI_BUFFER_SIZE);
 
-	switch (pAd->CommonCfg.SKUTableIdx) {
-	case SKUTABLE_1:
-		os_move_mem(buffer, BFBackoffvalue_1, MAX_INI_BUFFER_SIZE);
-		break;
+		switch (pAd->CommonCfg.SKUTableIdx) {
+		case SKUTABLE_1:
+			os_move_mem(buffer, BFBackoffvalue_1, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_2:
-		os_move_mem(buffer, BFBackoffvalue_2, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_2:
+			os_move_mem(buffer, BFBackoffvalue_2, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_3:
-		os_move_mem(buffer, BFBackoffvalue_3, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_3:
+			os_move_mem(buffer, BFBackoffvalue_3, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_4:
-		os_move_mem(buffer, BFBackoffvalue_4, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_4:
+			os_move_mem(buffer, BFBackoffvalue_4, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_5:
-		os_move_mem(buffer, BFBackoffvalue_5, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_5:
+			os_move_mem(buffer, BFBackoffvalue_5, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_6:
-		os_move_mem(buffer, BFBackoffvalue_6, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_6:
+			os_move_mem(buffer, BFBackoffvalue_6, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_7:
-		os_move_mem(buffer, BFBackoffvalue_7, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_7:
+			os_move_mem(buffer, BFBackoffvalue_7, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_8:
-		os_move_mem(buffer, BFBackoffvalue_8, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_8:
+			os_move_mem(buffer, BFBackoffvalue_8, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_9:
-		os_move_mem(buffer, BFBackoffvalue_9, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_9:
+			os_move_mem(buffer, BFBackoffvalue_9, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_10:
-		os_move_mem(buffer, BFBackoffvalue_10, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_10:
+			os_move_mem(buffer, BFBackoffvalue_10, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_11:
-		os_move_mem(buffer, BFBackoffvalue_11, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_11:
+			os_move_mem(buffer, BFBackoffvalue_11, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_12:
-		os_move_mem(buffer, BFBackoffvalue_12, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_12:
+			os_move_mem(buffer, BFBackoffvalue_12, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_13:
-		os_move_mem(buffer, BFBackoffvalue_13, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_13:
+			os_move_mem(buffer, BFBackoffvalue_13, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_14:
-		os_move_mem(buffer, BFBackoffvalue_14, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_14:
+			os_move_mem(buffer, BFBackoffvalue_14, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_15:
-		os_move_mem(buffer, BFBackoffvalue_15, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_15:
+			os_move_mem(buffer, BFBackoffvalue_15, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_16:
-		os_move_mem(buffer, BFBackoffvalue_16, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_16:
+			os_move_mem(buffer, BFBackoffvalue_16, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_17:
-		os_move_mem(buffer, BFBackoffvalue_17, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_17:
+			os_move_mem(buffer, BFBackoffvalue_17, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_18:
-		os_move_mem(buffer, BFBackoffvalue_18, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_18:
+			os_move_mem(buffer, BFBackoffvalue_18, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_19:
-		os_move_mem(buffer, BFBackoffvalue_19, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_19:
+			os_move_mem(buffer, BFBackoffvalue_19, MAX_INI_BUFFER_SIZE);
+			break;
 
-	case SKUTABLE_20:
-		os_move_mem(buffer, BFBackoffvalue_20, MAX_INI_BUFFER_SIZE);
-		break;
+		case SKUTABLE_20:
+			os_move_mem(buffer, BFBackoffvalue_20, MAX_INI_BUFFER_SIZE);
+			break;
 
-	default:
-		os_move_mem(buffer, SKUvalue_20, MAX_INI_BUFFER_SIZE);
-		break;
+		default:
+			os_move_mem(buffer, SKUvalue_20, MAX_INI_BUFFER_SIZE);
+			break;
+		}
+	}else
+#endif
+	{
+		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s: RF_LOCKDOWN Feature OFF !!!\n", __FUNCTION__));
+		/* open card information file*/
+		sku_path = get_single_sku_path(pAd);
+		if (sku_path && *sku_path)
+			srcf = os_file_open(sku_path, O_RDONLY, 0);
+		else
+			srcf.Status = 1;
+
+		if (srcf.Status) {
+			/* card information file does not exist */
+			MTWF_LOG(DBG_CAT_POWER, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
+					 ("--> Error opening %s\n", sku_path));
+			goto  free_resource;
+		}
+
+		/* card information file exists so reading the card information */
+		os_zero_mem(buffer, MAX_INI_BUFFER_SIZE);
+		retval = os_file_read(srcf, buffer, MAX_INI_BUFFER_SIZE);
 	}
-
-#else
-	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s: RF_LOCKDOWN Feature OFF !!!\n", __FUNCTION__));
-	/* open card information file*/
-	sku_path = get_single_sku_path(pAd);
-	if (sku_path && *sku_path)
-		srcf = os_file_open(sku_path, O_RDONLY, 0);
-	else
-		srcf.Status = 1;
-
-	if (srcf.Status) {
-		/* card information file does not exist */
-		MTWF_LOG(DBG_CAT_POWER, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
-				 ("--> Error opening %s\n", sku_path));
-		goto  free_resource;
-	}
-
-	/* card information file exists so reading the card information */
-	os_zero_mem(buffer, MAX_INI_BUFFER_SIZE);
-	retval = os_file_read(srcf, buffer, MAX_INI_BUFFER_SIZE);
-
 	if (retval < 0) {
 		/* read fail */
 		MTWF_LOG(DBG_CAT_POWER, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("--> Read %s error %d\n", sku_path, -retval));
 	} else {
-#endif /* RF_LOCKDOWN */
 #ifdef RF_LOCKDOWN
-
-	for (readline = ptr = buffer, index = 0; (ptr = os_str_chr(readline, '\t')) != NULL; readline = ptr + 1, index++)
+		for (readline = ptr = buffer, index = 0;
+				(((ptr = os_str_chr(readline, '\t')) != NULL) && RF_Lock) ||
+					(((ptr = os_str_chr(readline, '\n')) != NULL) && !RF_Lock);
+							readline = ptr + 1, index++)
 #else
-	for (readline = ptr = buffer, index = 0; (ptr = os_str_chr(readline, '\n')) != NULL; readline = ptr + 1, index++)
+		for (readline = ptr = buffer, index = 0; (ptr = os_str_chr(readline, '\n')) != NULL; readline = ptr + 1, index++)
 #endif /* RF_LOCKDOWN */
 	{
 		*ptr = '\0';
 #ifdef RF_LOCKDOWN
-
-		if (readline[0] == '!')
-			continue;
-
-#else
-
-		if (readline[0] == '#')
-			continue;
-
-#endif /* RF_LOCKDOWN */
-
+		if (RF_Lock) {
+			if (readline[0] == '!')
+				continue;
+		} else
+#endif
+		{
+			if (readline[0] == '#')
+				continue;
+		}
 		/* Band Info Parsing */
 		if (!strncmp(readline, "Band: ", 6)) {
 			token = rstrtok(readline + 6, " ");
@@ -878,12 +885,7 @@ INT MtBfBackOffLoadParam(RTMP_ADAPTER *pAd)
 			StartCh->Channel[StartCh->num - 1] = channel;
 		}
 	}
-
-#ifdef RF_LOCKDOWN
-#else
 }
-
-#endif /* RF_LOCKDOWN */
 	DlListForEachSafe(ch, ch_temp, &pAd->PwrLimitBackoffList, BACKOFF_POWER, List) {
 		int i;
 		MTWF_LOG(DBG_CAT_POWER, DBG_SUBCAT_ALL, DBG_LVL_INFO, ("start ch = %d, ch->num = %d\n", ch->StartChannel, ch->num));
@@ -903,11 +905,13 @@ INT MtBfBackOffLoadParam(RTMP_ADAPTER *pAd)
 		MTWF_LOG(DBG_CAT_POWER, DBG_SUBCAT_ALL, DBG_LVL_INFO, ("-----------------------------------------------------------------\n"));
 	}
 #ifdef RF_LOCKDOWN
-#else
+	if(!RF_Lock)
+#endif
+	{
 	/* close file*/
 	retval = os_file_close(srcf);
+	}
 free_resource:
-#endif /* RF_LOCKDOWN */
 	os_free_mem(buffer);
 	return TRUE;
 }

@@ -466,6 +466,17 @@ VOID ScanNextChannel(RTMP_ADAPTER *pAd, UCHAR OpMode, struct wifi_dev *pwdev)
 	BOOLEAN ScanPending = FALSE;
 	RALINK_TIMER_STRUCT *sc_timer = NULL;
 	UINT stay_time = 0;
+#ifdef MAP_R2
+	UINT32 CrValue;
+	UINT32 BusyTime;
+#endif
+#ifdef CONFIG_AP_SUPPORT
+	UINT8 BandIdx = DBDC_BAND0;
+#ifdef NEIGHBORING_AP_STAT
+	UINT32 Value = 0;	/*read ipi/rpi register value*/
+	UINT8 index = SCAN_RESULT_2G;
+#endif
+#endif
 #ifdef APCLI_SUPPORT
 #ifdef CONFIG_MAP_SUPPORT
 	int index_map = 0;
@@ -536,6 +547,36 @@ VOID ScanNextChannel(RTMP_ADAPTER *pAd, UCHAR OpMode, struct wifi_dev *pwdev)
 		wapp_send_scan_complete_notification(pAd, wdev);
 #endif
 		scan_ch_restore(pAd, OpMode, wdev);
+#ifdef OCE_SUPPORT
+		if (IS_OCE_RNR_ENABLE(wdev)) {
+#ifdef MBO_SUPPORT
+			MboIndicateNeighborReportToDaemon(pAd, wdev, TRUE, PER_EVENT_LIST_MAX_NUM);
+#endif /* MBO_SUPPORT */
+		}
+#endif /* OCE_SUPPORT */
+#ifdef CONFIG_AP_SUPPORT
+		BandIdx = HcGetBandByWdev(wdev);
+#ifdef NEIGHBORING_AP_STAT
+		if (wdev->channel <= 14)
+			index = SCAN_RESULT_2G;
+		else
+			index = SCAN_RESULT_5G;
+		if (!pAd->ScanCtrl.PartialScan.bScanning) {
+			/*resume ipi/rpi regr value*/
+			if (BandIdx == DBDC_BAND0)
+				RTMP_IO_WRITE32(pAd, PHY_BAND0_PHYMUX_5, pAd->ScanTab.ScanResult[index].ctr_cr[BandIdx]);
+			else
+				RTMP_IO_WRITE32(pAd, PHY_BAND1_PHYMUX_5, pAd->ScanTab.ScanResult[index].ctr_cr[BandIdx]);
+			RtmpOSWrielessEventSend(pAd->net_dev,
+				RT_WLAN_EVENT_CUSTOM,
+				OID_CUST_SCAN_DONE_EVENT,
+				NULL,
+				(UCHAR *)&pAd->ScanTab.ScanResult[index].item_ctr,
+				sizeof(pAd->ScanTab.ScanResult[index].item_ctr));
+			MTWF_LOG(DBG_CAT_PROTO, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("%s : BandIdx : %d index : %d Send Scan Result of Size:%lu\n", __FUNCTION__, BandIdx, index, sizeof(pAd->ScanTab.ScanResult[index].item_ctr)));
+		}
+#endif
+#endif
 
 #ifdef OFFCHANNEL_SCAN_FEATURE
 		if (pAd->ChannelInfo.bandidx == DBDC_BAND0) {
@@ -558,6 +599,11 @@ VOID ScanNextChannel(RTMP_ADAPTER *pAd, UCHAR OpMode, struct wifi_dev *pwdev)
 			Rsp.data.channel_data.rx_time = pAd->ChannelInfo.ChStats.Rx_Time;
 			Rsp.data.channel_data.obss_time = pAd->ChannelInfo.ChStats.Obss_Time;
 			Rsp.data.channel_data.channel_idx = pAd->ApCfg.current_channel_index;
+#ifdef MAP_R2
+			/* EDCCA time */
+			RTMP_IO_READ32(pAd, MIB_M0SDR18, &CrValue);
+			Rsp.data.channel_data.edcca = CrValue;
+#endif
 			/* This value to be used by application to calculate  channel busy percentage */
 			Rsp.data.channel_data.actual_measured_time = pAd->ScanCtrl.ScanTimeActualDiff;
 			RtmpOSWrielessEventSend(
@@ -584,7 +630,7 @@ VOID ScanNextChannel(RTMP_ADAPTER *pAd, UCHAR OpMode, struct wifi_dev *pwdev)
 			/* For OffChannel scan command dont change the BW */
 			if (pAd->ScanCtrl.state == OFFCHANNEL_SCAN_START) {
 #ifdef CONFIG_MAP_SUPPORT
-				if (IS_MAP_TURNKEY_ENABLE(pAd)) {
+				if (IS_MAP_TURNKEY_ENABLE(pAd) && pAd->ScanCtrl.Off_Ch_Scan_BW == BW_20_SCAN) {
 					MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 						("%s Performing Scan in 20 Mhz\n", __func__));
 					wdev->restore_channel = wlan_operate_get_prim_ch(wdev);
@@ -661,7 +707,7 @@ VOID ScanNextChannel(RTMP_ADAPTER *pAd, UCHAR OpMode, struct wifi_dev *pwdev)
 		else { /* must be SCAN_PASSIVE or SCAN_ACTIVE*/
 #ifdef CONFIG_AP_SUPPORT
 
-			if ((OpMode == OPMODE_AP) && (pAd->ApCfg.bAutoChannelAtBootup))
+			if ((OpMode == OPMODE_AP) && (pAd->ApCfg.bAutoChannelAtBootup[BandIdx]))
 				stay_time = AUTO_CHANNEL_SEL_TIMEOUT;
 			else
 #endif /* CONFIG_AP_SUPPORT */
@@ -702,8 +748,14 @@ VOID ScanNextChannel(RTMP_ADAPTER *pAd, UCHAR OpMode, struct wifi_dev *pwdev)
 		}
 
 		if (pAd->ScanCtrl.state == OFFCHANNEL_SCAN_START) {
+#ifndef NEIGHBORING_AP_STAT
 			ResetEnable_NF_Registers(pAd, pAd->ChannelInfo.bandidx);
-			pAd->ScanCtrl.ScanTimeActualStart = ktime_get();
+#endif
+			/* Read-Clear reset Channel busy time counter */
+#ifdef MAP_R2
+			BusyTime = AsicGetChBusyCnt(pAd, BandIdx);
+#endif
+			pAd->ScanCtrl.ScanTimeActualStart = jiffies;
 			AsicGetChBusyCnt(pAd, 0);
 			AsicGetCCACnt(pAd);
 		}
@@ -711,6 +763,60 @@ VOID ScanNextChannel(RTMP_ADAPTER *pAd, UCHAR OpMode, struct wifi_dev *pwdev)
 		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_INFO, ("[%d][%s] : Stay Time : %u !! \n", __LINE__, __func__, stay_time));
 
 		RTMPSetTimer(sc_timer, stay_time);
+#ifdef CONFIG_AP_SUPPORT
+#ifdef NEIGHBORING_AP_STAT
+		/*reset IRPI registers*/
+		BandIdx = HcGetBandByChannel(pAd, pAd->ScanCtrl.Channel);
+		if (pAd->ScanCtrl.Channel <= 14)
+			index = SCAN_RESULT_2G;
+		else
+			index = SCAN_RESULT_5G;
+		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("[%d][%s] : BandIdx : %u index : %d Channel : %d !! \n", __LINE__, __func__, BandIdx, index, pAd->ScanCtrl.Channel));
+		if (BandIdx == DBDC_BAND0) {
+			HW_IO_READ32(pAd, PHY_RXTD_12, &Value);
+			Value |= (1 << B0IrpiSwCtrlResetOffset);
+			Value |= (1 << B0IrpiSwCtrlOnlyOffset);
+			HW_IO_WRITE32(pAd, PHY_RXTD_12, Value);
+			HW_IO_WRITE32(pAd, PHY_RXTD_12, Value);
+			HW_IO_READ32(pAd, PHY_BAND0_PHYMUX_5, &pAd->ScanTab.ScanResult[index].ctr_cr[BandIdx]);
+		} else {
+			HW_IO_READ32(pAd, PHY_RXTD2_10, &Value);
+			Value |= (1 << B1IrpiSwCtrlResetOffset);
+			Value |= (1 << B1IrpiSwCtrlOnlyOffset);
+			HW_IO_WRITE32(pAd, PHY_RXTD2_10, Value);
+			HW_IO_WRITE32(pAd, PHY_RXTD2_10, Value);
+			HW_IO_READ32(pAd, PHY_BAND1_PHYMUX_5, &pAd->ScanTab.ScanResult[index].ctr_cr[BandIdx]);
+		}
+		/*set RPI logging*/
+		Value = pAd->ScanTab.ScanResult[index].ctr_cr[BandIdx];
+		if (pAd->ScanTab.Ipi == 1) {
+			if (BandIdx == DBDC_BAND0) {
+				Value |= (B0IpiEnableCtrlValue << B0IpiEnableCtrlOffset);/*set ipi read config*/
+				Value &= 0xfff8ffff;/*reset rpi*/
+				HW_IO_WRITE32(pAd, PHY_BAND0_PHYMUX_5, Value);
+			} else {
+				Value |= (B1IpiEnableCtrlValue << B1IpiEnableCtrlOffset);
+				Value &= 0xfff8ffff;/*reset rpi*/
+				HW_IO_WRITE32(pAd, PHY_BAND1_PHYMUX_5, Value);
+			}
+			MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("%s():Set IPI config:orig:%x new:%x\n",
+						__FUNCTION__, pAd->ScanTab.ScanResult[index].ctr_cr[BandIdx], Value));
+		} else	{
+			if (BandIdx == DBDC_BAND0) {
+				Value |= (B0IpiEnableCtrlValue << 16);/*set rpi*/
+				Value &= 0xffff8fff;/*reset ipi*/
+				HW_IO_WRITE32(pAd, PHY_BAND0_PHYMUX_5, Value);
+			} else {
+				Value |= (B1IpiEnableCtrlValue << 16);
+				Value &= 0xffff8fff;/*reset ipi*/
+				HW_IO_WRITE32(pAd, PHY_BAND1_PHYMUX_5, Value);
+			}
+			MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("%s():Set RPI config:orig:%x new:%x\n",
+							__FUNCTION__, pAd->ScanTab.ScanResult[index].ctr_cr[BandIdx], Value));
+		}
+#endif
+#endif
+
 #ifdef APCLI_SUPPORT
 #ifdef CONFIG_MAP_SUPPORT
 			wdev->MAPCfg.FireProbe_on_DFS = FALSE;

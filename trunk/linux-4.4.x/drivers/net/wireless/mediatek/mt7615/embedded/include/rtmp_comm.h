@@ -76,10 +76,11 @@
 #else
 #define MAX_NUM_OF_CHS			54
 #endif /* DOT11_VHT_AC*/
+#ifndef WAPP_SUPPORT
 /* 14 channels @2.4G +  12@UNII + 4 @MMAC + 11 @HiperLAN2 + 7 @Japan + 1 as NULL termination */
 #define MAX_NUM_OF_CHANNELS             MAX_NUM_OF_CHS
 #define MAX_NUM_OF_SUB_CHANNELS		(MAX_NUM_OF_CHANNELS/2)  /*Assume half size for sub channels*/
-
+#endif
 
 #include "rtmp_type.h"
 #include "rtmp_os.h"
@@ -207,10 +208,14 @@
 
 #define MAX_CUSTOM_LEN 128
 
+#define MONITOR_MAX_DEV_NUM	0
+#ifdef SNIFFER_SUPPORT
+#undef MONITOR_MAX_DEV_NUM
 #ifdef DBDC_MODE
 #define MONITOR_MAX_DEV_NUM	2
 #else
 #define MONITOR_MAX_DEV_NUM	1
+#endif
 #endif
 #define RX_BUFFER_SIZE_MIN	14
 /* */

@@ -121,6 +121,7 @@
 #define CATPROTO_FT	0x00000200u
 #define CATPROTO_SCAN	0x00000400u
 #define CATPROTO_FTM    0x00000800u
+#define CATPROTO_OCE    0x00001000u
 
 /* Sub-Category of  DBG_CAT_SEC */
 #define CATSEC_KEY	    0x00000002u

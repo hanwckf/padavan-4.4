@@ -133,7 +133,7 @@ typedef struct GNU_PACKED _RRM_BEACON_REP_INFO {
 	UINT32 ParentTSF;
 	UINT8 Option[0];
 } RRM_BEACON_REP_INFO, *PRRM_BEACON_REP_INFO;
-
+#ifndef WAPP_SUPPORT
 typedef union GNU_PACKED _RRM_BSSID_INFO {
 	struct GNU_PACKED {
 #ifdef RT_BIG_ENDIAN
@@ -147,7 +147,7 @@ typedef union GNU_PACKED _RRM_BSSID_INFO {
 		UINT32 RRM:1;
 		UINT32 APSD:1;
 		UINT32 Qos:1;
-		UINT32 SepctrumMng:1;
+		UINT32 SpectrumMng:1;
 		UINT32 KeyScope:1;
 		UINT32 Security:1;
 		UINT32 APReachAble:2;
@@ -155,7 +155,7 @@ typedef union GNU_PACKED _RRM_BSSID_INFO {
 		UINT32 APReachAble:2;
 		UINT32 Security:1;
 		UINT32 KeyScope:1;
-		UINT32 SepctrumMng:1;
+		UINT32 SpectrumMng:1;
 		UINT32 Qos:1;
 		UINT32 APSD:1;
 		UINT32 RRM:1;
@@ -170,7 +170,7 @@ typedef union GNU_PACKED _RRM_BSSID_INFO {
 	} field;
 	UINT32 word;
 } RRM_BSSID_INFO, *PRRM_BSSID_INFO;
-
+#endif
 typedef struct GNU_PACKED _RRM_NEIGHBOR_REP_INFO {
 	UINT8 Bssid[MAC_ADDR_LEN];
 	UINT32 BssidInfo;

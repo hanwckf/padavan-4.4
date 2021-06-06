@@ -52,8 +52,9 @@
 #define BAND_5G		1
 #define BAND_24G	2
 #define BAND_BOTH	(BAND_5G | BAND_24G)
-
-
+#ifdef MAP_R2
+#define DFS_CAC_R2
+#endif
 #undef PS_QUEUE_INC_SUPPORT
 /*#define PS_QUEUE_INC_SUPPORT*/
 #ifdef SNMP_SUPPORT
@@ -248,7 +249,7 @@
 #define PHY_CAP_5G(_x)		(((_x) & fPHY_CAP_5G) == fPHY_CAP_5G)
 #define PHY_CAP_N(_x)		(((_x) & fPHY_CAP_HT) == fPHY_CAP_HT)
 #define PHY_CAP_AC(_x)		(((_x) & fPHY_CAP_VHT) == fPHY_CAP_VHT)
-
+#ifndef WAPP_SUPPORT
 enum WIFI_MODE {
 	WMODE_INVALID = 0,
 	WMODE_A = 1 << 0,
@@ -259,6 +260,7 @@ enum WIFI_MODE {
 	WMODE_AC = 1 << 5,
 	WMODE_COMP = 6,	/* total types of supported wireless mode, add this value once yow add new type */
 };
+#endif
 
 #define WMODE_CAP_5G(_x)			(((_x) & (WMODE_A | WMODE_AN | WMODE_AC)) != 0)
 #define WMODE_CAP_2G(_x)			(((_x) & (WMODE_B | WMODE_G | WMODE_GN)) != 0)
@@ -518,7 +520,7 @@ enum {
 
 
 #define WDEV_NUM_MAX		(HW_BEACON_MAX_NUM + MAX_WDS_ENTRY + \
-							 MAX_APCLI_NUM + MAX_P2P_NUM + MAX_MESH_NUM)
+							 MAX_APCLI_NUM + MAX_P2P_NUM + MAX_MESH_NUM + MONITOR_MAX_DEV_NUM)
 
 /*
     BSSINFO of WDS/Repeater is used for CR4 to do offload related matter.
@@ -715,6 +717,8 @@ enum nl_msg_id {
 #define AUTH_MODE_KEY			0x01
 #define AUTH_MODE_FT			0x02
 #define AUTH_MODE_SAE			0x03
+#define AUTH_MODE_FILS			0x04
+#define AUTH_MODE_FILS_PFS		0x05
 #define AUTH_MODE_VENDOR		0xffff
 
 /* BSS Type definitions */
@@ -803,6 +807,7 @@ enum nl_msg_id {
 #define MLME_ROBUST_MGMT_POLICY_VIOLATION 31
 #endif /* DOT11W_PMF_SUPPORT */
 #define MLME_QOS_UNSPECIFY                32
+#define MLME_DISASSOC_LOW_ACK			  34
 #define MLME_REQUEST_DECLINED             37
 #define MLME_REQUEST_WITH_INVALID_PARAM   38
 #define MLME_INVALID_INFORMATION_ELEMENT  40
@@ -893,10 +898,11 @@ enum nl_msg_id {
 #define IE_WPA                          221	/* WPA */
 #define IE_VENDOR_SPECIFIC              221	/* Wifi WMM (WME) */
 #define	IE_WFA_WSC							221
+#define	IE_FILS_INDICATION				240
 
 #define IE_WLAN_EXTENSION	255
 #define IE_EXTENSION_ID_ECDH	32
-
+#define IE_EXTENSION_ID_ESP     11
 
 #define OUI_P2P					0x09
 #define OUI_HS2_INDICATION		0x10
@@ -1193,7 +1199,12 @@ enum nl_msg_id {
 #define ACTION_TDLS_DISCOVERY_RSP			14	/* 11z D13.0 */
 #define ACTION_FTM_REQUEST					32	/* 11mc D3.0 */
 #define ACTION_FTM							33	/* 11mc D3.0 */
+#define ACTION_FILS_DISCOVERY				34	/* 2016ai */
 #define ACTION_VENDOR_USAGE					221
+
+#ifdef DPP_SUPPORT
+#define WFA_DPP_SUBTYPE 0x1A
+#endif /* DPP_SUPPORT */
 
 /*HT  Action field value */
 #define NOTIFY_BW_ACTION				0
@@ -2253,6 +2264,12 @@ typedef enum {
 #define MCAST_HTMIX		3
 #define MCAST_VHT		4
 #endif /* MCAST_RATE_SPECIFIC */
+
+#ifdef CONFIG_RA_PHY_RATE_SUPPORT
+#define BCN_DISABLE		0
+#define BCN_CCK		1
+#define BCN_OFDM		2
+#endif /* CONFIG_RA_PHY_RATE_SUPPORT */
 
 /* For AsicRadioOff/AsicRadioOn function */
 /* TODO: shiang-usw, check those RADIO ON/OFF values here!!! */

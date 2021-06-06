@@ -31,6 +31,13 @@
 
 #define GAS_MACHINE_BASE 0
 
+#ifdef DPP_SUPPORT
+#define GAS_OUI_Index 5
+#define GAS_WFA_DPP_Subtype_Index 8
+#define GAS_WFA_DPP_Length_Index 1
+#define GAS_WFA_DPP_Min_Length 5
+#endif /* DPP_SUPPORT */
+
 /* gas states */
 enum GAS_STATE {
 	WAIT_GAS_REQ,
@@ -204,7 +211,11 @@ void SendLocationElementEvent(PNET_DEV net_dev, const char *location_buf,
 VOID ReceiveGASInitReq(
 	IN PRTMP_ADAPTER pAd,
 	IN MLME_QUEUE_ELEM * Elem);
-
+#ifdef DPP_SUPPORT
+VOID DPP_ReceiveGASInitRsp(
+	IN PRTMP_ADAPTER pAd,
+	IN MLME_QUEUE_ELEM *Elem);
+#endif /* DPP_SUPPORT */
 VOID ReceiveGASCBReq(
 	IN PRTMP_ADAPTER pAd,
 	IN MLME_QUEUE_ELEM * Elem);

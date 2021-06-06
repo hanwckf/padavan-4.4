@@ -479,8 +479,8 @@ VOID CFG80211_AssocReqHandler(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk)
 		if (IS_MAP_ENABLE(pAd)) {
 		MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_INFO,
 				("%s():Elem->MsgLen=%d, ASSOC_REQ_LEN = %d\n",
-					__func__, pRxBlk->DataSize, (INT)ASSOC_REQ_LEN));
-		NdisMoveMemory(pEntry->assoc_req_frame, (VOID *)pRxBlk->FC, ASSOC_REQ_LEN);
+					__func__, pRxBlk->DataSize, (INT)ASSOC_REQ_LEN_MAX));
+		NdisMoveMemory(pEntry->assoc_req_frame, (VOID *)pRxBlk->FC, ASSOC_REQ_LEN_MAX);
 	}
 #endif
 

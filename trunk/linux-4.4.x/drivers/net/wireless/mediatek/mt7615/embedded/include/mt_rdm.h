@@ -360,6 +360,11 @@ union dfs_zero_wait_msg {
 };
 
 #ifdef CUSTOMISE_RDD_THRESHOLD_SUPPORT
+typedef struct _DFS_RT_MATCHING_LIST {
+	RTMP_STRING *pRadarType;
+	RTMP_STRING *pMatchingRadarType;
+} DFS_RT_MATCHING_LIST, *PDFS_RT_MATCHING_LIST;
+
 typedef struct _DFS_PULSE_THRESHOLD_PARAM {
 	UINT32 u4PulseWidthMax;			/* unit us */
 	INT32 i4PulsePwrMax;			/* unit dbm */
@@ -623,6 +628,9 @@ VOID DfsOutBandCacPass(
 #endif
 
 NTSTATUS DfsChannelSwitchTimeoutAction(
+	PRTMP_ADAPTER pAd, PCmdQElmt CMDQelmt);
+
+NTSTATUS DfsSwitchChAfterRadarDetected(
 	PRTMP_ADAPTER pAd, PCmdQElmt CMDQelmt);
 
 NTSTATUS DfsAPRestart(

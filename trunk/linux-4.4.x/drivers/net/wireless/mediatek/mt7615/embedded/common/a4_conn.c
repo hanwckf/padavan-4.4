@@ -467,6 +467,9 @@ void a4_send_clone_pkt(
 	PA4_CONNECT_ENTRY a4_entry = NULL;
 	PROUTING_ENTRY routing_entry = NULL;
 	PMAC_TABLE_ENTRY entry = NULL;
+#ifdef MAP_TS_TRAFFIC_SUPPORT
+	PMAC_TABLE_ENTRY peer_entry = NULL;
+#endif
 	BOOLEAN found = FALSE;
 	UCHAR wcid = 0;
 	struct wifi_dev *ap_wdev = NULL;
@@ -529,7 +532,15 @@ void a4_send_clone_pkt(
 							("%s: Fail to alloc memory for pPacketClone\n", __func__));
 					return;
 				}
-
+#ifdef MAP_TS_TRAFFIC_SUPPORT
+				if (adapter->bTSEnable) {
+					peer_entry = &adapter->MacTab.Content[entry->wcid];
+					if (!map_ts_tx_process(adapter, wdev, pkt_clone, peer_entry)) {
+						RELEASE_NDIS_PACKET(adapter, pkt_clone, NDIS_STATUS_FAILURE);
+						continue;
+					}
+				}
+#endif
 				RTMP_SET_PACKET_WCID(pkt_clone, entry->wcid);
 				RTMP_SET_PACKET_WDEV(pkt_clone, wdev->wdev_idx);
 				RTMP_SET_PACKET_MOREDATA(pkt_clone, FALSE);

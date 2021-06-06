@@ -389,41 +389,23 @@ VOID ba_resource_dump_all(RTMP_ADAPTER *pAd)
 		for (j = 0; j < NUM_OF_TID; j++) {
 			if (pEntry->BARecWcidArray[j] != 0) {
 				pRecBAEntry = &pAd->BATable.BARecEntry[pEntry->BARecWcidArray[j]];
+
+				NdisAcquireSpinLock(&pRecBAEntry->RxReRingLock);
 				mpdu_blk = ba_reordering_mpdu_probe(&pRecBAEntry->list);
 
-				if (mpdu_blk) {
+				while (mpdu_blk) {
 					MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("mpdu:SN = %d, AMSDU = %d\n", mpdu_blk->Sequence,
 							 mpdu_blk->bAMSDU));
 					msdu_blk = ba_reordering_mpdu_probe(&mpdu_blk->AmsduList);
 
-					if (msdu_blk) {
+					while (msdu_blk && msdu_blk->bAMSDU) {
 						MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("msdu:SN = %d, AMSDU = %d\n", msdu_blk->Sequence,
 									 msdu_blk->bAMSDU));
-
-						while (msdu_blk->next) {
-							msdu_blk = msdu_blk->next;
-							MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("msdu:SN = %d, AMSDU = %d\n", msdu_blk->Sequence,
-									 msdu_blk->bAMSDU));
-						}
+						msdu_blk = msdu_blk->next;
 					}
-
-					while (mpdu_blk->next) {
-						mpdu_blk = mpdu_blk->next;
-						printk("mpdu:SN = %d, AMSDU = %d\n", mpdu_blk->Sequence, mpdu_blk->bAMSDU);
-						msdu_blk = ba_reordering_mpdu_probe(&mpdu_blk->AmsduList);
-
-						if (msdu_blk) {
-							MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("msdu:SN = %d, AMSDU = %d\n", msdu_blk->Sequence,
-								 msdu_blk->bAMSDU));
-
-							while (msdu_blk->next) {
-								msdu_blk = msdu_blk->next;
-								MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("msdu:SN = %d, AMSDU = %d\n", msdu_blk->Sequence,
-									 msdu_blk->bAMSDU));
-							}
-						}
-					}
+					mpdu_blk = mpdu_blk->next;
 				}
+				NdisReleaseSpinLock(&pRecBAEntry->RxReRingLock);
 			}
 		}
 	}
@@ -1007,6 +989,7 @@ BOOLEAN ba_rec_session_add(
 		pBAEntry->TimeOutValue = pFrame->TimeOutValue;
 		pBAEntry->REC_BA_Status = Recipient_Initialization;
 		pBAEntry->check_amsdu_miss = TRUE;
+		pBAEntry->LastIndSeq = (pFrame->BaStartSeq.field.StartSeq - 1) & MAXSEQ;
 		MTWF_LOG(DBG_CAT_PROTO, CATPROTO_BA, DBG_LVL_TRACE, ("Start Seq = %08x\n",  pFrame->BaStartSeq.field.StartSeq));
 		NdisReleaseSpinLock(&pAd->BATabLock);
 

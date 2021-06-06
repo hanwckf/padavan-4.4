@@ -904,7 +904,15 @@ static VOID ApCliMlmeAssocReqAction(
 	}
 #endif /*CONFIG_OWE_SUPPORT*/
 
+#if (defined(FAST_EAPOL_WAR) && defined(DPP_SUPPORT))
+	/* In case of DPP, alg will not be set by PMF, set it here */
+	if (apcli_entry->pre_entry_alloc == TRUE) {
+		MAC_TABLE_ENTRY *pentry = &pAd->MacTab.Content[apcli_entry->MacTabWCID];
 
+		if (IS_AKM_DPP(pentry->SecConfig.AKMMap))
+			pentry->SecConfig.key_deri_alg = SEC_KEY_DERI_SHA256;
+	}
+#endif /* DPP_SUPPORT */
 
 #ifdef CONFIG_MAP_SUPPORT
 		if (IS_MAP_ENABLE(pAd))
@@ -1136,8 +1144,15 @@ static VOID ApCliPeerAssocRspAction(
 
 			if (Status == MLME_SUCCESS) {
 #ifdef CONFIG_MAP_SUPPORT
-				if (IS_MAP_ENABLE(pAd))
+				if (IS_MAP_ENABLE(pAd)) {
 					pEntry->DevPeerRole = ie_list->MAP_AttriValue;
+#ifdef MAP_R2
+					pEntry->profile = ie_list->MAP_ProfileValue;
+					pApCliEntry->wdev.MAPCfg.primary_vid = ie_list->MAP_default_vid;
+					MTWF_LOG(DBG_CAT_CLIENT, CATCLIENT_APCLI,
+						DBG_LVL_ERROR, ("pEntry=%p, profile=%02x\n", pEntry, pEntry->profile));
+#endif
+				}
 #endif /* CONFIG_MAP_SUPPORT */
 				/* go to procedure listed on page 376 */
 #ifdef MAC_REPEATER_SUPPORT

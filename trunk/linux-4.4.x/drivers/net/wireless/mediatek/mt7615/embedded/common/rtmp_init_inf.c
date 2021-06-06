@@ -103,8 +103,13 @@ INT rtmp_cfg_init(RTMP_ADAPTER *pAd, RTMP_STRING *pHostName)
 #ifdef MBO_SUPPORT
 	MboInit(pAd);
 #endif /* MBO_SUPPORT */
+#ifdef OCE_SUPPORT
+	OceInit(pAd);
+#endif /* OCE_SUPPORT */
 	CfgInitHook(pAd);
-
+#ifdef DPP_SUPPORT
+	pAd->dpp_rx_frm_counter = 0;
+#endif /* DPP_SUPPORT */
 	/*
 		WiFi system operation mode setting base on following partitions:
 		1. Parameters from config file
@@ -409,7 +414,7 @@ int mt_wifi_init(VOID *pAdSrc, RTMP_STRING *pDefaultMac, RTMP_STRING *pHostName)
 	}
 #endif
 
-#if defined(OFFCHANNEL_SCAN_FEATURE) || defined(NF_SUPPORT)
+#if defined(OFFCHANNEL_SCAN_FEATURE) || defined(NF_SUPPORT) || defined(NEIGHBORING_AP_STAT)
 		MAC_IO_WRITE32(pAd, 0x12234, 0x07000000);
 		MAC_IO_WRITE32(pAd, PHY_BAND0_PHYMUX_5, 0x50DC10); /* Enabling IPI for Band 0 */
 #ifdef DBDC_MODE
@@ -875,6 +880,9 @@ VOID RTMPDrvClose(VOID *pAdSrc, VOID *net_dev)
 #ifdef MULTI_PROFILE
 	multi_profile_exit(pAd);
 #endif /*MULTI_PROFILE*/
+#ifdef OCE_SUPPORT
+	OceRelease(pAd);
+#endif /* OCE_SUPPORT */
 #ifdef CCK_LQ_SUPPORT
 	pAd->Avg_LQ = 0;
 	pAd->Avg_LQx16 = 0;
@@ -894,8 +902,10 @@ VOID RTMPDrvClose(VOID *pAdSrc, VOID *net_dev)
 
 #ifdef OFFCHANNEL_SCAN_FEATURE
 	pAd->Avg_NF[DBDC_BAND0] = pAd->Avg_NFx16[DBDC_BAND0] = 0;
+#ifdef DBDC_MODE
 	if (pAd->CommonCfg.dbdc_mode)
 		pAd->Avg_NF[DBDC_BAND1] = pAd->Avg_NFx16[DBDC_BAND1] = 0;
+#endif /* DBDC_MODE */
 	 NdisFreeSpinLock(&pAd->ScanCtrl.NF_Lock);
 #endif
 

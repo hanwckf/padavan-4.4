@@ -143,6 +143,7 @@ extern UINT8 WPS_DH_P_VALUE[192];
 #define WSC_AUTHTYPE_WPA         0x0008
 #define WSC_AUTHTYPE_WPA2        0x0010
 #define WSC_AUTHTYPE_WPA2PSK     0x0020
+#define WSC_AUTHTYPE_SAE         0x0040           /* Required to work with WPA3 support on MAP_R1 */
 #define WSC_AUTHTYPE_WPANONE     0x0080
 
 /* Config methods */

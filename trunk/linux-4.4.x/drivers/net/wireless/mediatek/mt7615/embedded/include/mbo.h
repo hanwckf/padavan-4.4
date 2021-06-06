@@ -1,9 +1,13 @@
 #ifndef __MBO_H
 #define __MBO_H
 
-#ifdef MBO_SUPPORT
+#if defined(MBO_SUPPORT) || defined(OCE_SUPPORT)
 #include "rtmp_type.h"
 #include "rt_config.h"
+
+#ifndef OCE_SUPPORT
+#define IS_OCE_ENABLE(_wdev) (FALSE)
+#endif /* OCE_SUPPORT */
 
 #define MBO_NPC_MAX_LEN							50		/* Non Preferred Channel List Max Len */
 
@@ -106,43 +110,45 @@ typedef enum {
 
 #define PER_EVENT_LIST_MAX_NUM 5
 
+#ifndef WAPP_SUPPORT
+
 typedef struct GNU_PACKED _TBTT_INFO_SET
 {
 	UINT8 NrAPTbttOffset;
 	UINT32 ShortBssid;
 } TBTT_INFO_SET, *P_TBTT_INFO_SET;
 
-typedef struct GNU_PACKED _DAEMON_NEIGHBOR_REP_INFO
+typedef struct GNU_PACKED _wapp_nr_info
 {
-	UINT8	Bssid[MAC_ADDR_LEN];
-	UINT32  BssidInfo;
-	UINT8  RegulatoryClass;
-	UINT8  ChNum;
-	UINT8  PhyType;
-	UINT8  CandidatePrefSubID;
-	UINT8  CandidatePrefSubLen;
-	UINT8  CandidatePref;
-	/* extra information */
-	UINT32 akm;
-	UINT32 cipher;
+	u8 	Bssid[MAC_ADDR_LEN];
+	u32 BssidInfo;
+	u8  RegulatoryClass;
+	u8  ChNum;
+	u8  PhyType;
+	u8  CandidatePrefSubID;
+	u8  CandidatePrefSubLen;
+	u8  CandidatePref;
+	/* extra sec info */
+	u32 akm;
+	u32 cipher;
 	UINT8  TbttInfoSetNum;
 	TBTT_INFO_SET TbttInfoSet;
-	UINT8 Rssi;
-} DAEMON_NEIGHBOR_REP_INFO, *P_DAEMON_NEIGHBOR_REP_INFO;
+	u8  Rssi;
+} wapp_nr_info;
 
 typedef struct GNU_PACKED daemon_neighbor_report_list {
 	UINT8	Newlist;
 	UINT8	TotalNum;
 	UINT8	CurrNum;
 	UINT8	reserved;
-	DAEMON_NEIGHBOR_REP_INFO EvtNRInfo[PER_EVENT_LIST_MAX_NUM];
+	wapp_nr_info EvtNRInfo[PER_EVENT_LIST_MAX_NUM];
 } DAEMON_EVENT_NR_LIST, *P_DAEMON_EVENT_NR_LIST;
 
 typedef struct GNU_PACKED neighbor_report_msg {
 	DAEMON_EVENT_NR_LIST evt_nr_list;
 } DAEMON_NR_MSG, *P_DAEMON_NR_MSG;
 
-
+#endif
 typedef struct GNU_PACKED non_pref_ch {
 	UINT8 ch;
 	UINT8 pref;
@@ -227,6 +233,7 @@ typedef struct _MBO_ATTR_STRUCT {
 VOID MakeMboOceIE(
 	PRTMP_ADAPTER pAd,
 	struct wifi_dev *wdev,
+	struct _MAC_TABLE_ENTRY *pEntry,
 	PUINT8 pFrameBuf,
 	PULONG pFrameLen,
 	UINT8 FrameType);

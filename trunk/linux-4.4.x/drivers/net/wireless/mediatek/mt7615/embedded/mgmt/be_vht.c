@@ -44,13 +44,18 @@ VOID vht_oper_exit(struct vht_op *obj)
 /*
 * internal used configure loader
 */
-/*
-* exported operation function.
-*/
-
 VOID operate_loader_vht_bw(struct wlan_operate *op)
 {
 }
+
+VOID operate_loader_vht_ldpc(struct wlan_operate *op, UCHAR vht_ldpc)
+{
+	op->vht_oper.vht_ldpc = vht_ldpc;
+	op->vht_status.vht_cap.rx_ldpc = vht_ldpc;
+}
+/*
+* exported operation function.
+*/
 /*
 * Set
 */
@@ -82,6 +87,16 @@ INT32 wlan_operate_set_vht_bw(struct wifi_dev *wdev, UCHAR vht_bw)
 	return ret;
 }
 
+INT32 wlan_operate_set_vht_ldpc(struct wifi_dev *wdev, UCHAR vht_ldpc)
+{
+	struct wlan_operate *op = (struct wlan_operate *) wdev->wpf_op;
+	INT32 ret = WLAN_OPER_OK;
+
+	if (wdev && wdev->wpf_op)
+		operate_loader_vht_ldpc(op, vht_ldpc);
+
+	return ret;
+}
 /*
 * Get
 */
@@ -90,5 +105,12 @@ UCHAR wlan_operate_get_vht_bw(struct wifi_dev *wdev)
 	struct wlan_operate *op = (struct wlan_operate *)wdev->wpf_op;
 
 	return op->vht_oper.vht_bw;
+}
+
+UCHAR wlan_operate_get_vht_ldpc(struct wifi_dev *wdev)
+{
+	struct wlan_operate *op = (struct wlan_operate *)wdev->wpf_op;
+
+	return op->vht_oper.vht_ldpc;
 }
 #endif /* DOT11_VHT_AC */

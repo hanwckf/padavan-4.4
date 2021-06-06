@@ -6184,10 +6184,18 @@ USHORT WscGetAuthType(
 		return WSC_AUTHTYPE_WPA;
 	else if (IS_AKM_WPA1PSK(authType))
 		return WSC_AUTHTYPE_WPAPSK;
+#ifdef APCLI_SAE_SUPPORT
+	else if (IS_AKM_WPA2PSK(authType) && IS_AKM_WPA3PSK(authType))
+		return WSC_AUTHTYPE_WPA2PSK | WSC_AUTHTYPE_SAE;
+#endif
 	else if (IS_AKM_WPA2(authType))
 		return WSC_AUTHTYPE_WPA2;
 	else if (IS_AKM_WPA2PSK(authType))
 		return WSC_AUTHTYPE_WPA2PSK;
+#ifdef APCLI_SAE_SUPPORT
+	else if (IS_AKM_WPA3PSK(authType))
+		return WSC_AUTHTYPE_SAE;
+#endif
 	else
 		return WSC_AUTHTYPE_OPEN;
 }

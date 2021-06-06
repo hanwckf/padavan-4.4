@@ -94,6 +94,9 @@ void RTMP_QueryPacketInfo(
 
 
 PNDIS_PACKET ClonePacket(BOOLEAN moniflag, PNET_DEV ndev, PNDIS_PACKET pkt, UCHAR *buf, ULONG sz);
+#ifdef MAP_TS_TRAFFIC_SUPPORT
+PNDIS_PACKET CopyPacket(IN PNET_DEV if_dev, IN PNDIS_PACKET pkt);
+#endif
 PNDIS_PACKET DuplicatePacket(PNET_DEV pNetDev, PNDIS_PACKET pPacket);
 
 PNDIS_PACKET duplicate_pkt_with_TKIP_MIC(
@@ -213,6 +216,12 @@ UCHAR VLAN_8023_Header_Copy(
 #ifdef VLAN_SUPPORT
 VOID *RtmpOsVLANInsertTag(PNDIS_PACKET pPacket, UINT16 tci);
 #endif /*VLAN_SUPPORT*/
+
+VOID RtmpOsSkbPullRcsum(struct sk_buff *skb, unsigned int len);
+VOID RtmpOsSkbResetMacHeader(struct sk_buff *skb);
+VOID RtmpOsSkbResetNetworkHeader(struct sk_buff *skb);
+VOID RtmpOsSkbResetTransportHeader(struct sk_buff *skb);
+VOID RtmpOsSkbResetMacLen(struct sk_buff *skb);
 
 VOID RtmpOsPktBodyCopy(
 	IN	PNET_DEV				pNetDev,

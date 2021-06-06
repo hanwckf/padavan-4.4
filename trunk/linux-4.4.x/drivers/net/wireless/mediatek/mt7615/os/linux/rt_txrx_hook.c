@@ -58,8 +58,9 @@ int mt_wlan_hook_register(struct mt_wlan_hook_ops *ops)
 	}
 	return 0;
 }
+#ifndef MT76XX_COMBO_DUAL_DRIVER_SUPPORT
 EXPORT_SYMBOL(mt_wlan_hook_register);
-
+#endif /* MT76XX_COMBO_DUAL_DRIVER_SUPPORT */
 
 /*
 *
@@ -81,4 +82,6 @@ int mt_wlan_hook_unregister(struct mt_wlan_hook_ops *ops)
 
 	return -1;
 }
+#ifndef MT76XX_COMBO_DUAL_DRIVER_SUPPORT
 EXPORT_SYMBOL(mt_wlan_hook_unregister);
+#endif /* MT76XX_COMBO_DUAL_DRIVER_SUPPORT */

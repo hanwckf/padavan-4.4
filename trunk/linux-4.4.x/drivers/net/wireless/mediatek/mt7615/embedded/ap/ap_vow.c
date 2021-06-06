@@ -1130,7 +1130,7 @@ VOID vow_update_om_wmm(PRTMP_ADAPTER pad, struct wifi_dev *wdev, PEDCA_PARM pApE
 
 	if (WMODE_CAP_5G(wdev->PhyMode))
 		st = SLOT_TIME_5G;
-	else if (pad->CommonCfg.bUseShortSlotTime)
+	else if (wdev->bUseShortSlotTime)
 		st = SLOT_TIME_24G_SHORT;
 	else
 		st = SLOT_TIME_24G_LONG;

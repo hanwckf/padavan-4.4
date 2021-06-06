@@ -117,6 +117,15 @@ raWrapperEntrySet(
 	pRaEntry->aucHtCapMCSSet[1] = pEntry->HTCapability.MCSSet[1];
 	pRaEntry->aucHtCapMCSSet[2] = pEntry->HTCapability.MCSSet[2];
 	pRaEntry->aucHtCapMCSSet[3] = pEntry->HTCapability.MCSSet[3];
+#ifdef CONFIG_RA_PHY_RATE_SUPPORT
+	if (pEntry->wdev->rate.Eap_HtSupRate_En == TRUE) {
+		pRaEntry->aucHtCapMCSSet[0] = pEntry->HTCapability.MCSSet[0] & pEntry->wdev->rate.EapMCSSet[0];
+		pRaEntry->aucHtCapMCSSet[1] = pEntry->HTCapability.MCSSet[1] & pEntry->wdev->rate.EapMCSSet[1];
+		pRaEntry->aucHtCapMCSSet[2] = pEntry->HTCapability.MCSSet[2] & pEntry->wdev->rate.EapMCSSet[2];
+		pRaEntry->aucHtCapMCSSet[3] = pEntry->HTCapability.MCSSet[3] & pEntry->wdev->rate.EapMCSSet[3];
+	}
+#endif /* CONFIG_RA_PHY_RATE_SUPPORT */
+
 	pRaEntry->ucMmpsMode = pEntry->MmpsMode;
 
 	if (pEntry->fgGband256QAMSupport == TRUE)
@@ -135,6 +144,7 @@ raWrapperEntrySet(
 	pRaEntry->ucSupportRateMode = pEntry->SupportRateMode;
 	pRaEntry->ucSupportCCKMCS = pEntry->SupportCCKMCS;
 	pRaEntry->ucSupportOFDMMCS = pEntry->SupportOFDMMCS;
+
 #ifdef DOT11_N_SUPPORT
 	pRaEntry->u4SupportHTMCS = pEntry->SupportHTMCS;
 #ifdef DOT11_VHT_AC
@@ -150,6 +160,58 @@ raWrapperEntrySet(
 	pRaEntry->vhtOpModeRxNssType = pEntry->operating_mode.rx_nss_type;
 #endif /* DOT11_VHT_AC */
 #endif /* DOT11_N_SUPPORT */
+
+#ifdef CONFIG_RA_PHY_RATE_SUPPORT
+	if (pEntry->wdev->rate.Eap_SupRate_En == TRUE) {
+		pRaEntry->ucSupportCCKMCS = pEntry->SupportCCKMCS & pEntry->wdev->rate.EapSupportCCKMCS;
+		pRaEntry->ucSupportOFDMMCS = pEntry->SupportOFDMMCS & pEntry->wdev->rate.EapSupportOFDMMCS;
+	}
+#ifdef DOT11_N_SUPPORT
+	if (pEntry->wdev->rate.Eap_HtSupRate_En == TRUE)
+		pRaEntry->u4SupportHTMCS = pEntry->SupportHTMCS & pEntry->wdev->rate.EapSupportHTMCS;
+#ifdef DOT11_VHT_AC
+	if (pEntry->wdev->rate.Eap_VhtSupRate_En == TRUE) {
+		if (pEntry->wdev->rate.rx_mcs_map.mcs_ss1 == 0)
+			pRaEntry->u2SupportVHTMCS1SS = pEntry->SupportVHTMCS1SS & 255;
+
+		if (pEntry->wdev->rate.rx_mcs_map.mcs_ss1 == 1)
+			pRaEntry->u2SupportVHTMCS1SS = pEntry->SupportVHTMCS1SS & 511;
+
+		if (pEntry->wdev->rate.rx_mcs_map.mcs_ss1 == 2)
+			pRaEntry->u2SupportVHTMCS1SS = pEntry->SupportVHTMCS1SS & 1023;
+
+		if (pEntry->wdev->rate.rx_mcs_map.mcs_ss2 == 0)
+			pRaEntry->u2SupportVHTMCS2SS = pEntry->SupportVHTMCS2SS & 255;
+
+		if (pEntry->wdev->rate.rx_mcs_map.mcs_ss2 == 1)
+			pRaEntry->u2SupportVHTMCS2SS = pEntry->SupportVHTMCS2SS & 511;
+
+		if (pEntry->wdev->rate.rx_mcs_map.mcs_ss2 == 2)
+			pRaEntry->u2SupportVHTMCS2SS = pEntry->SupportVHTMCS2SS & 1023;
+
+		if (pEntry->MaxHTPhyMode.field.BW < BW_160) {
+			if (pEntry->wdev->rate.rx_mcs_map.mcs_ss3 == 0)
+				pRaEntry->u2SupportVHTMCS3SS = pEntry->SupportVHTMCS3SS & 255;
+
+			if (pEntry->wdev->rate.rx_mcs_map.mcs_ss3 == 1)
+				pRaEntry->u2SupportVHTMCS3SS = pEntry->SupportVHTMCS3SS & 511;
+
+			if (pEntry->wdev->rate.rx_mcs_map.mcs_ss3 == 2)
+				pRaEntry->u2SupportVHTMCS3SS = pEntry->SupportVHTMCS3SS & 1023;
+
+			if (pEntry->wdev->rate.rx_mcs_map.mcs_ss4 == 0)
+				pRaEntry->u2SupportVHTMCS4SS = pEntry->SupportVHTMCS4SS & 255;
+
+			if (pEntry->wdev->rate.rx_mcs_map.mcs_ss4 == 1)
+				pRaEntry->u2SupportVHTMCS4SS = pEntry->SupportVHTMCS4SS & 511;
+
+			if (pEntry->wdev->rate.rx_mcs_map.mcs_ss4 == 2)
+				pRaEntry->u2SupportVHTMCS4SS = pEntry->SupportVHTMCS4SS & 1023;
+		}
+	}
+#endif /* DOT11_VHT_AC */
+#endif /* DOT11_N_SUPPORT */
+#endif /* CONFIG_RA_PHY_RATE_SUPPORT */
 	pRaEntry->AvgRssiSample[0] = pEntry->RssiSample.AvgRssi[0];
 	pRaEntry->AvgRssiSample[1] = pEntry->RssiSample.AvgRssi[1];
 	pRaEntry->AvgRssiSample[2] = pEntry->RssiSample.AvgRssi[2];

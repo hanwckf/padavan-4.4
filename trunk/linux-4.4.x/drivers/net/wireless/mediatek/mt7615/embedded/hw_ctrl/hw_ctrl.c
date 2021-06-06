@@ -462,16 +462,54 @@ static NTSTATUS HwCtrlRemoveReptEntry(RTMP_ADAPTER *pAd, HwCmdQElmt *CMDQelmt)
 #endif /*MAC_REPEATER_SUPPORT*/
 
 #ifdef MT_MAC
+#ifdef OCE_SUPPORT
+static NTSTATUS HwCtrlSetFdFrameOffload(RTMP_ADAPTER *pAd, HwCmdQElmt *CMDQelmt)
+{
+	PMT_SET_FD_FRAME_OFFLOAD pSetFdFrameOffload = (PMT_SET_FD_FRAME_OFFLOAD)CMDQelmt->buffer;
+	P_CMD_FD_FRAME_OFFLOAD_T pFd_frame_offload = NULL;
+	struct wifi_dev *wdev = pAd->wdev_list[pSetFdFrameOffload->WdevIdx];
+
+	os_alloc_mem(NULL, (PUCHAR *)&pFd_frame_offload, sizeof(CMD_FD_FRAME_OFFLOAD_T));
+
+	if (!pFd_frame_offload) {
+		MTWF_LOG(DBG_CAT_FW, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
+			 ("can not allocate fd_frame_offload\n"));
+			return NDIS_STATUS_FAILURE;
+	}
+
+	os_zero_mem(pFd_frame_offload, sizeof(CMD_FD_FRAME_OFFLOAD_T));
+
+	pFd_frame_offload->ucEnable = pSetFdFrameOffload->ucEnable;
+	pFd_frame_offload->ucWlanIdx = 0;
+	pFd_frame_offload->ucOwnMacIdx = wdev->OmacIdx;
+	pFd_frame_offload->ucBandIdx = HcGetBandByWdev(wdev);
+
+	if (pFd_frame_offload->ucEnable) {
+		pFd_frame_offload->u2TimestampFieldPos = pSetFdFrameOffload->u2TimestampFieldPos;
+		pFd_frame_offload->u2PktLength = pSetFdFrameOffload->u2PktLength;
+		os_move_mem(pFd_frame_offload->acPktContent, pSetFdFrameOffload->acPktContent,
+			pFd_frame_offload->u2PktLength);
+	}
+
+	hex_dump_with_lvl("FD_FRAME HwCtrlSetFdFrameOffload", pFd_frame_offload->acPktContent,
+		pFd_frame_offload->u2PktLength, DBG_LVL_TRACE);
+
+	MtCmdFdFrameOffloadSet(pAd, pFd_frame_offload);
+
+	os_free_mem(pFd_frame_offload);
+
+	return NDIS_STATUS_SUCCESS;
+}
+#endif /* OCE_SUPPORT */
+
 #ifdef BCN_OFFLOAD_SUPPORT
 static NTSTATUS HwCtrlSetBcnOffload(RTMP_ADAPTER *pAd, HwCmdQElmt *CMDQelmt)
 {
 	PMT_SET_BCN_OFFLOAD pSetBcnOffload = (PMT_SET_BCN_OFFLOAD)CMDQelmt->buffer;
 	struct wifi_dev *wdev = pAd->wdev_list[pSetBcnOffload->WdevIdx];
-#ifdef BCN_V2_SUPPORT /* add bcn v2 support , 1.5k beacon support */
+
 	CMD_BCN_OFFLOAD_T *bcn_offload = NULL;
-#else
-	CMD_BCN_OFFLOAD_T bcn_offload;
-#endif
+
 	BCN_BUF_STRUC *bcn_buf = NULL;
 #ifdef CONFIG_AP_SUPPORT
 	TIM_BUF_STRUC *tim_buf = NULL;
@@ -479,7 +517,6 @@ static NTSTATUS HwCtrlSetBcnOffload(RTMP_ADAPTER *pAd, HwCmdQElmt *CMDQelmt)
 	UCHAR *buf;
 	PNDIS_PACKET *pkt = NULL;
 
-#ifdef BCN_V2_SUPPORT /* add bcn v2 support , 1.5k beacon support */
 	os_alloc_mem(NULL, (PUCHAR *)&bcn_offload, sizeof(*bcn_offload));
 	if (!bcn_offload) {
 		MTWF_LOG(DBG_CAT_FW, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
@@ -487,9 +524,6 @@ static NTSTATUS HwCtrlSetBcnOffload(RTMP_ADAPTER *pAd, HwCmdQElmt *CMDQelmt)
 			return NDIS_STATUS_FAILURE;
 	}
 	os_zero_mem(bcn_offload, sizeof(*bcn_offload));
-#else
-	NdisZeroMemory(&bcn_offload, sizeof(CMD_BCN_OFFLOAD_T));
-#endif
 
 	if ((pSetBcnOffload->OffloadPktType == PKT_BCN)
 #ifdef BCN_V2_SUPPORT /* add bcn v2 support , 1.5k beacon support */
@@ -501,9 +535,7 @@ static NTSTATUS HwCtrlSetBcnOffload(RTMP_ADAPTER *pAd, HwCmdQElmt *CMDQelmt)
 		if (!bcn_buf) {
 			MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
 					 ("%s(): bcn_buf is NULL!\n", __func__));
-#ifdef BCN_V2_SUPPORT /* add bcn v2 support , 1.5k beacon support */
 			os_free_mem(bcn_offload);
-#endif
 			return NDIS_STATUS_FAILURE;
 		}
 
@@ -518,9 +550,7 @@ static NTSTATUS HwCtrlSetBcnOffload(RTMP_ADAPTER *pAd, HwCmdQElmt *CMDQelmt)
 		if (!tim_buf) {
 			MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
 					 ("%s(): tim_buf is NULL!\n", __func__));
-#ifdef BCN_V2_SUPPORT /* add bcn v2 support , 1.5k beacon support */
 			os_free_mem(bcn_offload);
-#endif
 			return NDIS_STATUS_FAILURE;
 		}
 
@@ -528,7 +558,6 @@ static NTSTATUS HwCtrlSetBcnOffload(RTMP_ADAPTER *pAd, HwCmdQElmt *CMDQelmt)
 	}
 
 #endif /* CONFIG_AP_SUPPORT */
-#ifdef BCN_V2_SUPPORT /* add bcn v2 support , 1.5k beacon support */
 	bcn_offload->ucEnable = pSetBcnOffload->Enable;
 	bcn_offload->ucWlanIdx = 0;/* hardcode at present */
 	bcn_offload->ucOwnMacIdx = wdev->OmacIdx;
@@ -542,26 +571,10 @@ static NTSTATUS HwCtrlSetBcnOffload(RTMP_ADAPTER *pAd, HwCmdQElmt *CMDQelmt)
 #endif
 	buf = (UCHAR *)GET_OS_PKT_DATAPTR(pkt);
 	NdisCopyMemory(bcn_offload->acPktContent, buf, pSetBcnOffload->WholeLength);
-#else
-	bcn_offload.ucEnable = pSetBcnOffload->Enable;
-	bcn_offload.ucWlanIdx = 0;/* hardcode at present */
-	bcn_offload.ucOwnMacIdx = wdev->OmacIdx;
-	bcn_offload.ucBandIdx = HcGetBandByWdev(wdev);
-	bcn_offload.u2PktLength = pSetBcnOffload->WholeLength;
-	bcn_offload.ucPktType = pSetBcnOffload->OffloadPktType;
-#ifdef CONFIG_AP_SUPPORT
-	bcn_offload.u2TimIePos = pSetBcnOffload->TimIePos;
-	bcn_offload.u2CsaIePos = pSetBcnOffload->CsaIePos;
-	bcn_offload.ucCsaCount = wdev->csa_count;
-#endif
-	buf = (UCHAR *)GET_OS_PKT_DATAPTR(pkt);
-	NdisCopyMemory(bcn_offload.acPktContent, buf, pSetBcnOffload->WholeLength);
-#endif
+
 	MtCmdBcnOffloadSet(pAd, bcn_offload);
 
-#ifdef BCN_V2_SUPPORT /* add bcn v2 support , 1.5k beacon support */
 	os_free_mem(bcn_offload);
-#endif
 
 	return NDIS_STATUS_SUCCESS;
 }
@@ -850,7 +863,9 @@ static void ErrRecoveryEndDriverRestore(RTMP_ADAPTER *pAd)
 {
 	POS_COOKIE pObj;
 	struct tm_ops *tm_ops = pAd->tm_hif_ops;
+	PCI_HIF_T *pci_hif = &pAd->PciHif;
 
+	pci_hif->IntPending |= (MT_INT_RX | MT_INT_RX_DLY);
 	pObj = (POS_COOKIE) pAd->OS_Cookie;
 #if defined(RTMP_MAC_PCI) || defined(RTMP_MAC_USB)
 	tm_ops->schedule_task(pAd, TR_DONE_TASK);
@@ -873,11 +888,13 @@ NTSTATUS HwRecoveryFromError(RTMP_ADAPTER *pAd)
 	if (ATE_ON(pAd)) {
 		MTWF_LOG(DBG_CAT_HW, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
 				 ("Ser():The driver is in ATE mode now\n"));
-		return NDIS_STATUS_SUCCESS;
+		//return NDIS_STATUS_SUCCESS;
 	}
 
 #endif /* CONFIG_ATE */
 	pErrRecoveryCtrl = &pAd->ErrRecoveryCtl;
+
+Label:
 	Status = pAd->HwCtrl.ser_status;
 	Stat = ErrRecoveryCurStat(pErrRecoveryCtrl);
 	pSerTimes = &pAd->HwCtrl.ser_times[0];
@@ -1000,6 +1017,10 @@ NTSTATUS HwRecoveryFromError(RTMP_ADAPTER *pAd)
 		MTWF_LOG(DBG_CAT_HW, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
 				 ("!!! SER CurStat=%u Event=%x!!!\n", ErrRecoveryCurStat(pErrRecoveryCtrl), Status));
 		break;
+	}
+
+	if (Status != pAd->HwCtrl.ser_status) {
+		goto Label;
 	}
 
 	return NDIS_STATUS_SUCCESS;
@@ -1441,6 +1462,10 @@ static HW_CMD_TABLE_T HwCmdRadioTable[] = {
 #ifdef BCN_OFFLOAD_SUPPORT
 	{HWCMD_ID_SET_BCN_OFFLOAD, HwCtrlSetBcnOffload, 0},
 #endif
+#ifdef OCE_SUPPORT
+	{HWCMD_ID_SET_FD_FRAME_OFFLOAD, HwCtrlSetFdFrameOffload, 0},
+#endif /* OCE_SUPPORT */
+
 #ifdef MAC_REPEATER_SUPPORT
 	{HWCMD_ID_ADD_REPT_ENTRY, HwCtrlAddReptEntry, 0},
 	{HWCMD_ID_REMOVE_REPT_ENTRY, HwCtrlRemoveReptEntry, 0},

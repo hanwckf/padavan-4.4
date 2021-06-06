@@ -1079,9 +1079,14 @@ VOID MlmeHandler(RTMP_ADAPTER *pAd)
 #endif
 #ifdef CHANNEL_SWITCH_MONITOR_CONFIG
 			case CH_SWITCH_MONITOR_STATE_MACHINE:
-				StateMachinePerformAction(pAd, &pAd->ch_sw_cfg.ch_switch_sm, Elem,
-											pAd->ch_sw_cfg.ch_switch_sm.CurrState);
+			{
+				UCHAR BandIdx = HcGetBandByWdev((struct wifi_dev *)Elem->Priv);
+				struct ch_switch_cfg *ch_sw_info = HcGetChanSwitchMonbyBandIdx(pAd, BandIdx);
+
+				StateMachinePerformAction(pAd, &ch_sw_info->ch_switch_sm, Elem,
+								ch_sw_info->ch_switch_sm.CurrState);
 				break;
+			}
 #endif
 #ifdef WIFI_DIAG
 			case WIFI_DAIG_STATE_MACHINE:
@@ -1821,16 +1826,23 @@ struct _RTMP_CHIP_OP *ops = hc_get_chip_ops(pAd->hdev_ctrl);
 #endif
 #endif
 
-#ifdef TXRX_STAT_SUPPORT
+#if defined(TXRX_STAT_SUPPORT) || defined(EAP_STATS_SUPPORT)
 		if (pAd->ApCfg.EntryClientCount
-#ifndef VENDOR_FEATURE11_SUPPORT
+#ifndef EAP_STATS_SUPPORT
 			&& pAd->EnableTxRxStats
-#endif /* VENDOR_FEATURE11_SUPPORT */
+#endif /* EAP_STATS_SUPPORT*/
 			) {
 			MtCmdGetPerStaTxStat(pAd, NULL, 0);		/*bitmap and entryCount to be used in future*/
-#ifndef VENDOR_FEATURE11_SUPPORT
+#ifndef EAP_STATS_SUPPORT
 			Update_LastSec_TXRX_Stats(pAd);
-#endif /* VENDOR_FEATURE11_SUPPORT */
+#endif /* EAP_STATS_SUPPORT */
+		}
+#endif
+#ifdef CONFIG_MAP_SUPPORT
+		if (IS_MAP_TURNKEY_ENABLE(pAd) && (IS_MT7622(pAd) || IS_MT7615(pAd))) {
+			if (pAd->ApCfg.EntryClientCount) {
+				MtCmdGetAllStaTxRate(pAd);
+			}
 		}
 #endif
 
@@ -1941,9 +1953,6 @@ struct _RTMP_CHIP_OP *ops = hc_get_chip_ops(pAd->hdev_ctrl);
 
 			if (IS_HIF_TYPE(pAd, HIF_MT)) {
 				CCI_ACI_scenario_maintain(pAd);
-#if defined(MT_MAC) && defined(VHT_TXBF_SUPPORT)
-			Mumimo_scenario_maintain(pAd);
-#endif /* MT_MAC && VHT_TXBF_SUPPORT */
 			}
 
 
@@ -2952,13 +2961,13 @@ VOID MlmeUpdateTxRates(RTMP_ADAPTER *pAd, BOOLEAN bLinkUp, UCHAR apidx)
 #endif /* MCAST_BCAST_RATE_SET_SUPPORT */
 
 			memset(&tPhyMode, 0, sizeof(HTTRANSMIT_SETTING));
-			pTransmit  = (wdev->channel > 14) ? (&pAd->CommonCfg.MCastPhyMode_5G) : (&pAd->CommonCfg.MCastPhyMode);
+			pTransmit  = (wdev->channel > 14) ? (&wdev->rate.MCastPhyMode_5G) : (&wdev->rate.MCastPhyMode);
 
 			if (memcmp(pTransmit, &tPhyMode, sizeof(HTTRANSMIT_SETTING)) == 0) {
 				memmove(pTransmit, &pAd->MacTab.Content[MCAST_WCID_TO_REMOVE].HTPhyMode,
 						sizeof(HTTRANSMIT_SETTING));
 #ifdef MCAST_BCAST_RATE_SET_SUPPORT
-				pBCastTransmit = (wdev->channel > 14) ? (&pAd->CommonCfg.BCastPhyMode_5G) : (&pAd->CommonCfg.BCastPhyMode);
+				pBCastTransmit = (wdev->channel > 14) ? (&wdev->rate.BCastPhyMode_5G) : (&wdev->rate.BCastPhyMode);
 				NdisMoveMemory(pBCastTransmit, pTransmit, sizeof(HTTRANSMIT_SETTING));
 #endif /* MCAST_BCAST_RATE_SET_SUPPORT */
 			}
@@ -3440,13 +3449,13 @@ VOID MlmeUpdateTxRatesWdev(RTMP_ADAPTER *pAd, BOOLEAN bLinkUp, struct wifi_dev *
 #endif /* MCAST_BCAST_RATE_SET_SUPPORT */
 
 			memset(&tPhyMode, 0, sizeof(HTTRANSMIT_SETTING));
-			pTransmit  = (wdev->channel > 14) ? (&pAd->CommonCfg.MCastPhyMode_5G) : (&pAd->CommonCfg.MCastPhyMode);
+			pTransmit  = (wdev->channel > 14) ? (&wdev->rate.MCastPhyMode_5G) : (&wdev->rate.MCastPhyMode);
 
 			if (memcmp(pTransmit, &tPhyMode, sizeof(HTTRANSMIT_SETTING)) == 0) {
 				memmove(pTransmit, &pAd->MacTab.Content[MCAST_WCID_TO_REMOVE].HTPhyMode,
 						sizeof(HTTRANSMIT_SETTING));
 #ifdef MCAST_BCAST_RATE_SET_SUPPORT
-				pBCastTransmit = (wdev->channel > 14) ? (&pAd->CommonCfg.BCastPhyMode_5G) : (&pAd->CommonCfg.BCastPhyMode);
+				pBCastTransmit = (wdev->channel > 14) ? (&wdev->rate.BCastPhyMode_5G) : (&wdev->rate.BCastPhyMode);
 				NdisMoveMemory(pBCastTransmit, pTransmit, sizeof(HTTRANSMIT_SETTING));
 #endif /* MCAST_BCAST_RATE_SET_SUPPORT */
 			}
@@ -4246,14 +4255,17 @@ BOOLEAN MlmeEnqueueForRecv(
 				}
 			}
 
-			/* check if da is to ap */
-			for (i = 0; i < pAd->ApCfg.BssidNum; i++) {
-				if (MAC_ADDR_EQUAL(pAd->ApCfg.MBSSID[i].wdev.if_addr, pFrame->Hdr.Addr1)) {
+			if (!ApCliIdx_find) {
+				/* check if da is to ap */
+				for (i = 0; i < pAd->ApCfg.BssidNum; i++) {
+					if (MAC_ADDR_EQUAL(pAd->ApCfg.MBSSID[i].wdev.if_addr, pFrame->Hdr.Addr1)) {
 #if defined(CONFIG_AP_SUPPORT) && defined(MBSS_SUPPORT)
-					MBSSIdx = i;
-					ApBssIdx_find = TRUE;
+						MBSSIdx = i;
+						ApBssIdx_find = TRUE;
 #endif
-					break;
+						wdev = &pAd->ApCfg.MBSSID[MBSSIdx].wdev;
+						break;
+					}
 				}
 			}
 
@@ -4278,6 +4290,11 @@ BOOLEAN MlmeEnqueueForRecv(
 				bToApCli) {
 				if (ApCliMsgTypeSubst(pAd, pFrame, &Machine, &MsgType)) {
 					/* apcli and repeater case */
+					/* If APCLI interface is in disconnected state
+					 * wdev here is INT_MAIN, need to correct it --
+					 * to correct APCLI wdev.
+					 */
+					wdev = &pAd->ApCfg.ApCliTab[ApCliIdx].wdev;
 					break;
 				}
 			}
@@ -4345,6 +4362,12 @@ BOOLEAN MlmeEnqueueForRecv(
 	Queue->Entry[Tail].TimeStamp.u.HighPart = TimeStampHigh;
 	NdisMoveMemory(&Queue->Entry[Tail].rssi_info, rssi_info, sizeof(struct raw_rssi_info));
 	Queue->Entry[Tail].Signal = rssi_info->raw_snr;
+#ifdef NEIGHBORING_AP_STAT
+	Queue->Entry[Tail].Snr[0] = rssi_info->raw_Snr[0];
+	Queue->Entry[Tail].Snr[1] = rssi_info->raw_Snr[1];
+	Queue->Entry[Tail].Snr[2] = rssi_info->raw_Snr[2];
+	Queue->Entry[Tail].Snr[3] = rssi_info->raw_Snr[3];
+#endif
 	Queue->Entry[Tail].Wcid = (UCHAR)Wcid;
 	Queue->Entry[Tail].OpMode = (ULONG)OpMode;
 	Queue->Entry[Tail].Channel = (rssi_info->Channel == 0) ? pAd->LatchRfRegs.Channel : rssi_info->Channel;
@@ -4816,13 +4839,13 @@ CHAR RTMPAvgRssi(RTMP_ADAPTER *pAd, RSSI_SAMPLE *pRssi)
 {
 	CHAR Rssi;
 	INT Rssi_temp;
-	UINT32	rx_stream;
+	UINT32	rx_stream = 0;
+	UINT8 i;
 
-	rx_stream = pAd->Antenna.field.RxPath;
-
-/* single chip dbdc only has 2 functional antennae*/
-	if (pAd->CommonCfg.dbdc_mode == TRUE && rx_stream == 4)
-		rx_stream = 2;
+	for (i = 0; i < pAd->Antenna.field.RxPath; i++) {
+		if ((pRssi->AvgRssi[i] > -127) && (pRssi->AvgRssi[i] < 0))
+			rx_stream++;
+	}
 
 	if (rx_stream == 4)
 		Rssi_temp = (pRssi->AvgRssi[0] + pRssi->AvgRssi[1] + pRssi->AvgRssi[2] + pRssi->AvgRssi[3]) >> 2;
@@ -4845,18 +4868,18 @@ CHAR RTMPMaxRssi(RTMP_ADAPTER *pAd, CHAR Rssi0, CHAR Rssi1, CHAR Rssi2)
 {
 	CHAR	larger = -127;
 
-	if ((pAd->Antenna.field.RxPath == 1) && (Rssi0 != 0))
+	if ((pAd->Antenna.field.RxPath >= 1) && (Rssi0 > -127) && (Rssi0 < 0))
 		larger = Rssi0;
 
-	if ((pAd->Antenna.field.RxPath >= 2) && (Rssi1 != 0))
-		larger = max(Rssi0, Rssi1);
+	if ((pAd->Antenna.field.RxPath >= 2) && (Rssi1 > -127) && (Rssi1 < 0))
+		larger = max(larger, Rssi1);
 
-	if ((pAd->Antenna.field.RxPath == 3) && (Rssi2 != 0))
+	if ((pAd->Antenna.field.RxPath >= 3) && (Rssi2 > -127) && (Rssi2 < 0))
 		larger = max(larger, Rssi2);
 
 #if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT)
 	if (!pAd->CommonCfg.dbdc_mode) {
-		if ((pAd->Antenna.field.RxPath == 4) && (Rssi3 != 0))
+		if ((pAd->Antenna.field.RxPath >= 4) && (Rssi3 > -127) && (Rssi3 < 0))
 			larger = max(larger, Rssi3);
 	}
 #endif
@@ -4871,16 +4894,16 @@ CHAR RTMPMinRssi(RTMP_ADAPTER *pAd, CHAR Rssi0, CHAR Rssi1, CHAR Rssi2, CHAR Rss
 {
 	CHAR	smaller = -127;
 
-	if ((pAd->Antenna.field.RxPath == 1) && (Rssi0 != 0))
+	if ((pAd->Antenna.field.RxPath >= 1) && (Rssi0 > -127) && (Rssi0 < 0))
 		smaller = Rssi0;
 
-	if ((pAd->Antenna.field.RxPath >= 2) && (Rssi1 != 0))
-		smaller = min(Rssi0, Rssi1);
+	if ((pAd->Antenna.field.RxPath >= 2) && (Rssi1 > -127) && (Rssi1 < 0))
+		smaller = min(smaller, Rssi1);
 
-	if ((pAd->Antenna.field.RxPath >= 3) && (Rssi2 != 0))
+	if ((pAd->Antenna.field.RxPath >= 3) && (Rssi2 > -127) && (Rssi2 < 0))
 		smaller = min(smaller, Rssi2);
 
-	if ((pAd->Antenna.field.RxPath == 4) && (Rssi3 != 0))
+	if ((pAd->Antenna.field.RxPath >= 4) && (Rssi3 > -127) && (Rssi3 < 0))
 		smaller = min(smaller, Rssi3);
 
 	if (smaller == -127)
@@ -4893,11 +4916,11 @@ CHAR RTMPMinSnr(RTMP_ADAPTER *pAd, CHAR Snr0, CHAR Snr1)
 {
 	CHAR	smaller = Snr0;
 
-	if (pAd->Antenna.field.RxPath == 1)
+	if (pAd->Antenna.field.RxPath >= 1)
 		smaller = Snr0;
 
 	if ((pAd->Antenna.field.RxPath >= 2) && (Snr1 != 0))
-		smaller = min(Snr0, Snr1);
+		smaller = min(smaller, Snr1);
 
 	return smaller;
 }

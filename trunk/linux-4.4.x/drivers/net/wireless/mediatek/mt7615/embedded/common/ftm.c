@@ -3487,8 +3487,8 @@ INT Send_ANQP_Req_For_Test(
 	os_free_mem(Buf);
 	os_free_mem(buf_anqp);
 	return TRUE;
-	os_free_mem(Buf);
 error0:
+	os_free_mem(buf_anqp);
 	return FALSE;
 }
 
@@ -3633,7 +3633,7 @@ INT Send_RadioMeasurement_Req_For_Test(
 	BssidInfo.field.APReachAble = 3;
 	BssidInfo.field.Security = 0; /* rrm to do. */
 	BssidInfo.field.KeyScope = 0; /* "report AP has same authenticator as the AP. */
-	BssidInfo.field.SepctrumMng = (pMbss->CapabilityInfo & (1 << 8)) ? 1 : 0;
+	BssidInfo.field.SpectrumMng = (pMbss->CapabilityInfo & (1 << 8)) ? 1 : 0;
 	BssidInfo.field.Qos = (pMbss->CapabilityInfo & (1 << 9)) ? 1 : 0;
 	BssidInfo.field.APSD = (pMbss->CapabilityInfo & (1 << 11)) ? 1 : 0;
 #ifdef DOT11K_RRM_SUPPORT
@@ -3658,7 +3658,7 @@ INT Send_RadioMeasurement_Req_For_Test(
 		BssidInfo.field.APReachAble = 3;
 		BssidInfo.field.Security = 0; /* rrm to do. */
 		BssidInfo.field.KeyScope = 0; /* "report AP has same authenticator as the AP. */
-		BssidInfo.field.SepctrumMng = (pMbss->CapabilityInfo & (1 << 8)) ? 1 : 0;
+		BssidInfo.field.SpectrumMng = (pMbss->CapabilityInfo & (1 << 8)) ? 1 : 0;
 		BssidInfo.field.Qos = (pMbss->CapabilityInfo & (1 << 9)) ? 1 : 0;
 		BssidInfo.field.APSD = (pMbss->CapabilityInfo & (1 << 11)) ? 1 : 0;
 #ifdef DOT11K_RRM_SUPPORT

@@ -84,6 +84,10 @@ VOID PeerPublicAction(
 	IN PRTMP_ADAPTER pAd,
 	IN MLME_QUEUE_ELEM *Elem);
 
+VOID PeerProtectedDualAction(
+	RTMP_ADAPTER *pAd,
+	MLME_QUEUE_ELEM *Elem);
+
 
 #ifdef CONFIG_AP_SUPPORT
 VOID ApPublicAction(

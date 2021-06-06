@@ -540,7 +540,8 @@ VOID RRM_EnqueueBcnReq(
 							   (RTMP_STRING *)pAd->CommonCfg.CountryCode,
 							   pMlmeBcnReq->ChRepRegulatoryClass[idx],
 							   &pMlmeBcnReq->ChRepList[0],
-							   pAd->ApCfg.MBSSID[IfIdx].wdev.PhyMode);
+							   pAd->ApCfg.MBSSID[IfIdx].wdev.PhyMode,
+							   IfIdx);
 			TotalLen += (FrameLen - FramelenTmp);
 			idx++;
 		}
@@ -722,6 +723,7 @@ INT rrm_send_beacon_req_param(
 		MTWF_LOG(DBG_CAT_PROTO, CATPROTO_RRM, DBG_LVL_ERROR,
 			("%s, Fail to Insert MesureReq Token(%d)!\n",
 			__func__, MeasureReqToken));
+		os_free_mem(pBuf);
 		return NDIS_STATUS_FAILURE;
 	}
 	pEntry->skip_time_check = TRUE;
@@ -836,7 +838,7 @@ VOID RRM_EnqueueNeighborRep(
 	BssidInfo.field.APReachAble = 3;
 	BssidInfo.field.Security = 1; /* security is match in our own info case */
 	BssidInfo.field.KeyScope = 0; /* "report AP has same authenticator as the AP. */
-	BssidInfo.field.SepctrumMng = (pMbss->CapabilityInfo & (1 << 8)) ? 1 : 0;
+	BssidInfo.field.SpectrumMng = (pMbss->CapabilityInfo & (1 << 8)) ? 1 : 0;
 	BssidInfo.field.Qos = (pMbss->CapabilityInfo & (1 << 9)) ? 1 : 0;
 	BssidInfo.field.APSD = (pMbss->CapabilityInfo & (1 << 11)) ? 1 : 0;
 	BssidInfo.field.RRM = (pMbss->CapabilityInfo & RRM_CAP_BIT) ? 1 : 0;
@@ -874,7 +876,7 @@ VOID RRM_EnqueueNeighborRep(
 			BssidInfo.field.APReachAble = 3;
 			BssidInfo.field.Security = 0; /* rrm to do. */
 			BssidInfo.field.KeyScope = 0; /* "report AP has same authenticator as the AP. */
-			BssidInfo.field.SepctrumMng = (pMbss->CapabilityInfo & (1 << 8)) ? 1 : 0;
+			BssidInfo.field.SpectrumMng = (pMbss->CapabilityInfo & (1 << 8)) ? 1 : 0;
 			BssidInfo.field.Qos = (pMbss->CapabilityInfo & (1 << 9)) ? 1 : 0;
 			BssidInfo.field.APSD = (pMbss->CapabilityInfo & (1 << 11)) ? 1 : 0;
 			BssidInfo.field.RRM = (pMbss->CapabilityInfo & RRM_CAP_BIT) ? 1 : 0;
@@ -938,7 +940,7 @@ VOID RRM_EnqueueNeighborRep(
 				The Key Scope bit, when set, indicates the AP indicated by this BSSID has the same authenticator as the AP
 				sending the report. If this bit is 0, it indicates a distinct authenticator or the information is not available.
 			*/
-			BssidInfo.field.SepctrumMng = (pBssEntry->CapabilityInfo & (1 << 8)) ? 1 : 0;
+			BssidInfo.field.SpectrumMng = (pBssEntry->CapabilityInfo & (1 << 8)) ? 1 : 0;
 			BssidInfo.field.Qos = (pBssEntry->CapabilityInfo & (1 << 9)) ? 1 : 0;
 			BssidInfo.field.APSD = (pBssEntry->CapabilityInfo & (1 << 11)) ? 1 : 0;
 			BssidInfo.field.RRM = (pBssEntry->CapabilityInfo & RRM_CAP_BIT) ? 1 : 0;

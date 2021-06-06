@@ -1345,8 +1345,12 @@ static INT32 MT_ATESetTxPowerX(RTMP_ADAPTER *pAd, ATE_TXPOWER TxPower)
 		return Ret;
 
 	/* Tx Power value upper bound protection */
-	if (TxPower.Power > 50)
-			TxPower.Power = 50;
+	if (TxPower.Power > 50 && TxPower.Power <= 63)
+		TxPower.Power = 50;
+
+	/* Tx Power value lower bound protection */
+	if (TxPower.Power > 63 && TxPower.Power < 78)
+		TxPower.Power = 78;
 
 	switch (TxPower.Ant_idx) {
 	case 0:
@@ -7009,6 +7013,7 @@ static INT32 pci_ate_leave(RTMP_ADAPTER *pAd)
 {
 	struct _ATE_CTRL *ATECtrl = &pAd->ATECtrl;
 	MTWF_LOG(DBG_CAT_TEST,  DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("%s\n", __func__));
+	RtmpChipOpsEepromHook(pAd, pAd->infType, E2P_NONE);
 	NICReadEEPROMParameters(pAd, NULL);
 	NICInitAsicFromEEPROM(pAd);
 

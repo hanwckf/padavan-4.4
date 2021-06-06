@@ -36,7 +36,10 @@
 /* ========================================================================== */
 /* Definition */
 #define IS_FT_RSN_STA(_pEntry)		\
-	((_pEntry) && IS_ENTRY_CLIENT(_pEntry) && (_pEntry->MdIeInfo.Len != 0) && (_pEntry->RSNIE_Len > 0))
+	((_pEntry) && IS_ENTRY_CLIENT(_pEntry) && (_pEntry->MdIeInfo.Len != 0) && (_pEntry->RSNIE_Len > 0) \
+	&& (IS_AKM_FT_WPA2(_pEntry->SecConfig.AKMMap) || IS_AKM_FT_WPA2PSK(_pEntry->SecConfig.AKMMap) \
+	|| IS_AKM_FT_SAE_SHA256(_pEntry->SecConfig.AKMMap) || IS_AKM_FT_WPA2_SHA384(_pEntry->SecConfig.AKMMap)))
+
 
 #define FT_SET_MDID(__D, __S) \
 	NdisMoveMemory((PUCHAR)(__D), (PUCHAR)(__S), FT_MDID_LEN)

@@ -122,7 +122,9 @@ int multi_inf_get_idx(VOID *pAd)
 			 ("%s(): failed to find the index in adapt_list!\n", __func__));
 	return idx;
 }
+#ifndef MT76XX_COMBO_DUAL_DRIVER_SUPPORT
 EXPORT_SYMBOL(multi_inf_get_idx);
+#endif /* MT76XX_COMBO_DUAL_DRIVER_SUPPORT */
 
 /* Driver module load/unload function */
 static int __init wifi_drv_init_module(void)

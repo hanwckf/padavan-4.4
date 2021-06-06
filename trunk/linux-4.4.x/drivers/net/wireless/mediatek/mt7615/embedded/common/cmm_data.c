@@ -43,7 +43,8 @@ UCHAR WMM_UP2AC_MAP[8] = {QID_AC_BE, QID_AC_BK,
 						  QID_AC_VI, QID_AC_VI,
 						  QID_AC_VO, QID_AC_VO
 						 };
-#ifdef VLAN_SUPPORT
+
+#if defined(VLAN_SUPPORT) || defined(MAP_TS_TRAFFIC_SUPPORT)
 VOID update_rxblk_addr(RX_BLK *pRxBlk)
 {
 	FRAME_CONTROL *FC = (FRAME_CONTROL *) pRxBlk->FC;
@@ -67,7 +68,49 @@ VOID update_rxblk_addr(RX_BLK *pRxBlk)
 		pRxBlk->Addr1 = pRxBlk->FC + 4; /*4 byte Frame Control*/
 		pRxBlk->Addr2 = pRxBlk->FC + 4 + MAC_ADDR_LEN;
 		pRxBlk->Addr3 = pRxBlk->FC + 4 + MAC_ADDR_LEN * 2;
+		if ((FC->ToDs == 1) && (FC->FrDs == 1))
+			pRxBlk->Addr4 = pRxBlk->FC + 6 + MAC_ADDR_LEN * 3;
 	}
+}
+
+VOID remove_vlan_hw_padding(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk)
+{
+	/*For IOT, remove unused fields*/
+	if (pRxBlk->pRxPacket) {
+		UCHAR byte0, byte1, extra_field_offset;
+
+		extra_field_offset = IS_VLAN_PACKET(GET_OS_PKT_DATAPTR(pRxBlk->pRxPacket)) ? (LENGTH_802_3_NO_TYPE+LENGTH_802_1Q) : LENGTH_802_3_NO_TYPE;
+		/*Remove the extra field (2 Bytes) which is added by hardware*/
+		/*The added info is the length of actual data (without overhead)*/
+		byte0 = GET_OS_PKT_DATAPTR(pRxBlk->pRxPacket)[extra_field_offset];
+		byte1 = GET_OS_PKT_DATAPTR(pRxBlk->pRxPacket)[extra_field_offset+1];
+		/*If there is the extra field, remove it*/
+		if (((byte0<<8) | byte1) == GET_OS_PKT_LEN(pRxBlk->pRxPacket) - extra_field_offset - 2) { /*2 : len of extra field*/
+			NdisMoveMemory(GET_OS_PKT_DATAPTR(pRxBlk->pRxPacket) + 2, GET_OS_PKT_DATAPTR(pRxBlk->pRxPacket), extra_field_offset);
+			RtmpOsSkbPullRcsum(pRxBlk->pRxPacket, 2);
+			RtmpOsSkbResetNetworkHeader(pRxBlk->pRxPacket);
+			RtmpOsSkbResetTransportHeader(pRxBlk->pRxPacket);
+			RtmpOsSkbResetMacLen(pRxBlk->pRxPacket);
+			pRxBlk->pData = GET_OS_PKT_DATAPTR(pRxBlk->pRxPacket);
+			pRxBlk->DataSize -= 2;
+			update_rxblk_addr(pRxBlk);
+		}
+		/*End of remove extra field*/
+	}
+}
+
+VOID remove_vlan_tag(RTMP_ADAPTER *pAd, PNDIS_PACKET pkt)
+{
+	UCHAR *pSrcBuf;
+
+	pSrcBuf = GET_OS_PKT_DATAPTR(pkt);
+	ASSERT(pSrcBuf);
+	NdisMoveMemory(GET_OS_PKT_DATAPTR(pkt) + LENGTH_802_1Q, GET_OS_PKT_DATAPTR(pkt), LENGTH_802_3_NO_TYPE);
+	RtmpOsSkbPullRcsum(RTPKT_TO_OSPKT(pkt), LENGTH_802_1Q);
+	RtmpOsSkbResetMacHeader(RTPKT_TO_OSPKT(pkt));
+	RtmpOsSkbResetNetworkHeader(RTPKT_TO_OSPKT(pkt));
+	RtmpOsSkbResetTransportHeader(RTPKT_TO_OSPKT(pkt));
+	RtmpOsSkbResetMacLen(RTPKT_TO_OSPKT(pkt));
 }
 
 VOID rebuild_802_11_eapol_frm(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk)
@@ -76,6 +119,7 @@ VOID rebuild_802_11_eapol_frm(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk)
 	HEADER_802_11 *pHhdr80211 = &buf;
 	UCHAR hdr_len;
 	UCHAR *pData;
+	char addr4[6];
 
 	NdisZeroMemory(pHhdr80211, sizeof(HEADER_802_11));
 	pHhdr80211->FC = *((FRAME_CONTROL *) pRxBlk->FC);
@@ -83,15 +127,21 @@ VOID rebuild_802_11_eapol_frm(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk)
 	COPY_MAC_ADDR(pHhdr80211->Addr2, pRxBlk->Addr2);
 	COPY_MAC_ADDR(pHhdr80211->Addr3, pRxBlk->Addr3);
 
+	if (pHhdr80211->FC.FrDs == 1 && pHhdr80211->FC.ToDs == 1) {
+		COPY_MAC_ADDR(addr4, pRxBlk->Addr4);
+		hdr_len = LENGTH_802_11_WITH_ADDR4;
+	} else
+		hdr_len = LENGTH_802_11;
+
 	if (pHhdr80211->FC.SubType & 0x08) /*Is QoS Packet*/
-		hdr_len = LENGTH_802_11 + LENGTH_WMMQOS_H + 6; /*QoS Control & SNAP*/
+		hdr_len += LENGTH_WMMQOS_H + 6; /*QoS Control & SNAP*/
 	else
-		hdr_len = LENGTH_802_11 + 6; /*SNAP*/
+		hdr_len += 6; /*SNAP*/
 
 	skb_push(pRxBlk->pRxPacket, hdr_len - LENGTH_802_3_NO_TYPE);
-	skb_reset_network_header(pRxBlk->pRxPacket);
-	skb_reset_transport_header(pRxBlk->pRxPacket);
-	skb_reset_mac_len(pRxBlk->pRxPacket);
+	RtmpOsSkbResetNetworkHeader(pRxBlk->pRxPacket);
+	RtmpOsSkbResetTransportHeader(pRxBlk->pRxPacket);
+	RtmpOsSkbResetMacLen(pRxBlk->pRxPacket);
 
 	pRxBlk->pData = GET_OS_PKT_DATAPTR(pRxBlk->pRxPacket);
 	pRxBlk->DataSize += (hdr_len - LENGTH_802_3_NO_TYPE);
@@ -100,8 +150,12 @@ VOID rebuild_802_11_eapol_frm(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk)
 	NdisZeroMemory(GET_OS_PKT_DATAPTR(pRxBlk->pRxPacket), hdr_len);
 	pData = pRxBlk->pData;
 	NdisMoveMemory(pData, pHhdr80211, sizeof(HEADER_802_11));
-	pRxBlk->FC = pRxBlk->pData;
 	pData += sizeof(HEADER_802_11);
+
+	if (pHhdr80211->FC.FrDs == 1 && pHhdr80211->FC.ToDs == 1) {
+		NdisMoveMemory(pData, addr4, 6);
+		pData += 6; /*addr4*/
+	}
 
 	/*QoS Control : 2 byte*/
 	if (pHhdr80211->FC.SubType & 0x08) {
@@ -326,7 +380,7 @@ VOID parse_RXV_packet_v2(RTMP_ADAPTER *pAd, UINT32 Type, RX_BLK *RxBlk, UCHAR *D
 #ifdef LTF_SNR_SUPPORT
 	INT32 SNR = 0;
 #endif
-#ifdef CUSTOMER_DCC_FEATURE
+#if defined(CUSTOMER_DCC_FEATURE) || defined(NEIGHBORING_AP_STAT)
 	RX_VECTOR1_6TH_CYCLE *RXV1_6TH_CYCLE = NULL;
 	INT32 raw_snr[4] = {0};
 #endif
@@ -418,21 +472,23 @@ VOID parse_RXV_packet_v2(RTMP_ADAPTER *pAd, UINT32 Type, RX_BLK *RxBlk, UCHAR *D
 		RxBlk->rx_signal.raw_rssi[2] = (RXV1_4TH_CYCLE->RCPI2 - 220) / 2;
 		RxBlk->rx_signal.raw_rssi[3] = (RXV1_4TH_CYCLE->RCPI3 - 220) / 2;
 
-#ifdef CUSTOMER_DCC_FEATURE
+#if defined(CUSTOMER_DCC_FEATURE) || defined(NEIGHBORING_AP_STAT)
 		RXV1_6TH_CYCLE = (RX_VECTOR1_6TH_CYCLE *)(Data + 20);
 
-		raw_snr[0] = (INT32)RxBlk->rx_signal.raw_rssi[0] - ((RXV1_6TH_CYCLE->Nf0 - 254) / 2);
-		raw_snr[1] = (INT32)RxBlk->rx_signal.raw_rssi[1] - ((RXV1_6TH_CYCLE->Nf1 - 254) / 2); /*need to check this value */
-		raw_snr[2] = (INT32)RxBlk->rx_signal.raw_rssi[2] - ((RXV1_6TH_CYCLE->Nf2 - 254) / 2);
+		if (RXV1_6TH_CYCLE) {
+			raw_snr[0] = (INT32)RxBlk->rx_signal.raw_rssi[0] - ((RXV1_6TH_CYCLE->Nf0 - 254) / 2);
+			raw_snr[1] = (INT32)RxBlk->rx_signal.raw_rssi[1] - ((RXV1_6TH_CYCLE->Nf1 - 254) / 2); /*need to check this value */
+			raw_snr[2] = (INT32)RxBlk->rx_signal.raw_rssi[2] - ((RXV1_6TH_CYCLE->Nf2 - 254) / 2);
 
-		RxBlk->rx_signal.raw_snr[0] = (raw_snr[0] > 0) ? raw_snr[0] : 1;
-		RxBlk->rx_signal.raw_snr[1] = (raw_snr[1] > 0) ? raw_snr[1] : 1;
-		RxBlk->rx_signal.raw_snr[2] = (raw_snr[2] > 0) ? raw_snr[2] : 1;
+			RxBlk->rx_signal.raw_snr[0] = (raw_snr[0] > 0) ? raw_snr[0] : 1;
+			RxBlk->rx_signal.raw_snr[1] = (raw_snr[1] > 0) ? raw_snr[1] : 1;
+			RxBlk->rx_signal.raw_snr[2] = (raw_snr[2] > 0) ? raw_snr[2] : 1;
 
-		if (pAd->Antenna.field.RxPath == 4) {
-			raw_snr[3] = (INT32)RxBlk->rx_signal.raw_rssi[3] - ((RXV1_6TH_CYCLE->Nf3 - 254) / 2);
-			RxBlk->rx_signal.raw_snr[3] = (raw_snr[3] > 0) ? raw_snr[3] : 1;
-		}
+			if (pAd->Antenna.field.RxPath == 4) {
+				raw_snr[3] = (INT32)RxBlk->rx_signal.raw_rssi[3] - ((RXV1_6TH_CYCLE->Nf3 - 254) / 2);
+				RxBlk->rx_signal.raw_snr[3] = (raw_snr[3] > 0) ? raw_snr[3] : 1;
+			}
+      }
 #endif
 	}
 
@@ -1126,7 +1182,7 @@ static INT32 mt_rx_info_2_blk(RTMP_ADAPTER *pAd,
 
 #endif
 
-#ifdef VLAN_SUPPORT
+#if defined(VLAN_SUPPORT) || defined(MAP_R2)
 	/*For IOT, remove unused fields*/
 	if (pRxPacket) {
 		UCHAR byte0, byte1, extra_field_offset;
@@ -1138,15 +1194,15 @@ static INT32 mt_rx_info_2_blk(RTMP_ADAPTER *pAd,
 		/*If there is the extra field, remove it*/
 		if (((byte0<<8) | byte1) == GET_OS_PKT_LEN(pRxPacket) - extra_field_offset - 2) { /*2 : len of extra field*/
 			memmove(GET_OS_PKT_DATAPTR(pRxPacket) + 2, GET_OS_PKT_DATAPTR(pRxPacket), extra_field_offset);
-			skb_pull_rcsum(pRxPacket, 2);
-			skb_reset_network_header(pRxPacket);
-			skb_reset_transport_header(pRxPacket);
-			skb_reset_mac_len(pRxPacket);
+			RtmpOsSkbPullRcsum(pRxPacket, 2);
+			RtmpOsSkbResetNetworkHeader(pRxPacket);
+			RtmpOsSkbResetTransportHeader(pRxPacket);
+			RtmpOsSkbResetMacLen(pRxPacket);
 			pRxBlk->DataSize -= 2;
 		}
 		/*End of remove extra field*/
 	}
-#endif /*VLAN_SUPPORT*/
+#endif /*if defined(VLAN_SUPPORT) || defined(MAP_R2)*/
 
 	pRxBlk->pRxPacket = pRxPacket;
 	pRxBlk->pData = (UCHAR *)GET_OS_PKT_DATAPTR(pRxPacket);
@@ -1310,6 +1366,9 @@ static VOID EventTxFreeNotifyHandler(RTMP_ADAPTER *pAd, UINT8 *dataPtr, UINT32 T
 	UINT16 *token_ptr, token_id;
 	PKT_TOKEN_CB *pktTokenCb = pAd->PktTokenCb;
 	UINT8 Type, LenPerToken;
+#ifdef EAP_STATS_SUPPORT
+	struct timeval endTimeTv;
+#endif
 	struct qm_ops *qm_ops = pAd->qm_ops;
 	UINT32 free_num;
 #if defined(RED_SUPPORT_BY_HOST) || defined(FQ_SCH_SUPPORT)
@@ -1327,6 +1386,9 @@ static VOID EventTxFreeNotifyHandler(RTMP_ADAPTER *pAd, UINT8 *dataPtr, UINT32 T
 	pktTokenCb->tx_id_list.list->TotalTxTokenCnt += TxDCnt;
 	LenPerToken = (Ver == 0) ? 2 : 4;
 
+#ifdef EAP_STATS_SUPPORT
+	do_gettimeofday(&endTimeTv);
+#endif
 	for (loop = 0; loop < TxDCnt; loop++) {
 		if (loop * LenPerToken > Len) {
 			MTWF_LOG(DBG_CAT_TOKEN, TOKEN_INFO, DBG_LVL_ERROR,
@@ -1428,8 +1490,61 @@ static VOID EventTxFreeNotifyHandler(RTMP_ADAPTER *pAd, UINT8 *dataPtr, UINT32 T
 					}
 				}
 #endif
-				if (Type == TOKEN_TX_DATA)
+				if (Type == TOKEN_TX_DATA) {
+#ifdef EAP_STATS_SUPPORT
+					USHORT wcid = RTMP_GET_PACKET_WCID(pkt);
+					/*Get Mac table entry */
+					PMAC_TABLE_ENTRY pEntry = NULL;
+					ULONG pkt_time_tv_sec;
+					ULONG pkt_time_tv_usec;
+				
+		    			pkt_time_tv_sec = endTimeTv.tv_sec - 
+							pktTokenCb->tx_id_list.list->pkt_token[token_id].startTimeTv.tv_sec;
+		    			if( endTimeTv.tv_usec >=  pktTokenCb->tx_id_list.list->pkt_token[token_id].startTimeTv.tv_usec) {
+						pkt_time_tv_usec = endTimeTv.tv_usec - 
+							pktTokenCb->tx_id_list.list->pkt_token[token_id].startTimeTv.tv_usec;
+		    			}
+		    			else {
+			    			if(pkt_time_tv_sec > 0)
+				    			pkt_time_tv_sec = pkt_time_tv_sec - 1;
+					
+			    			pkt_time_tv_usec = 1000000 +  
+						endTimeTv.tv_usec - pktTokenCb->tx_id_list.list->pkt_token[token_id].startTimeTv.tv_usec;
+
+		    			}
+					if(VALID_UCAST_ENTRY_WCID(pAd, wcid)) {
+						pEntry = &pAd->MacTab.Content[wcid];
+						if((pEntry->tx_latency_min_tv.tv_sec == 0) && (pEntry->tx_latency_min_tv.tv_usec == 0)) {
+							pEntry->tx_latency_min_tv.tv_sec =  pkt_time_tv_sec;
+							pEntry->tx_latency_min_tv.tv_usec =  pkt_time_tv_usec;
+							pEntry->tx_latency_max_tv.tv_sec =  pkt_time_tv_sec;
+							pEntry->tx_latency_max_tv.tv_usec =  pkt_time_tv_usec;
+							pEntry->tx_latency_avg_tv.tv_sec =  pkt_time_tv_sec;
+							pEntry->tx_latency_avg_tv.tv_usec =  pkt_time_tv_usec;
+							
+						} else {
+			    				if(pEntry->tx_latency_min_tv.tv_sec == pkt_time_tv_sec) {
+								if(pEntry->tx_latency_min_tv.tv_usec > pkt_time_tv_usec)
+					    				pEntry->tx_latency_min_tv.tv_usec = pkt_time_tv_usec;
+			    				} else if(pEntry->tx_latency_min_tv.tv_sec > pkt_time_tv_sec) {
+								pEntry->tx_latency_min_tv.tv_usec = pkt_time_tv_usec;
+								pEntry->tx_latency_min_tv.tv_sec = pkt_time_tv_sec;
+							}
+							
+		  	    				if(pEntry->tx_latency_max_tv.tv_sec == pkt_time_tv_sec) {
+								if(pEntry->tx_latency_max_tv.tv_usec < pkt_time_tv_usec)
+					    				pEntry->tx_latency_max_tv.tv_usec = pkt_time_tv_usec;
+			    				} else if(pEntry->tx_latency_max_tv.tv_sec < pkt_time_tv_sec) {
+								pEntry->tx_latency_max_tv.tv_usec = pkt_time_tv_usec;
+								pEntry->tx_latency_max_tv.tv_sec = pkt_time_tv_sec;
+							}
+							pEntry->tx_latency_avg_tv.tv_sec = (pkt_time_tv_sec + pEntry->tx_latency_avg_tv.tv_sec)/2;
+							pEntry->tx_latency_avg_tv.tv_usec = (pkt_time_tv_usec + pEntry->tx_latency_avg_tv.tv_usec)/2;
+						}
+					}
+#endif                                    
 					RELEASE_NDIS_PACKET_IRQ(pAd, pkt, NDIS_STATUS_SUCCESS);
+				}
 				else
 					RELEASE_NDIS_PACKET(pAd, pkt, NDIS_STATUS_SUCCESS);
 			}
@@ -2239,25 +2354,106 @@ static inline VOID RtmpOsRemoveVLANTag(RTMP_ADAPTER *pAd, PNDIS_PACKET pkt)
 	pSrcBuf = GET_OS_PKT_DATAPTR(pkt);
 	ASSERT(pSrcBuf);
 	memmove(GET_OS_PKT_DATAPTR(pkt) + VLAN_LEN, GET_OS_PKT_DATAPTR(pkt), extra_field_offset);
-	skb_pull_rcsum(RTPKT_TO_OSPKT(pkt), 4);
-	skb_reset_mac_header(RTPKT_TO_OSPKT(pkt));
-	skb_reset_network_header(RTPKT_TO_OSPKT(pkt));
-	skb_reset_transport_header(RTPKT_TO_OSPKT(pkt));
-	skb_reset_mac_len(RTPKT_TO_OSPKT(pkt));
+	RtmpOsSkbPullRcsum(RTPKT_TO_OSPKT(pkt), 4);
+	RtmpOsSkbResetMacHeader(RTPKT_TO_OSPKT(pkt));
+	RtmpOsSkbResetNetworkHeader(RTPKT_TO_OSPKT(pkt));
+	RtmpOsSkbResetTransportHeader(RTPKT_TO_OSPKT(pkt));
+	RtmpOsSkbResetMacLen(RTPKT_TO_OSPKT(pkt));
 }
 
-static int ap_fp_tx_pkt_vlan_tag_handle(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, PNDIS_PACKET pkt)
+BOOLEAN check_copy_pkt_needed(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, PNDIS_PACKET pkt)
 {
 	UCHAR *pSrcBuf;
 	UINT16 TypeLen;
+	BOOLEAN ret = FALSE;
+	USHORT vlan_id, vlan_pcp;
+
+	pSrcBuf = GET_OS_PKT_DATAPTR(pkt);
+	ASSERT(pSrcBuf);
+	TypeLen = (pSrcBuf[12] << 8) | pSrcBuf[13];
+
+	/*skip the Ethernet Header*/
+	pSrcBuf += LENGTH_802_3;
+
+	vlan_id = *(USHORT *)pSrcBuf;
+
+	vlan_id = cpu2be16(vlan_id);
+	vlan_pcp = (vlan_id & (~MASK_CLEAR_TCI_PCP)) >> 13;
+	vlan_id = vlan_id & MASK_TCI_VID; /* 12 bit */
+
+	if (TypeLen == ETH_TYPE_VLAN) {
+		if (wdev->bVLAN_Tag == FALSE) {
+			ret = TRUE;
+		} else if (wdev->VLAN_VID != 0) {
+			if (vlan_id != wdev->VLAN_VID) {
+				switch (wdev->VLAN_Policy[TX_VLAN]) {
+				case VLAN_TX_REPLACE_VID:
+				case VLAN_TX_REPLACE_ALL:
+					ret = TRUE;
+				default:
+					ret = FALSE;
+				}
+			} else if (vlan_pcp != wdev->VLAN_Priority) {
+				ret = TRUE;
+			}
+		}
+	} else if (wdev->bVLAN_Tag && wdev->VLAN_Policy[TX_VLAN] != VLAN_TX_ALLOW) {
+		ret = TRUE;
+	}
+
+	return ret;
+}
+
+PNDIS_PACKET RtmpVlanPktCopy(PRTMP_ADAPTER pAd, struct wifi_dev *wdev, PNDIS_PACKET pkt)
+{
+	struct sk_buff *skb = NULL;
+	PNDIS_PACKET pkt_copy = NULL;
+	struct net_device *net_dev = wdev->if_dev;
+
+	skb = skb_unshare(RTPKT_TO_OSPKT(pkt), GFP_ATOMIC);
+
+	if (skb) {
+		skb->dev = net_dev;
+		pkt_copy = OSPKT_TO_RTPKT(skb);
+		RTMP_SET_PACKET_WDEV(pkt_copy, wdev->wdev_idx);
+		RTMP_SET_PACKET_WCID(pkt_copy, MAX_LEN_OF_MAC_TABLE);
+	}
+
+	return pkt_copy;
+}
+
+static int ap_fp_tx_pkt_vlan_tag_handle(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, PNDIS_PACKET *pPkt)
+{
+	UCHAR *pSrcBuf, *pkt_va;
+	UINT16 TypeLen;
 	UCHAR Byte0, Byte1;
 	PACKET_INFO pkt_info;
-	UCHAR *pkt_va;
 	UINT pkt_len;
+	PNDIS_PACKET pkt = NULL, pkt_copy = NULL;
+	BOOLEAN need_copy;
+	struct sk_buff *skb = (struct sk_buff *)(*pPkt);
 
+	pkt = *pPkt;
 	RTMP_QueryPacketInfo(pkt, &pkt_info, &pkt_va, &pkt_len);
 	if ((!pkt_va) || (pkt_len <= 14))
 		return FALSE;
+
+	if (skb->cloned) {
+		need_copy = check_copy_pkt_needed(pAd, wdev, pkt);
+		if (need_copy) {
+			pkt_copy = RtmpVlanPktCopy(pAd, wdev, pkt);
+			if (pkt_copy == NULL) {
+				MTWF_LOG(DBG_CAT_TX, DBG_SUBCAT_ALL, DBG_LVL_OFF,
+						 ("%s():copy packet fail!!\n", __func__));
+				return FALSE;
+			}
+			*pPkt = pkt_copy;
+			pkt = *pPkt;
+			RTMP_QueryPacketInfo(pkt, &pkt_info, &pkt_va, &pkt_len);
+			if ((!pkt_va) || (pkt_len <= 14))
+				return FALSE;
+		}
+	}
 
 	pSrcBuf = GET_OS_PKT_DATAPTR(pkt);
 	ASSERT(pSrcBuf);
@@ -2268,7 +2464,7 @@ static int ap_fp_tx_pkt_vlan_tag_handle(RTMP_ADAPTER *pAd, struct wifi_dev *wdev
 	}
 
 	/*insert 802.1Q tag if required*/
-	if (wdev->bVLAN_Tag && TypeLen != ETH_TYPE_VLAN) {
+	if (wdev->bVLAN_Tag && TypeLen != ETH_TYPE_VLAN && wdev->VLAN_Policy[TX_VLAN] != VLAN_TX_ALLOW) {
 		UINT16 tci = (wdev->VLAN_Priority<<(CFI_LEN + VID_LEN)) | wdev->VLAN_VID; /*CFI = 0*/
 
 		pkt = RtmpOsVLANInsertTag(pkt, tci);
@@ -2309,6 +2505,7 @@ static int ap_fp_tx_pkt_vlan_tag_handle(RTMP_ADAPTER *pAd, struct wifi_dev *wdev
 						 ("%s():Drop the packet\n", __func__));
 					return FALSE;
 				case VLAN_TX_ALLOW:
+				case VLAN_TX_KEEP_TAG:
 					MTWF_LOG(DBG_CAT_TX, DBG_SUBCAT_ALL, DBG_LVL_OFF,
 						 ("%s():Allow the packet\n", __func__));
 					break;
@@ -2391,11 +2588,13 @@ INT send_data_pkt(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, PNDIS_PACKET pkt)
 #endif
 
 #ifdef VLAN_SUPPORT
-		allowed = ap_fp_tx_pkt_vlan_tag_handle(pAd, wdev, pkt);
-		if (!allowed) {
-			RELEASE_NDIS_PACKET(pAd, pkt, NDIS_STATUS_FAILURE);
-			ret = NDIS_STATUS_FAILURE;
-			return ret;
+		if (pAd->CommonCfg.bEnableVlan) {
+			allowed = ap_fp_tx_pkt_vlan_tag_handle(pAd, wdev, &pkt);
+			if (!allowed) {
+				RELEASE_NDIS_PACKET(pAd, pkt, NDIS_STATUS_FAILURE);
+				ret = NDIS_STATUS_FAILURE;
+				return ret;
+			}
 		}
 #endif /*VLAN_SUPPORT*/
 
@@ -2847,6 +3046,10 @@ BOOLEAN RTMPCheckEtherType(
 		}
 
 #endif /* CONFIG_AP_SUPPORT */
+#ifdef MAP_TS_TRAFFIC_SUPPORT
+		if (!pAd->bTSEnable)
+#endif
+
 		RTMP_SET_PACKET_VLAN(pPacket, 1);
 		Sniff2BytesFromNdisBuffer((PNDIS_BUFFER)pSrcBuf, 2, &Byte0, &Byte1);
 		TypeLen = (USHORT)((Byte0 << 8) + Byte1);
@@ -4162,8 +4365,25 @@ VOID announce_or_forward_802_3_pkt(
 {
 	BOOLEAN to_os = FALSE;
 	struct wifi_dev_ops *ops = wdev->wdev_ops;
+#ifdef MAP_TS_TRAFFIC_SUPPORT
+	MAC_TABLE_ENTRY *peer_entry = NULL;
+	UINT16 Wcid = RTMP_GET_PACKET_WCID(pPacket);
+#endif
+
+#ifdef MAP_TS_TRAFFIC_SUPPORT
+	if (pAd->bTSEnable) {
+		if (VALID_UCAST_ENTRY_WCID(pAd, Wcid))
+			peer_entry = &pAd->MacTab.Content[Wcid];
+
+		if (wdev && peer_entry && !map_ts_rx_process(pAd, wdev, pPacket, peer_entry)) {
+			RELEASE_NDIS_PACKET(pAd, pPacket, NDIS_STATUS_FAILURE);
+			return;
+		}
+	}
+#endif
+
 #ifdef VLAN_SUPPORT
-	if (wdev && IS_VLAN_PACKET(GET_OS_PKT_DATAPTR(pPacket))) {
+	if ((pAd->CommonCfg.bEnableVlan == TRUE) && wdev && IS_VLAN_PACKET(GET_OS_PKT_DATAPTR(pPacket))) {
 		UINT16 tci = (GET_OS_PKT_DATAPTR(pPacket)[14]<<8) | (GET_OS_PKT_DATAPTR(pPacket)[15]);
 		UINT16 vid = tci & MASK_TCI_VID;
 
@@ -4230,7 +4450,7 @@ VOID indicate_802_3_pkt(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk, UCHAR wdev_idx)
 			pPktHdr = GET_OS_PKT_DATAPTR(pRxPacket);
 			pLayerHdr = (pPktHdr + MAT_ETHER_HDR_LEN);
 #ifdef VLAN_SUPPORT
-			if (IS_VLAN_PACKET(GET_OS_PKT_DATAPTR(pRxPacket)))
+			if ((pAd->CommonCfg.bEnableVlan) && IS_VLAN_PACKET(GET_OS_PKT_DATAPTR(pRxPacket)))
 				pLayerHdr = (pPktHdr + MAT_VLAN_ETH_HDR_LEN);
 #endif /*VLAN_SUPPORT*/
 
@@ -4275,6 +4495,7 @@ VOID indicate_802_3_pkt(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk, UCHAR wdev_idx)
 #endif /* CONFIG_AP_SUPPORT */
 	pOSPkt->dev = get_netdev_from_bssid(pAd, wdev_idx);
 	SET_OS_PKT_DATATAIL(pOSPkt, pOSPkt->len);
+
 	announce_or_forward_802_3_pkt(pAd, pRxBlk->pRxPacket, wdev_search_by_idx(pAd, wdev_idx), pAd->OpMode);
 }
 
@@ -4882,11 +5103,13 @@ VOID rx_eapol_frm_handle(
 						  pRxBlk->rx_signal.raw_rssi[1],
 						  pRxBlk->rx_signal.raw_rssi[2],
 						  pRxBlk->rx_signal.raw_rssi[3],
-#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT)
+#ifdef CONFIG_AP_SUPPORT
+#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT) || defined(NEIGHBORING_AP_STAT)
 						  pRxBlk->rx_signal.raw_snr[0],
 						  pRxBlk->rx_signal.raw_snr[1],
 						  pRxBlk->rx_signal.raw_snr[2],
 						  pRxBlk->rx_signal.raw_snr[3],
+#endif
 #endif
 						  0,
 						  (rxd_base != NULL) ? rxd_base->RxD1.ChFreq : 0,
@@ -4894,6 +5117,10 @@ VOID rx_eapol_frm_handle(
 						  wdev,
 						  pRxBlk->rx_rate.field.MODE);
 		}
+#ifdef NEIGHBORING_AP_STAT
+		MTWF_LOG(DBG_CAT_RX, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
+				("snr[0]:%d, snr[1]:%d\n", pRxBlk->rx_signal.raw_snr[0], pRxBlk->rx_signal.raw_snr[1]));
+#endif
 		MTWF_LOG(DBG_CAT_RX, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 				 ("!!! report EAPOL DATA to MLME (len=%d) !!!\n",
 				  pRxBlk->DataSize));
@@ -6777,6 +7004,7 @@ NDIS_STATUS header_packet_process(
 		BandIdx = HcGetBandByChannel(pAd, Channel);
 		INC_COUNTER64(pAd->WlanCounters[BandIdx].ReceivedFragmentCount);
 	} else
+		INC_COUNTER64(pAd->WlanCounters[0].ReceivedFragmentCount);
 #else
 		INC_COUNTER64(pAd->WlanCounters[0].ReceivedFragmentCount);
 #endif /* defined(DBDC_MODE) */
@@ -6817,6 +7045,12 @@ NDIS_STATUS rx_packet_process(
 #ifdef RATE_PRIOR_SUPPORT
 	MAC_TABLE_ENTRY *pEntry = NULL;
 #endif/*RATE_PRIOR_SUPPORT*/
+enum pkt_type {
+	_802_3_data,
+	_802_3_eapol,
+	_802_3_vlan_data,
+	_802_3_vlan_eapol,
+} type;
 
 #ifdef CONFIG_ATE
 
@@ -6901,24 +7135,45 @@ NDIS_STATUS rx_packet_process(
 	case FC_TYPE_DATA:
 		//MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF,("rx_packet_process: wcid=0x%x\n",pRxBlk->wcid));
 		if (RX_BLK_TEST_FLAG(pRxBlk, fRX_HDR_TRANS)) {
-#ifdef VLAN_SUPPORT
-			if (RTMPEqualMemory(TPID, pRxBlk->pData + LENGTH_802_3_NO_TYPE, 2) &&
-				 RTMPEqualMemory(EAPOL, pRxBlk->pData + LENGTH_802_3_NO_TYPE + LENGTH_802_1Q, 2)) {
-				/* It is VLAN EAPOL Packet*/
-				RtmpOsRemoveVLANTag(pAd, pRxBlk->pRxPacket);
-				pRxBlk->pData = GET_OS_PKT_DATAPTR(pRxBlk->pRxPacket);
-				pRxBlk->DataSize -= LENGTH_802_1Q;
-				update_rxblk_addr(pRxBlk);
+			if (RTMPEqualMemory(TPID, pRxBlk->pData + LENGTH_802_3_NO_TYPE, 2))
+				type = _802_3_vlan_data;
+			else if (RTMPEqualMemory(EAPOL, pRxBlk->pData + LENGTH_802_3_NO_TYPE, 2))
+				type = _802_3_eapol;
+			else
+				type = _802_3_data;
 
-				rebuild_802_11_eapol_frm(pAd, pRxBlk);
-				dev_rx_802_11_data_frm(pAd, pRxBlk);
-			} else if (RTMPEqualMemory(EAPOL, pRxBlk->pData + LENGTH_802_3_NO_TYPE, 2)) {
-				/* It is a HW-VLAN-untagged EAPOL Packet*/
-				rebuild_802_11_eapol_frm(pAd, pRxBlk);
-				dev_rx_802_11_data_frm(pAd, pRxBlk);
-			} else
-#endif /*VLAN_SUPPORT*/
+			if (type == _802_3_data) {
 				dev_rx_802_3_data_frm(pAd, pRxBlk);
+			}
+#if defined(VLAN_SUPPORT) || defined(MAP_TS_TRAFFIC_SUPPORT)
+			else {
+					remove_vlan_hw_padding(pAd, pRxBlk);
+					if (type == _802_3_vlan_data &&
+						RTMPEqualMemory(EAPOL, pRxBlk->pData + LENGTH_802_3_NO_TYPE + LENGTH_802_1Q, 2)) {
+						type = _802_3_vlan_eapol;
+					}
+					if (type == _802_3_vlan_data) {
+						dev_rx_802_3_data_frm(pAd, pRxBlk);
+					} else if (type == _802_3_vlan_eapol) {
+						/* It is VLAN EAPOL Packet*/
+						remove_vlan_tag(pAd, pRxBlk->pRxPacket);
+						pRxBlk->pData = GET_OS_PKT_DATAPTR(pRxBlk->pRxPacket);
+						pRxBlk->DataSize -= LENGTH_802_1Q;
+						update_rxblk_addr(pRxBlk);
+
+						rebuild_802_11_eapol_frm(pAd, pRxBlk);
+						dev_rx_802_11_data_frm(pAd, pRxBlk);
+					} else if (type == _802_3_eapol) {
+						/* It is a HW-VLAN-untagged EAPOL Packet*/
+						rebuild_802_11_eapol_frm(pAd, pRxBlk);
+						dev_rx_802_11_data_frm(pAd, pRxBlk);
+					} else {
+						MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
+							("%s[%d]impossible!!! pkt has no type!!!",
+							__func__, __LINE__));
+					}
+			}
+#endif /*VLAN_SUPPORT*/
 		}
 		else
 			dev_rx_802_11_data_frm(pAd, pRxBlk);
@@ -7226,9 +7481,6 @@ INT wdev_tx_pkts(NDIS_HANDLE dev_hnd, PPNDIS_PACKET pkt_list, UINT pkt_cnt, stru
 	PNDIS_PACKET pPacket;
 	UCHAR wcid = MAX_LEN_OF_MAC_TABLE;
 	UINT Index;
-#ifdef A4_CONN
-	INT Ret = 0;
-#endif
 
 	for (Index = 0; Index < pkt_cnt; Index++) {
 		pPacket = pkt_list[Index];
@@ -7316,8 +7568,7 @@ INT wdev_tx_pkts(NDIS_HANDLE dev_hnd, PPNDIS_PACKET pkt_list, UINT pkt_cnt, stru
 
 			send_data_pkt(pAd, wdev, pPacket);
 #else
-			Ret = send_data_pkt(pAd, wdev, pPacket);
-			if (wdev->wdev_type == WDEV_TYPE_AP && Ret == NDIS_STATUS_SUCCESS) {
+			if (wdev->wdev_type == WDEV_TYPE_AP) {
 				UCHAR *pSrcBufVA = GET_OS_PKT_DATAPTR(pPacket);
 
 				if (IS_ASIC_CAP(pAd, fASIC_CAP_MCU_OFFLOAD)) {
@@ -7325,10 +7576,11 @@ INT wdev_tx_pkts(NDIS_HANDLE dev_hnd, PPNDIS_PACKET pkt_list, UINT pkt_cnt, stru
 						a4_send_clone_pkt(pAd, wdev->func_idx, pPacket, NULL);
 				} else {
 		/*If IGMP snooping enabled , igmp_pkt_clone will be used for cloning multicast packets on A4 link*/
-					if (!wdev->IgmpSnoopEnable && MAC_ADDR_IS_GROUP(pSrcBufVA))
+					if (pSrcBufVA && MAC_ADDR_IS_GROUP(pSrcBufVA))
 						a4_send_clone_pkt(pAd, wdev->func_idx, pPacket, NULL);
 				}
 			}
+			send_data_pkt(pAd, wdev, pPacket);
 #endif /* A4_CONN */
 		}
 	}

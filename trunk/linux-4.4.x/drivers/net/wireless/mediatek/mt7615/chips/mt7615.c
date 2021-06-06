@@ -2761,6 +2761,9 @@ static VOID mt7615_chipCap_init(RTMP_ADAPTER *pAd, BOOLEAN b11nOnly, BOOLEAN bTh
 	MT7615_ChipCap.txd_type = TXD_V1;
 	MT7615_ChipCap.ba_range = mt7615_ba_range;
 	MT7615_ChipCap.tx_delay_support = FALSE;
+#ifdef OCE_SUPPORT
+	MT7615_ChipCap.FdFrameFwOffloadEnabled = TRUE;
+#endif /* OCE_SUPPORT */
 }
 
 

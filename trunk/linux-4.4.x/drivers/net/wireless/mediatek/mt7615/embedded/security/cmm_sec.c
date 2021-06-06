@@ -86,8 +86,28 @@ VOID SetWdevAuthMode(
 	} else if (rtstrcasecmp(arg, "OWE") == TRUE) {
 		SET_AKM_OWE(AKMMap);
 	}
-
-	else {
+#ifdef OCE_FILS_SUPPORT
+	else if (rtstrcasecmp(arg, "FILS_SHA256") == TRUE) {
+		SET_AKM_WPA2(AKMMap);
+		SET_AKM_FILS_SHA256(AKMMap);
+	} else if (rtstrcasecmp(arg, "FILS_SHA384") == TRUE) {
+		SET_AKM_WPA2(AKMMap);
+		SET_AKM_FILS_SHA384(AKMMap);
+	}
+#endif /* OCE_FILS_SUPPORT */
+#ifdef DPP_SUPPORT
+	else if (rtstrcasecmp(arg, "DPP") == TRUE) {
+		SET_AKM_DPP(AKMMap);
+	} else if (rtstrcasecmp(arg, "DPPWPA3PSK") == TRUE) {
+		SET_AKM_DPP(AKMMap);
+		SET_AKM_SAE_SHA256(AKMMap);
+	} else if (rtstrcasecmp(arg, "DPPWPA3PSKWPA2PSK") == TRUE) {
+		SET_AKM_DPP(AKMMap);
+		SET_AKM_SAE_SHA256(AKMMap);
+		SET_AKM_WPA2PSK(AKMMap);
+	}
+#endif /* DPP_SUPPORT */
+	else{
 		MTWF_LOG(DBG_CAT_SEC, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("%s:: Not support (AuthMode=%s, len=%d)\n",
 				 __func__, arg, (int) strlen(arg)));
 	}
@@ -350,6 +370,10 @@ RTMP_STRING *GetAuthModeStr(
 		return "WPA3-192";
 	else if (IS_AKM_OWE(authMode))
 		return "OWE";
+#ifdef DPP_SUPPORT
+	else if (IS_AKM_DPP(authMode))
+		return "DPP";
+#endif /* DPP_SUPPORT */
 	else
 		return "UNKNOW";
 }
@@ -1250,6 +1274,11 @@ VOID Dot1xIoctlAddWPAKey(
 				if (IS_AKM_WPA3_192BIT(pSecConfig->AKMMap) && (pKey->KeyLength == 64))
 					key_len = LEN_PMK_SHA384;
 
+#ifdef OCE_FILS_SUPPORT
+				if (IS_AKM_FILS_SHA384(pEntry->SecConfig.AKMMap) && pKey->KeyLength == 64)
+					key_len = LEN_PMK_SHA384;
+#endif /* OCE_FILS_SUPPORT */
+
 				NdisMoveMemory(pSecConfig->PMK, pKey->KeyMaterial + k_offset, key_len);
 				hex_dump("PMK", pSecConfig->PMK, key_len);
 			}
@@ -1376,6 +1405,14 @@ VOID Dot1xIoctlStaticWepCopy(
 			struct _SECURITY_CONFIG *pSecConfigProfile = NULL;
 			STA_TR_ENTRY *tr_entry = NULL;
 			ASIC_SEC_INFO Info = {0};
+
+#ifdef OCE_FILS_SUPPORT
+			if (IS_AKM_FILS(pEntry->SecConfig.AKMMap)) {
+				MTWF_LOG(DBG_CAT_SEC, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
+					("RTMPIoctlStaticWepCopy: skip for FILS\n"));
+				return;
+			}
+#endif /* OCE_FILS_SUPPORT */
 
 			pSecConfigProfile = &pAd->ApCfg.MBSSID[apidx].wdev.SecConfig;
 			pSecConfigEnrty = &pEntry->SecConfig;

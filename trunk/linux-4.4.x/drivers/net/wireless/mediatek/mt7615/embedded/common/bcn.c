@@ -362,6 +362,23 @@ UINT16 MakeBeacon(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, BOOLEAN UpdateRoutin
 	}
 
 #endif /* A_BAND_SUPPORT */
+#ifdef OCE_SUPPORT
+	if (IS_OCE_ENABLE(wdev) && wdev->channel <= 14) {
+		BeaconTransmit.field.MODE =
+			(BeaconTransmit.field.MODE >= MODE_OFDM) ? BeaconTransmit.field.MODE : MODE_OFDM;
+		BeaconTransmit.field.MCS =
+			(BeaconTransmit.field.MCS >= MCS_RATE_6) ? BeaconTransmit.field.MCS : MCS_RATE_6;
+	}
+#endif
+#ifdef CONFIG_RA_PHY_RATE_SUPPORT
+	if (wdev->channel <= 14) {
+		BeaconTransmit.field.MODE = wdev->rate.BcnPhyMode.field.MODE;
+		BeaconTransmit.field.MCS = wdev->rate.BcnPhyMode.field.MCS;
+	} else {
+		BeaconTransmit.field.MODE = wdev->rate.BcnPhyMode_5G.field.MODE;
+		BeaconTransmit.field.MCS = wdev->rate.BcnPhyMode_5G.field.MCS;
+	}
+#endif /* CONFIG_RA_PHY_RATE_SUPPORT */
 	write_tmac_info_beacon(pAd, wdev, tmac_info, &BeaconTransmit, FrameLen);
 #ifdef RT_BIG_ENDIAN
 	RTMPFrameEndianChange(pAd, pBeaconFrame, DIR_WRITE, FALSE);
@@ -507,14 +524,17 @@ VOID MakeErpIE(
 {
 	ULONG FrameLen = *pFrameLen;
 	UCHAR *ptr = NULL;
+#ifdef CONFIG_AP_SUPPORT
+	BSS_STRUCT *pMbss = NULL;
+	pMbss = wdev->func_dev;
+#endif
 	/* fill ERP IE */
 	ptr = (UCHAR *)pBeaconFrame + FrameLen;
 	*ptr = IE_ERP;
 	*(ptr + 1) = 1;
 #ifdef CONFIG_AP_SUPPORT
-
 	if (wdev->wdev_type == WDEV_TYPE_AP)
-		*(ptr + 2) = pAd->ApCfg.ErpIeContent;
+		*(ptr + 2) = pMbss->ErpIeContent;
 
 #endif
 	FrameLen += 3;
@@ -755,118 +775,6 @@ VOID MakeHotSpotIE(BSS_STRUCT *pMbss, ULONG *pFrameLen, UCHAR *pBeaconFrame)
 #endif /*CONFIG_HOTSPOT_IE*/
 
 #ifdef CONFIG_AP_SUPPORT
-VOID MakeExtCapIE(RTMP_ADAPTER *pAd, BSS_STRUCT *pMbss, ULONG *pFrameLen, UCHAR *pBeaconFrame)
-{
-	/* 7.3.2.27 Extended Capabilities IE */
-	COMMON_CONFIG *pComCfg = &pAd->CommonCfg;
-	struct wifi_dev *wdev = &pMbss->wdev;
-	ULONG TmpLen, infoPos;
-	PUCHAR pInfo;
-	UCHAR extInfoLen;
-	BOOLEAN bNeedAppendExtIE = FALSE;
-	EXT_CAP_INFO_ELEMENT    extCapInfo;
-	UCHAR PhyMode = wdev->PhyMode;
-	ULONG FrameLen = *pFrameLen;
-#ifdef RT_BIG_ENDIAN
-	UCHAR *pextCapInfo;
-#endif
-
-	extInfoLen = sizeof(EXT_CAP_INFO_ELEMENT);
-	NdisZeroMemory(&extCapInfo, extInfoLen);
-#ifdef DOT11_N_SUPPORT
-#ifdef DOT11N_DRAFT3
-
-	/* P802.11n_D1.10, HT Information Exchange Support */
-	if (WMODE_CAP_N(PhyMode) && (wdev->channel <= 14) &&
-		(wdev->DesiredHtPhyInfo.bHtEnable) &&
-		(pComCfg->bBssCoexEnable == TRUE)
-	   )
-		extCapInfo.BssCoexistMgmtSupport = 1;
-
-#endif /* DOT11N_DRAFT3 */
-#endif /* DOT11_N_SUPPORT */
-#ifdef CONFIG_DOT11V_WNM
-
-	if (pMbss->WNMCtrl.ProxyARPEnable)
-		extCapInfo.proxy_arp = 1;
-
-	if (pMbss->WNMCtrl.WNMBTMEnable)
-		extCapInfo.BssTransitionManmt = 1;
-
-#ifdef CONFIG_HOTSPOT_R2
-
-	if (pMbss->WNMCtrl.WNMNotifyEnable)
-		extCapInfo.wnm_notification = 1;
-
-	if (pMbss->HotSpotCtrl.QosMapEnable)
-		extCapInfo.qosmap = 1;
-#endif /* CONFIG_HOTSPOT_R2 */
-#endif /* CONFIG_DOT11V_WNM */
-#if defined(DOT11U_INTERWORKING_IE_SUPPORT) && !defined(CONFIG_HOTSPOT)
-	if (pMbss->bEnableInterworkingIe == TRUE)
-		extCapInfo.interworking = 1;
-#endif
-#ifdef CONFIG_DOT11U_INTERWORKING
-	if (pMbss->GASCtrl.b11U_enable)
-		extCapInfo.interworking = 1;
-#endif /* CONFIG_DOT11U_INTERWORKING */
-#ifdef DOT11_VHT_AC
-
-	if (WMODE_CAP_AC(PhyMode) &&
-		(wdev->channel > 14))
-		extCapInfo.operating_mode_notification = 1;
-
-#endif /* DOT11_VHT_AC */
-
-#ifdef FTM_SUPPORT
-
-	if (pAd->pFtmCtrl->bSetCivicRpt)
-		extCapInfo.civic_location = 1;
-
-	if (pAd->pFtmCtrl->bSetLciRpt)
-		extCapInfo.geospatial_location = 1;
-
-	extCapInfo.ftm_resp = 1;
-#endif /* FTM_SUPPORT */
-#ifdef RT_BIG_ENDIAN
-	pextCapInfo = (UCHAR *)&extCapInfo;
-	*((UINT32 *)pextCapInfo) = cpu2le32(*((UINT32 *)pextCapInfo));
-	*((UINT32 *)(pextCapInfo + 4)) = cpu2le32(*((UINT32 *)(pextCapInfo + 4)));
-#endif
-
-	pInfo = (PUCHAR)(&extCapInfo);
-
-	for (infoPos = 0; infoPos < extInfoLen; infoPos++) {
-		if (pInfo[infoPos] != 0) {
-			bNeedAppendExtIE = TRUE;
-			break;
-		}
-	}
-
-	if (bNeedAppendExtIE == TRUE) {
-		for (infoPos = (extInfoLen - 1); infoPos >= EXT_CAP_MIN_SAFE_LENGTH; infoPos--) {
-			if (pInfo[infoPos] == 0)
-				extInfoLen--;
-			else
-				break;
-		}
-#ifdef RT_BIG_ENDIAN
-		RTMPEndianChange((UCHAR *)&extCapInfo, 8);
-#endif
-
-		MakeOutgoingFrame(pBeaconFrame + FrameLen, &TmpLen,
-						  1, &ExtCapIe,
-						  1, &extInfoLen,
-						  extInfoLen, &extCapInfo,
-						  END_OF_ARGS);
-		FrameLen += TmpLen;
-	}
-
-	*pFrameLen = FrameLen;
-}
-#endif /* CONFIG_AP_SUPPORT */
-
-#ifdef CONFIG_AP_SUPPORT
 VOID MakeWmmIe(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, ULONG *pFrameLen, UCHAR *pBeaconFrame)
 {
 	ULONG TmpLen = 0;
@@ -970,15 +878,16 @@ VOID MakeCountryIe(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, ULONG *pFrameLen, U
 			}
 #endif /* EXT_BUILD_CHANNEL_LIST */
 #ifdef DOT11K_RRM_SUPPORT
+#ifdef OCE_SUPPORT
+			if (!IS_OCE_ENABLE(wdev))
+#endif /* OCE_SUPPORT */
+				if (IS_RRM_ENABLE(wdev)) {
+					UCHAR reg_class = get_regulatory_class(pAd, wdev->channel, wdev->PhyMode, wdev);
 
-			if (IS_RRM_ENABLE(wdev)) {
-				UCHAR reg_class = get_regulatory_class(pAd, wdev->channel, wdev->PhyMode, wdev);
-
-				TmpLen2 = 0;
-				NdisZeroMemory(TmpFrame, 256);
-				RguClass_BuildBcnChList(pAd, TmpFrame, &TmpLen2, wdev->PhyMode, reg_class);
-			}
-
+					TmpLen2 = 0;
+					NdisZeroMemory(TmpFrame, 256);
+					RguClass_BuildBcnChList(pAd, TmpFrame, &TmpLen2, wdev->PhyMode, reg_class);
+				}
 #endif /* DOT11K_RRM_SUPPORT */
 #ifdef MBO_SUPPORT
 			if (IS_MBO_ENABLE(wdev))
@@ -1035,7 +944,7 @@ VOID MakeChReportIe(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, ULONG *pFrameLen, 
 	InsertChannelRepIE(pAd, pBeaconFrame + FrameLen, &FrameLen,
 					   (RTMP_STRING *)pAd->CommonCfg.CountryCode,
 					   get_regulatory_class(pAd, wdev->channel, wdev->PhyMode, wdev),
-					   NULL, PhyMode);
+					   NULL, PhyMode, wdev->func_idx);
 #else
 	{
 		/*
@@ -1145,6 +1054,7 @@ VOID MakePwrConstraintIe(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, ULONG *pFrame
 VOID ComposeBcnPktTail(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, ULONG *pFrameLen, UCHAR *pBeaconFrame)
 {
 	ULONG FrameLen = *pFrameLen;
+	struct _build_ie_info vht_ie_info;
 #if defined(A_BAND_SUPPORT) && defined(CONFIG_AP_SUPPORT)
 	COMMON_CONFIG *pComCfg = &pAd->CommonCfg;
 #endif
@@ -1175,6 +1085,11 @@ VOID ComposeBcnPktTail(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, ULONG *pFrameLe
 	}
 
 #endif /* CONFIG_AP_SUPPORT */
+	vht_ie_info.frame_subtype = SUBTYPE_BEACON;
+	vht_ie_info.channel = wdev->channel;
+	vht_ie_info.phy_mode = PhyMode;
+	vht_ie_info.wdev = wdev;
+
 	MakeCountryIe(pAd, wdev, &FrameLen, pBeaconFrame);
 #ifdef CONFIG_AP_SUPPORT
 	MakePwrConstraintIe(pAd, wdev, &FrameLen, pBeaconFrame);
@@ -1255,7 +1170,7 @@ VOID ComposeBcnPktTail(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, ULONG *pFrameLe
 			FrameLen += QBSS_LoadElementAppend_HSTEST(pAd, pBeaconFrame+FrameLen, apidx);
 		else if (pMbss->HotSpotCtrl.QLoadTestEnable == 0)
 #endif
-		FrameLen += QBSS_LoadElementAppend(pAd, pBeaconFrame+FrameLen, pQloadCtrl);
+		FrameLen += QBSS_LoadElementAppend(pAd, pBeaconFrame+FrameLen, pQloadCtrl, apidx);
 	}
 #endif /* AP_QLOAD_SUPPORT */
 
@@ -1306,16 +1221,9 @@ VOID ComposeBcnPktTail(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, ULONG *pFrameLe
 
 	/* step 5. Update HT. Since some fields might change in the same BSS. */
 	if (WMODE_CAP_N(PhyMode) && (wdev->DesiredHtPhyInfo.bHtEnable)) {
-#ifdef DOT11_VHT_AC
-		struct _build_ie_info vht_ie_info;
-#endif /* DOT11_VHT_AC */
 		MakeHTIe(pAd, wdev, &FrameLen, pBeaconFrame);
 #ifdef DOT11_VHT_AC
 		vht_ie_info.frame_buf = (UCHAR *)(pBeaconFrame + FrameLen);
-		vht_ie_info.frame_subtype = SUBTYPE_BEACON;
-		vht_ie_info.channel = wdev->channel;
-		vht_ie_info.phy_mode = PhyMode;
-		vht_ie_info.wdev = wdev;
 		FrameLen += build_vht_ies(pAd, &vht_ie_info);
 #endif /* DOT11_VHT_AC */
 	}
@@ -1324,7 +1232,8 @@ VOID ComposeBcnPktTail(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, ULONG *pFrameLe
 
 #ifdef CONFIG_AP_SUPPORT
 	/* 7.3.2.27 Extended Capabilities IE */
-	MakeExtCapIE(pAd, pMbss, &FrameLen, pBeaconFrame);
+	vht_ie_info.frame_buf = (UCHAR *)(pBeaconFrame + FrameLen);
+	FrameLen += build_extended_cap_ie(pAd, &vht_ie_info);
 #endif /*CONFIG_AP_SUPPORT */
 #ifdef WFA_VHT_PF
 
@@ -1377,8 +1286,12 @@ VOID ComposeBcnPktTail(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, ULONG *pFrameLe
 	FrameLen += build_vendor_ie(pAd, wdev, (pBeaconFrame + FrameLen), VIE_BEACON
 								);
 #ifdef MBO_SUPPORT
-	if (IS_MBO_ENABLE(wdev))
-		MakeMboOceIE(pAd, wdev, pBeaconFrame+FrameLen, &FrameLen, MBO_FRAME_TYPE_BEACON);
+	if (IS_MBO_ENABLE(wdev)
+#ifdef OCE_SUPPORT
+		|| IS_OCE_ENABLE(wdev)
+#endif /* OCE_SUPPORT */
+		)
+		MakeMboOceIE(pAd, wdev, NULL, pBeaconFrame+FrameLen, &FrameLen, MBO_FRAME_TYPE_BEACON);
 #endif /* MBO_SUPPORT */
 
 #endif /*CONFIG_AP_SUPPORT*/
@@ -1427,6 +1340,13 @@ VOID ComposeBcnPktTail(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, ULONG *pFrameLe
 	}
 	RTMP_SPIN_UNLOCK(&pAd->ApCfg.MBSSID[apidx].ap_vendor_ie.vendor_ie_lock);
 #endif /* CUSTOMER_VENDOR_IE_SUPPORT */
+
+/*Reduced neighbor report IE should be final IE to be added, so we can determine the maximum length of Beacon*/
+#ifdef OCE_FILS_SUPPORT
+	vht_ie_info.frame_buf = (UCHAR *)(pBeaconFrame + FrameLen);
+	vht_ie_info.pos = FrameLen;
+	FrameLen += oce_build_ies(pAd, &vht_ie_info, TRUE);
+#endif
 
 	*pFrameLen = FrameLen;
 }
@@ -1848,6 +1768,11 @@ VOID BcnCheck(RTMP_ADAPTER *pAd)
 					bcnactive = TRUE;
 					break;
 				}
+			}
+
+			if (Index >= WDEV_NUM_MAX) {
+				MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_WARN, ("%s:Warning:can't find any active wdev for beacon:\n", __func__));
+				return;
 			}
 
 			if (wdev == NULL)

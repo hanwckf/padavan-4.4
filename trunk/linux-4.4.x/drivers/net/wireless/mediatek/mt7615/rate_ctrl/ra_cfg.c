@@ -685,5 +685,214 @@ Set_RA_Debug_Proc(
 #endif /* MT_MAC */
 #endif /* DBG */
 
+#ifdef CONFIG_RA_PHY_RATE_SUPPORT
+INT
+Set_SupRateSet_Proc(
+	IN struct _RTMP_ADAPTER *pAd,
+	IN RTMP_STRING * arg)
+{
+	POS_COOKIE	pObj = (POS_COOKIE) pAd->OS_Cookie;
+	struct wifi_dev *wdev = get_wdev_by_ioctl_idx_and_iftype(pAd, pObj->ioctl_if, pObj->ioctl_if_type);
+	UCHAR rate[] = { 0x82, 0x84, 0x8b, 0x96, 0x8C, 0x12, 0x98, 0x24, 0xb0, 0x48, 0x60, 0x6c};
+
+	INT SupRateSetBitmap = 0, i = 0;
+	MAC_TABLE_ENTRY *pMacEntry;
+	P_RA_ENTRY_INFO_T pRaEntry;
+
+	SupRateSetBitmap = (ULONG) simple_strtol(arg, 0, 10);
+	MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("SupRateSetBitmap %x\n", SupRateSetBitmap));
+
+#ifdef MIN_PHY_RATE_SUPPORT
+	/* Configurable data rate set and MIN_PHY_RATE are mutual exclusive */
+	if ((wdev->rate.LimitClientSupportRate == TRUE) && (wdev->rate.MinPhyDataRate != 0)) {
+		MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
+			("%s:MIN_PHY_RATE_SUPPORT is and enable. Unable to set Support Rate\n",
+			__func__));
+		return FALSE;
+	}
+#endif
+
+	if (SupRateSetBitmap > 4095) {
+		MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("%s:error ForceRateSetBitmap(%04X) > 4096\n",
+			__func__, SupRateSetBitmap));
+		return FALSE;
+	}
+
+	if (!wdev)
+		return FALSE;
+
+	wdev->rate.Eap_SupRate_En = TRUE;
+	wdev->rate.EapSupRateLen = 0;
+	wdev->rate.EapExtSupRateLen = 0;
+
+	for (i = 0; i < MAX_LEN_OF_SUPPORTED_RATES; i++) {
+		if (SupRateSetBitmap & (1 << i)) {
+			if (WMODE_EQUAL(wdev->PhyMode, WMODE_B) && (wdev->channel <= 14)) {
+				wdev->rate.EapSupRate[wdev->rate.EapSupRateLen] = rate[i];
+				wdev->rate.EapSupRateLen++;
+				wdev->rate.EapSupportCCKMCS |= (1 << i);
+				wdev->rate.EapSupportRateMode |= SUPPORT_CCK_MODE;
+			} else if (wdev->channel > 14 && (i > 3)) {
+				wdev->rate.EapSupRate[wdev->rate.EapSupRateLen] = rate[i];
+				wdev->rate.EapSupRateLen++;
+				wdev->rate.EapSupportOFDMMCS |= (1 << (i - 4));
+				wdev->rate.EapSupportRateMode |= SUPPORT_OFDM_MODE;
+			} else {
+				if ((i < 4) || (i == 5) || (i == 7) || (i == 9) || (i == 11)) {
+					wdev->rate.EapSupRate[wdev->rate.EapSupRateLen] = rate[i];
+					wdev->rate.EapSupRateLen++;
+					if (i < 4) {
+						wdev->rate.EapSupportCCKMCS |= (1 << i);
+						wdev->rate.EapSupportRateMode |= SUPPORT_CCK_MODE;
+					} else {
+						wdev->rate.EapSupportOFDMMCS |= (1 << (i - 4));
+						wdev->rate.EapSupportRateMode |= SUPPORT_OFDM_MODE;
+					}
+				} else {
+					wdev->rate.EapExtSupRate[wdev->rate.EapExtSupRateLen] = rate[i] & 0x7f;
+					wdev->rate.EapExtSupRateLen++;
+					wdev->rate.EapSupportOFDMMCS |= (1 << (i - 4));
+					wdev->rate.EapSupportRateMode |= SUPPORT_OFDM_MODE;
+				}
+			}
+		}
+	}
+	RTMPUpdateRateInfo(wdev->PhyMode, &wdev->rate);
+	UpdateBeaconHandler(pAd, wdev, BCN_UPDATE_IE_CHG);
+
+
+	for (i = 1; VALID_UCAST_ENTRY_WCID(pAd, i); i++) {
+		pMacEntry = &pAd->MacTab.Content[i];
+		if (IS_ENTRY_CLIENT(pMacEntry) && (pMacEntry->Sst == SST_ASSOC)) {
+			if (pMacEntry->wdev != wdev)
+				continue;
+			pRaEntry = &pMacEntry->RaEntry;
+			raWrapperEntrySet(pAd, pMacEntry, pRaEntry);
+			WifiSysRaInit(pAd, pMacEntry);
+		}
+
+	}
+	return TRUE;
+}
+
+INT
+Set_HtSupRateSet_Proc(
+	IN struct _RTMP_ADAPTER *pAd,
+	IN RTMP_STRING * arg)
+{
+	POS_COOKIE	pObj = (POS_COOKIE) pAd->OS_Cookie;
+	struct wifi_dev *wdev = get_wdev_by_ioctl_idx_and_iftype(pAd, pObj->ioctl_if, pObj->ioctl_if_type);
+	UINT32 HtSupRateSetBitmap = 0, i = 0;
+	MAC_TABLE_ENTRY *pMacEntry;
+	P_RA_ENTRY_INFO_T pRaEntry;
+
+	HtSupRateSetBitmap = (UINT32) simple_strtol(arg, 0, 10);
+	MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("HtSupRateSetBitmap %x\n", HtSupRateSetBitmap));
+
+#ifdef MIN_PHY_RATE_SUPPORT
+	/* Configurable data rate set and MIN_PHY_RATE are mutual exclusive */
+	if ((wdev->rate.LimitClientSupportRate == TRUE) && (wdev->rate.MinPhyDataRate != 0)) {
+		MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
+			("%s:MIN_PHY_RATE_SUPPORT is and enable. Unable to set Support Rate\n",
+			__func__));
+		return FALSE;
+	}
+#endif
+
+	if (!wdev)
+		return FALSE;
+
+	wdev->rate.Eap_HtSupRate_En = TRUE;
+	wdev->rate.EapSupportHTMCS = HtSupRateSetBitmap;
+	wdev->rate.EapMCSSet[0] = HtSupRateSetBitmap & 0x000000ff;
+	wdev->rate.EapMCSSet[1] = (HtSupRateSetBitmap & 0x0000ff00) >> 8;
+	wdev->rate.EapMCSSet[2] = (HtSupRateSetBitmap & 0x00ff0000) >> 16;
+	wdev->rate.EapMCSSet[3] = (HtSupRateSetBitmap & 0xff000000) >> 24;
+
+#ifdef DOT11_N_SUPPORT
+	SetCommonHtVht(pAd, wdev);
+#endif /* DOT11_N_SUPPORT */
+	UpdateBeaconHandler(pAd, wdev, BCN_UPDATE_IE_CHG);
+
+	for (i = 1; VALID_UCAST_ENTRY_WCID(pAd, i); i++) {
+		pMacEntry = &pAd->MacTab.Content[i];
+		if (IS_ENTRY_CLIENT(pMacEntry) && (pMacEntry->Sst == SST_ASSOC)) {
+			if (pMacEntry->wdev != wdev)
+				continue;
+			pRaEntry = &pMacEntry->RaEntry;
+
+			raWrapperEntrySet(pAd, pMacEntry, pRaEntry);
+			WifiSysRaInit(pAd, pMacEntry);
+		}
+
+	}
+	return TRUE;
+}
+
+INT
+Set_VhtSupRateSet_Proc(
+	IN struct _RTMP_ADAPTER *pAd,
+	IN RTMP_STRING * arg)
+{
+	POS_COOKIE	pObj = (POS_COOKIE) pAd->OS_Cookie;
+	struct wifi_dev *wdev = get_wdev_by_ioctl_idx_and_iftype(pAd, pObj->ioctl_if, pObj->ioctl_if_type);
+	UINT32 VhtSupRateSetBitmap = 0;
+	UINT32 i = 0;
+	MAC_TABLE_ENTRY *pMacEntry;
+	P_RA_ENTRY_INFO_T pRaEntry;
+
+	VhtSupRateSetBitmap  = (UINT32) simple_strtol(arg, 0, 10);
+	MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("VhtSupRateSetBitmap %x\n", VhtSupRateSetBitmap));
+
+#ifdef MIN_PHY_RATE_SUPPORT
+	/* Configurable data rate set and MIN_PHY_RATE are mutual exclusive */
+	if ((wdev->rate.LimitClientSupportRate == TRUE) && (wdev->rate.MinPhyDataRate != 0)) {
+		MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
+			("%s:MIN_PHY_RATE_SUPPORT is enable. Unable to set Support Rate\n",
+			__func__));
+		return FALSE;
+	}
+#endif
+
+	if (!wdev)
+		return FALSE;
+
+	wdev->rate.Eap_VhtSupRate_En = TRUE;
+	wdev->rate.rx_mcs_map.mcs_ss1 = VhtSupRateSetBitmap & 0x0000003;
+	wdev->rate.rx_mcs_map.mcs_ss2 = (VhtSupRateSetBitmap & 0x0000000c) >> 2;
+	wdev->rate.rx_mcs_map.mcs_ss3 = (VhtSupRateSetBitmap & 0x00000030) >> 4;
+	wdev->rate.rx_mcs_map.mcs_ss4 = (VhtSupRateSetBitmap & 0x000000c0) >> 6;
+	wdev->rate.rx_mcs_map.mcs_ss5 = (VhtSupRateSetBitmap & 0x00000300) >> 8;
+	wdev->rate.rx_mcs_map.mcs_ss6 = (VhtSupRateSetBitmap & 0x00000c00) >> 10;
+	wdev->rate.rx_mcs_map.mcs_ss7 = (VhtSupRateSetBitmap & 0x00003000) >> 12;
+	wdev->rate.rx_mcs_map.mcs_ss8 = (VhtSupRateSetBitmap & 0x0000c000) >> 14;
+	wdev->rate.tx_mcs_map.mcs_ss1 = (VhtSupRateSetBitmap & 0x00030000) >> 16;
+	wdev->rate.tx_mcs_map.mcs_ss2 = (VhtSupRateSetBitmap & 0x000c0000) >> 18;
+	wdev->rate.tx_mcs_map.mcs_ss3 = (VhtSupRateSetBitmap & 0x00300000) >> 20;
+	wdev->rate.tx_mcs_map.mcs_ss4 = (VhtSupRateSetBitmap & 0x00c00000) >> 22;
+	wdev->rate.tx_mcs_map.mcs_ss5 = (VhtSupRateSetBitmap & 0x03000000) >> 24;
+	wdev->rate.tx_mcs_map.mcs_ss6 = (VhtSupRateSetBitmap & 0x0c000000) >> 26;
+	wdev->rate.tx_mcs_map.mcs_ss7 = (VhtSupRateSetBitmap & 0x30000000) >> 28;
+	wdev->rate.tx_mcs_map.mcs_ss8 = (VhtSupRateSetBitmap & 0xc0000000) >> 30;
+
+#ifdef DOT11_N_SUPPORT
+		SetCommonHtVht(pAd, wdev);
+#endif /* DOT11_N_SUPPORT */
+		UpdateBeaconHandler(pAd, wdev, BCN_UPDATE_IE_CHG);
+
+	for (i = 1; VALID_UCAST_ENTRY_WCID(pAd, i); i++) {
+		pMacEntry = &pAd->MacTab.Content[i];
+		if (IS_ENTRY_CLIENT(pMacEntry) && (pMacEntry->Sst == SST_ASSOC)) {
+			if (pMacEntry->wdev != wdev)
+				continue;
+			pRaEntry = &pMacEntry->RaEntry;
+			raWrapperEntrySet(pAd, pMacEntry, pRaEntry);
+			WifiSysRaInit(pAd, pMacEntry);
+		}
+	}
+	return TRUE;
+}
+#endif /* CONFIG_RA_PHY_RATE_SUPPORT */
+
 #endif /* COMPOS_WIN */
 

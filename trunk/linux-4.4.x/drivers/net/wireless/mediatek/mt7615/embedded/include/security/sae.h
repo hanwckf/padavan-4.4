@@ -235,6 +235,13 @@ USHORT sae_check_confirm(
 SAE_BN *sae_gen_rand(
 	IN SAE_INSTANCE *pSaeIns);
 
+INT sae_set_k_iteration(
+	IN struct _RTMP_ADAPTER *ad,
+	IN RTMP_STRING * arg);
+
+INT sae_set_anti_clogging_th(
+	IN struct _RTMP_ADAPTER *ad,
+	IN RTMP_STRING * arg);
 
 USHORT sae_group_allowed(
 	IN SAE_INSTANCE *pSaeIns,

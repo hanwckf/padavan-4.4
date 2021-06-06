@@ -26,6 +26,12 @@
 
 #include <linux/ieee80211.h>
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
+#define IEEE80211_NUM_BANDS NUM_NL80211_BANDS
+#define IEEE80211_BAND_2GHZ NL80211_BAND_2GHZ
+#define IEEE80211_BAND_5GHZ NL80211_BAND_5GHZ
+#endif
+
 typedef enum _NDIS_HOSTAPD_STATUS {
 	Hostapd_Disable = 0,
 	Hostapd_EXT,
@@ -50,7 +56,7 @@ typedef struct __CFG80211_CB {
 	UINT32 MonFilterFlag;
 
 	/* channel information */
-	struct ieee80211_channel ChanInfo[MAX_NUM_OF_CHANNELS];
+	struct ieee80211_channel ChanInfo[MAX_NUM_OF_CHS];
 
 	/* to protect scan status */
 	spinlock_t scan_notify_lock;

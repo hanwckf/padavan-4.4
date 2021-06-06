@@ -490,6 +490,150 @@ PUCHAR get_channelset_by_reg_class(
 	return channelset;
 }
 
+#ifdef DFS_CAC_R2
+#ifdef MT_DFS_SUPPORT
+void wapp_get_cac_cap(IN RTMP_ADAPTER *pAd,
+	struct wifi_dev *wdev,
+	struct cac_capability_lib *cac_cap)
+{
+	UCHAR i = 0, j = 0, k = 0, l = 0, m = 0, dfs_ch = 0, channel = 0;
+	PDFS_PARAM pDfsParam = &pAd->CommonCfg.DfsParameter;
+	BOOLEAN ret = FALSE;
+
+	if ((WMODE_CAP_AC(wdev->PhyMode))) {
+		PREG_CLASS_VHT reg_class = (PREG_CLASS_VHT)get_reg_table_by_country(
+			pAd->CommonCfg.CountryCode, wdev->PhyMode);
+		if (reg_class) {
+			do {
+			/* find  channel_set */
+				if (reg_class[i].start_freq == FREQ_5G00) {
+					if ((reg_class[i].spacing == BW_80) ||
+						(reg_class[i].spacing == BW_160))
+						channel = reg_class[i].center_freq[j];
+					else
+						channel = reg_class[i].channel_set[j];
+					for (j = 0; channel != 0;) {
+#ifdef DOT11_VHT_AC
+					if (reg_class[i].spacing == BW_80) {
+						ret = RadarChannelCheck(pAd,
+							(reg_class[i].center_freq[j] - 2));
+					} else if (reg_class[i].spacing == BW_160) {
+						ret = TRUE;
+					} else
+#endif
+					{
+						ret = RadarChannelCheck(pAd,
+							reg_class[i].channel_set[j]);
+					}
+					if (ret == TRUE) {
+						dfs_ch = TRUE;
+						cac_cap->opcap[l].op_class = reg_class[i].global_class;
+						cac_cap->opcap[l].ch_num++;
+					if ((reg_class[i].spacing == BW_80) ||
+						(reg_class[i].spacing == BW_160))
+						cac_cap->opcap[l].ch_list[k] =
+							reg_class[i].center_freq[j];
+					else
+						cac_cap->opcap[l].ch_list[k] =
+								reg_class[i].channel_set[j];
+
+					if ((pAd->CommonCfg.RDDurRegion == CE) &&
+					DfsCacRestrictBand(pAd,
+					reg_class[i].spacing,
+					cac_cap->opcap[l].ch_list[k], 0)) {
+						cac_cap->opcap[l].cac_time[k] = 650;
+					} else
+						cac_cap->opcap[l].cac_time[k] = 65;
+					for (m = 0; m < pDfsParam->ChannelListNum; m++) {
+						if (reg_class[i].spacing == BW_80 || reg_class[i].spacing == BW_160) {
+							if (pDfsParam->DfsChannelList[m].Channel ==
+								reg_class[i].center_freq[j] - 2) {
+								cac_cap->opcap[l].non_occupancy_remain[k] =
+								pDfsParam->DfsChannelList[m].NonOccupancy;
+								break;
+							}
+						} else {
+							if (pDfsParam->DfsChannelList[m].Channel ==
+								reg_class[i].channel_set[j]) {
+								cac_cap->opcap[l].non_occupancy_remain[k] =
+								pDfsParam->DfsChannelList[m].NonOccupancy;
+								break;
+							}
+						}
+					}
+					k++;
+					}
+					j++;
+					if ((reg_class[i].spacing == BW_80) ||
+						(reg_class[i].spacing == BW_160))
+						channel = reg_class[i].center_freq[j];
+					else
+						channel = reg_class[i].channel_set[j];
+				}
+				k = 0;
+				j = 0;
+				if (dfs_ch == TRUE) {
+					cac_cap->op_class_num += 1;
+					l++;
+				}
+				dfs_ch = FALSE;
+				}
+			i++;
+			} while (reg_class[i].reg_class != 0);
+		}
+	} else {
+		PREG_CLASS reg_class = (PREG_CLASS)get_reg_table_by_country(
+			pAd->CommonCfg.CountryCode, wdev->PhyMode);
+			do {
+				/* find  channel_set */
+				if (reg_class[i].start_freq == FREQ_5G00) {
+					channel = reg_class[i].channel_set[j];
+					for (j = 0; channel != 0;) {
+						ret = RadarChannelCheck(pAd,
+							reg_class[i].channel_set[j]);
+					if (ret == TRUE) {
+						dfs_ch = TRUE;
+						cac_cap->opcap[l].op_class =
+							reg_class[i].global_class;
+						cac_cap->opcap[l].ch_num++;
+						cac_cap->opcap[l].ch_list[k] =
+							reg_class[i].channel_set[j];
+					if ((pAd->CommonCfg.RDDurRegion == CE) &&
+						DfsCacRestrictBand(pAd,
+						reg_class[i].spacing,
+						cac_cap->opcap[l].ch_list[k], 0)) {
+							cac_cap->opcap[l].cac_time[k] = 650;
+					} else
+							cac_cap->opcap[l].cac_time[k] = 65;
+
+					for (m = 0; m < pDfsParam->ChannelListNum; m++) {
+						if (pDfsParam->DfsChannelList[m].Channel
+						== reg_class[i].channel_set[j]) {
+						cac_cap->opcap[l].non_occupancy_remain[k]
+						= pDfsParam->DfsChannelList[m].NonOccupancy;
+						break;
+					}
+
+					}
+					k++;
+					}
+				j++;
+				channel = reg_class[i].channel_set[j];
+			}
+			k = 0;
+			j = 0;
+			if (dfs_ch == TRUE) {
+				cac_cap->op_class_num += 1;
+				l++;
+			}
+			dfs_ch = FALSE;
+			}
+			i++;
+		} while (reg_class[i].reg_class != 0);
+	}
+}
+#endif
+#endif
 
 UINT BW_VALUE[] = {20, 40, 80, 160, 10, 5, 162, 60, 25};
 UCHAR get_regulatory_class(RTMP_ADAPTER *pAd, UCHAR Channel, UCHAR PhyMode, struct wifi_dev *wdev)

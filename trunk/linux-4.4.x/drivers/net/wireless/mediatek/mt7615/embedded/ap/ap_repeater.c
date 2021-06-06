@@ -576,7 +576,7 @@ UINT32 ReptTxPktCheckHandler(
 	eth_type = (pSrcBufVA[12] << 8) | pSrcBufVA[13];
 
 #ifdef VLAN_SUPPORT
-	if (eth_type == ETH_TYPE_VLAN)
+	if ((pAd->CommonCfg.bEnableVlan) && (eth_type == ETH_TYPE_VLAN))
 		eth_type = (pSrcBufVA[16] << 8) | pSrcBufVA[17];
 #endif
 

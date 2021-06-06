@@ -521,6 +521,7 @@ static MT_CMD_TABL_T CMDHdlrTable[] = {
 #ifdef MT_DFS_SUPPORT
 	{CMDTHRED_DFS_CAC_TIMEOUT, DfsChannelSwitchTimeoutAction},
 	{CMDTHRED_DFS_AP_RESTART, DfsAPRestart},
+	{CMDTHRED_DFS_RADAR_DETECTED_SW_CH, DfsSwitchChAfterRadarDetected},
 #endif
 	{CMDTHRED_MAC_TABLE_DEL, mac_table_delete_handle},
 	{CMDTHRED_RXV_WRITE_IN_FILE, RXVWriteInFile},
