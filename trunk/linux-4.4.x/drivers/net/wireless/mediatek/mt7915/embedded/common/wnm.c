@@ -1642,7 +1642,7 @@ static VOID SendBTMQueryIndication(
 	BTM_EVENT_DATA *Event = (BTM_EVENT_DATA *)Elem->Msg;
 	PNET_DEV NetDev = pAd->ApCfg.MBSSID[Event->ControlIndex].wdev.if_dev;
 
-	printk("%s\n", __func__);
+	//printk("%s\n", __func__);
 		/* Send BTM query indication to daemon */
 		SendBTMQueryEvent(NetDev,
 						  Event->PeerMACAddr,
