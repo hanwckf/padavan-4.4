@@ -182,8 +182,7 @@ static void btn_ev_handle(btn_event *ev)
 		{
 			if (ev->event == BTN_PRESSED) {
 				(btn->count)++;
-				if (LED_PWR & search_gpio_led())
-				{
+				if (LED_PWR & search_gpio_led()) {
 					pwr_led = get_state_led_pwr();
 
 					if (btn->btn_id == BTN_RESET && btn->count == 1) {
@@ -194,17 +193,14 @@ static void btn_ev_handle(btn_event *ev)
 						gpio_led_set(LED_PWR, (btn->count % 2) ? !pwr_led : pwr_led);
 					}
 				}
-				break;
 			} else if (ev->event == BTN_RELEASED) {
 				cnt = btn->count;
 				btn->count = 0;
 				ev->event = 0;
 				ev->btn_id = 0;
 				btn_released_handle(btn->btn_id, cnt);
-				break;
-			} else {
-				break;
 			}
+			break;
 		}
 	}
 }
