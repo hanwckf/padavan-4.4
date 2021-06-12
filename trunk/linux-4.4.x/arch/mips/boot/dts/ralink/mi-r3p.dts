@@ -3,6 +3,7 @@
 #include "mt7621.dtsi"
 #include <dt-bindings/input/input.h>
 #include "mt7621-raeth-gmac2.dtsi"
+#include "mt7621-pinctrl-default-gpio.dtsi"
 
 / {
 	compatible = "mediatek,mt7621-soc";
@@ -145,15 +146,6 @@
 				label = "ALL";
 				reg = <0x0 0xff80000>;
 			};
-		};
-	};
-};
-
-&pinctrl {
-	state_default: pinctrl0 {
-		gpio {
-			mtk,group = "i2c", "uart2", "uart3", "rgmii2";
-			mtk,function = "gpio";
 		};
 	};
 };

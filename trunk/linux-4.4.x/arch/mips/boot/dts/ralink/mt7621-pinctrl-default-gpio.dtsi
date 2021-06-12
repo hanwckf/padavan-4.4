@@ -1,0 +1,8 @@
+&pinctrl {
+	state_default: pinctrl0 {
+		gpio {
+			mtk,group = "i2c", "uart2", "uart3", "jtag", "wdt";
+			mtk,function = "gpio";
+		};
+	};
+};
