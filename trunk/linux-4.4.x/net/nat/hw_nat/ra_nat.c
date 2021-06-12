@@ -2701,6 +2701,9 @@ defined(CONFIG_MT7610_AP_APCLI) || defined(CONFIG_APCLI_SUPPORT)
 		entry->ipv4_hnapt.act_dp = offset;
 #if defined(CONFIG_ARCH_MT7622)
 		entry->ipv4_hnapt.iblk2.acnt = offset;
+#else
+		entry->ipv4_hnapt.iblk2.port_mg = 0x3f;
+		entry->ipv4_hnapt.iblk2.port_ag = offset;
 #endif
 	}
 #if defined(CONFIG_RA_HW_NAT_IPV6)
@@ -2708,21 +2711,33 @@ defined(CONFIG_MT7610_AP_APCLI) || defined(CONFIG_APCLI_SUPPORT)
 		entry->ipv4_dslite.act_dp = offset;
 #if defined(CONFIG_ARCH_MT7622)
 		entry->ipv4_dslite.iblk2.acnt = offset;
+#else
+		entry->ipv4_dslite.iblk2.port_mg = 0x3f;
+		entry->ipv4_dslite.iblk2.port_ag = offset;
 #endif
 	} else if (IS_IPV6_3T_ROUTE(entry)) {
 		entry->ipv6_3t_route.act_dp = offset;
 #if defined(CONFIG_ARCH_MT7622)
 		entry->ipv6_3t_route.iblk2.acnt = offset;
+#else
+		entry->ipv6_3t_route.iblk2.port_mg = 0x3f;
+		entry->ipv6_3t_route.iblk2.port_ag = offset;
 #endif
 	} else if (IS_IPV6_5T_ROUTE(entry)) {
 		entry->ipv6_5t_route.act_dp = offset;
 #if defined(CONFIG_ARCH_MT7622)
 		entry->ipv6_5t_route.iblk2.acnt = offset;
+#else
+		entry->ipv6_5t_route.iblk2.port_mg = 0x3f;
+		entry->ipv6_5t_route.iblk2.port_ag = offset;
 #endif
 	} else if (IS_IPV6_6RD(entry)) {
 		entry->ipv6_6rd.act_dp = offset;
 #if defined(CONFIG_ARCH_MT7622)
 		entry->ipv6_6rd.iblk2.acnt = offset;
+#else
+		entry->ipv6_6rd.iblk2.port_mg = 0x3f;
+		entry->ipv6_6rd.iblk2.port_ag = offset;
 #endif
 	} else {
 		return 1;
