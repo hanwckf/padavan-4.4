@@ -72,7 +72,6 @@
 			partition@0 {
 				label = "Bootloader";
 				reg = <0x0 0x100000>;		/* 1m */
-				read-only;
 			};
 
 			partition@100000 {
