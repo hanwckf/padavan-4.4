@@ -2788,6 +2788,11 @@ void ppe_set_entry_bind(struct sk_buff *skb, struct foe_entry *entry)
 void ppe_dev_reg_handler(struct net_device *dev)
 {
 	int i;
+
+	/* skip apcli interface */
+	if (strncmp(dev->name, "apcli", 5) == 0)
+		return;
+
 	for (i = 0; i < MAX_IF_NUM; i++) {
 		if (dst_port[i] == dev) {
 			pr_debug("%s : %s dst_port table has beed registered(%d)\n", __func__, dev->name, i);
