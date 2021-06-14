@@ -232,7 +232,8 @@ ez_action_led_toggle(void)
 void
 btn_event_short(int btn_id)
 {
-	int ez_action, ez_param = 1;
+	int ez_action = 0;
+	int ez_param = 1;
 
 	if (btn_id == BTN_FN1) {
 		ez_action = nvram_get_int("fn1_action_short");
@@ -313,7 +314,8 @@ btn_event_short(int btn_id)
 void
 btn_event_long(int btn_id)
 {
-	int ez_action, ez_param = 2;
+	int ez_action = 0;
+	int ez_param = 2;
 
 	if (btn_id == BTN_FN1) {
 		ez_action = nvram_get_int("fn1_action_long");
@@ -323,14 +325,15 @@ btn_event_long(int btn_id)
 		ez_param = 6;
 	} else if (btn_id == BTN_WPS) {
 		ez_action = nvram_get_int("ez_action_long");
-	} else {
-		return;
 	}
 
-	if (ez_action == 7 || ez_action == 8)
-		LED_CONTROL(LED_PWR, LED_OFF);
-	else if (ez_action != 11)
-		LED_CONTROL(LED_PWR, LED_ON);
+	if (LED_PWR & search_gpio_led())
+	{
+		if (ez_action == 7 || ez_action == 8)
+			LED_CONTROL(LED_PWR, LED_OFF);
+		else if (ez_action != 11)
+			LED_CONTROL(LED_PWR, LED_ON);
+	}
 
 	switch (ez_action)
 	{

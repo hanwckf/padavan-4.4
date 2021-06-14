@@ -112,6 +112,7 @@ static int btn_uevent_init(void)
 static void nlmsg_handle(const char *msg, int len, btn_event *ev)
 {
 	int i = 0;
+	int btn_id = 0;
 	char btn_event = 0;
 
 	while (i < len)
@@ -132,8 +133,11 @@ static void nlmsg_handle(const char *msg, int len, btn_event *ev)
 				}
 			}
 			if (btn_event && !strcmp(&msg[i], "BUTTON")) {
-				ev->event = btn_event;
-				ev->btn_id = btn_name_to_id(&e[1]);
+				btn_id = btn_name_to_id(&e[1]);
+				if (btn_id) {
+					ev->event = btn_event;
+					ev->btn_id = btn_id;
+				}
 				return;
 			}
 		}
