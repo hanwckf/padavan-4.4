@@ -493,9 +493,10 @@ VOID BssTableInit(BSS_TABLE *Tab)
  */
 ULONG BssTableSearch(BSS_TABLE *Tab, UCHAR *pBssid, UCHAR Channel)
 {
-	UCHAR i;
+	//UCHAR i;
+	UINT i;
 
-	for (i = 0; i < Tab->BssNr && Tab->BssNr < MAX_LEN_OF_BSS_TABLE; i++) {
+	for (i = 0; i < Tab->BssNr && Tab->BssNr <= MAX_LEN_OF_BSS_TABLE; i++) {
 		/*
 			Some AP that support A/B/G mode that may used the same BSSID on 11A and 11B/G.
 			We should distinguish this case.
@@ -517,9 +518,10 @@ ULONG BssSsidTableSearch(
 	IN UCHAR	 SsidLen,
 	IN UCHAR	 Channel)
 {
-	UCHAR i;
+	//UCHAR i;
+	UINT i;
 
-	for (i = 0; i < Tab->BssNr  && Tab->BssNr < MAX_LEN_OF_BSS_TABLE; i++) {
+	for (i = 0; i < Tab->BssNr  && Tab->BssNr <= MAX_LEN_OF_BSS_TABLE; i++) {
 		/* Some AP that support A/B/G mode that may used the same BSSID on 11A and 11B/G.*/
 		/* We should distinguish this case.*/
 		/*		*/
@@ -541,9 +543,10 @@ ULONG BssTableSearchWithSSID(
 	IN UCHAR	 SsidLen,
 	IN UCHAR	 Channel)
 {
-	UCHAR i;
+	//UCHAR i;
+	UINT i;
 
-	for (i = 0; i < Tab->BssNr  && Tab->BssNr < MAX_LEN_OF_BSS_TABLE; i++) {
+	for (i = 0; i < Tab->BssNr  && Tab->BssNr <= MAX_LEN_OF_BSS_TABLE; i++) {
 		if ((((Tab->BssEntry[i].Channel <= 14) && (Channel <= 14)) ||
 			 ((Tab->BssEntry[i].Channel > 14) && (Channel > 14))) &&
 			MAC_ADDR_EQUAL(&(Tab->BssEntry[i].Bssid), Bssid) &&
@@ -559,9 +562,10 @@ ULONG BssTableSearchWithSSID(
 
 ULONG BssSsidTableSearchBySSID(BSS_TABLE *Tab, UCHAR *pSsid, UCHAR SsidLen)
 {
-	UCHAR i;
+	//UCHAR i;
+	UINT i;
 
-	for (i = 0; i < Tab->BssNr  && Tab->BssNr < MAX_LEN_OF_BSS_TABLE; i++) {
+	for (i = 0; i < Tab->BssNr  && Tab->BssNr <= MAX_LEN_OF_BSS_TABLE; i++) {
 		if (SSID_EQUAL(pSsid, SsidLen, Tab->BssEntry[i].Ssid, Tab->BssEntry[i].SsidLen))
 			return i;
 	}
@@ -572,9 +576,10 @@ ULONG BssSsidTableSearchBySSID(BSS_TABLE *Tab, UCHAR *pSsid, UCHAR SsidLen)
 
 VOID BssTableDeleteEntry(BSS_TABLE *Tab, UCHAR *pBssid, UCHAR Channel)
 {
-	UCHAR i, j;
+	//UCHAR i, j;
+	UINT i, j;
 
-	for (i = 0; i < Tab->BssNr && Tab->BssNr < MAX_LEN_OF_BSS_TABLE; i++) {
+	for (i = 0; i < Tab->BssNr && Tab->BssNr <= MAX_LEN_OF_BSS_TABLE; i++) {
 		if ((Tab->BssEntry[i].Channel == Channel) &&
 			(MAC_ADDR_EQUAL(Tab->BssEntry[i].Bssid, pBssid))) {
 			UCHAR *pOldAddr = NULL;
@@ -1172,9 +1177,8 @@ ULONG BssTableSetEntry(
 #ifdef APCLI_SUPPORT
 			for (i = 0; i < pAd->ApCfg.ApCliNum; i++) {
 				pApCliEntry = &pAd->StaCfg[i];
-
-				if (MAC_ADDR_EQUAL(pApCliEntry->MlmeAux.Bssid, ie_list->Bssid)
-					|| SSID_EQUAL(pApCliEntry->MlmeAux.Ssid, pApCliEntry->MlmeAux.SsidLen, ie_list->Ssid, ie_list->SsidLen)) {
+				if ((!MAC_ADDR_EQUAL(pApCliEntry->MlmeAux.Bssid, ZERO_MAC_ADDR) && MAC_ADDR_EQUAL(pApCliEntry->MlmeAux.Bssid, ie_list->Bssid))
+					|| (pApCliEntry->MlmeAux.SsidLen> 0 && SSID_EQUAL(pApCliEntry->MlmeAux.Ssid, pApCliEntry->MlmeAux.SsidLen, ie_list->Ssid, ie_list->SsidLen))) {
 					bInsert = TRUE;
 					break;
 				}
@@ -1184,14 +1188,14 @@ ULONG BssTableSetEntry(
 
 			if (
 #ifdef CONFIG_STA_SUPPORT
-				!STA_STATUS_TEST_FLAG(pStaCfg, fSTA_STATUS_MEDIA_STATE_CONNECTED) ||
+				(pStaCfg && (!STA_STATUS_TEST_FLAG(pStaCfg, fSTA_STATUS_MEDIA_STATE_CONNECTED))) ||
 #endif
 #ifdef CONFIG_AP_SUPPORT
 				!OPSTATUS_TEST_FLAG(pAd, fOP_STATUS_MEDIA_STATE_CONNECTED) ||
 #endif
 				!OPSTATUS_TEST_FLAG(pAd, fOP_AP_STATUS_MEDIA_STATE_CONNECTED)) {
-				if (MAC_ADDR_EQUAL(ScanCtrl->Bssid, ie_list->Bssid) ||
-					SSID_EQUAL(ScanCtrl->Ssid, ScanCtrl->SsidLen, ie_list->Ssid, ie_list->SsidLen)
+				if ((!MAC_ADDR_EQUAL(ScanCtrl->Bssid, ZERO_MAC_ADDR) && MAC_ADDR_EQUAL(ScanCtrl->Bssid, ie_list->Bssid)) || 
+					(ScanCtrl->SsidLen > 0 && SSID_EQUAL(ScanCtrl->Ssid, ScanCtrl->SsidLen, ie_list->Ssid, ie_list->SsidLen))
 #ifdef APCLI_SUPPORT
 					|| bInsert
 #endif /* APCLI_SUPPORT */
@@ -1553,8 +1557,8 @@ VOID bss_table_maintenance(
 	IN ULONG MaxRxTimeDiff,
 	IN UCHAR MaxSameRxTimeCount)
 {
-	UCHAR	i, j;
-	UCHAR	total_bssNr = Tab->BssNr;
+	UINT	i, j;
+	UINT	total_bssNr = Tab->BssNr;
 	BOOLEAN	bDelEntry = FALSE;
 	ULONG	now_time = 0;
 	PSTA_ADMIN_CONFIG pStaCfg = GetStaCfgByWdev(pAd, wdev);

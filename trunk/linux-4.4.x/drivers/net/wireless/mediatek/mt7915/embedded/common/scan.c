@@ -1050,6 +1050,7 @@ BOOLEAN scan_next_channel(
 				} else {
 					ScanCtrl->PartialScan.bScanning = FALSE;
 					ScanCtrl->PartialScan.pwdev = NULL;
+					ScanCtrl->ScanType = SCAN_ACTIVE;
 				}
 			}
 		}

@@ -2164,7 +2164,9 @@ BOOLEAN ApCliAutoConnectExec(
 	IN  PRTMP_ADAPTER   pAd,
 	IN struct wifi_dev *wdev)
 {
-	UCHAR			ifIdx, CfgSsidLen, entryIdx;
+	//UCHAR			ifIdx, CfgSsidLen, entryIdx;
+	UCHAR           ifIdx, CfgSsidLen;
+	UINT            entryIdx;
 	RTMP_STRING *pCfgSsid;
 	BSS_TABLE		*pScanTab, *pSsidBssTab;
 	POS_COOKIE pObj = (POS_COOKIE) pAd->OS_Cookie;
@@ -2293,6 +2295,24 @@ BOOLEAN ApCliAutoConnectExec(
 		if (bw_adj == AUTO_BW_NEED_TO_ADJUST || (!IS_INVALID_HT_SECURITY(pBssEntry->PairwiseCipher)))
 #endif /* APCLI_AUTO_BW_TMP */
 		{
+#ifdef CONFIG_APSTA_MIXED_SUPPORT                                           
+		/* Enable beacon tx for the bss which is same band with apcli wdev */                                        
+		int Index;                                         
+		struct wifi_dev *wdevEach;
+		                                        
+		for (Index = 0; Index < WDEV_NUM_MAX; Index++) {                                                              
+			wdevEach = pAd->wdev_list[Index];                                                             
+			if (wdevEach == NULL)                                                                             
+				continue;                                                            
+			if (wdevEach->pHObj == NULL)                                                                            
+				continue;
+			                                                               
+			if ((HcGetBandByWdev(wdevEach) == HcGetBandByWdev(wdev)) && wdevEach->bAllowBeaconing && (wdevEach->bcn_buf.bBcnSntReq == FALSE) ) {
+				UpdateBeaconHandler(pAd, wdevEach, BCN_UPDATE_ENABLE_TX);                                                          
+			}
+		}
+#endif 
+/* CONFIG_APSTA_MIXED_SUPPORT */
 			MTWF_LOG(DBG_CAT_CLIENT, CATCLIENT_APCLI, DBG_LVL_TRACE, ("Switch to channel :%d\n", pBssEntry->Channel));
 			rtmp_set_channel(pAd, wdev, pBssEntry->Channel);
 		}

@@ -1240,9 +1240,9 @@ static VOID sync_fsm_scan_req_action(struct _RTMP_ADAPTER *pAd, MLME_QUEUE_ELEM 
 		NdisGetSystemUpTime(&ScanInfo->LastScanTime);
 		ScanInfo->ScanChannelCnt = 0;
 		RTMPCancelTimer(&ScanCtrl->ScanTimer, &Cancelled);
-		sync_fsm_enqueue_req(wdev);
 		ScanCtrl->BssType = BssType;
-		ScanCtrl->ScanType = ScanType;
+		ScanCtrl->ScanType = ScanType;		
+		sync_fsm_enqueue_req(wdev);
 		ScanCtrl->SsidLen = SsidLen;
 		NdisMoveMemory(ScanCtrl->Ssid, Ssid, SsidLen);
 #ifdef OFFCHANNEL_SCAN_FEATURE

@@ -762,6 +762,12 @@ INT rt28xx_ioctl(PNET_DEV net_dev, struct ifreq *rq, INT cmd)
 
 	ASSERT(ops->ioctl);
 
+	if ((wdev->if_dev == NULL) || 
+        ((wdev->if_dev != NULL) && !(RTMP_OS_NETDEV_STATE_RUNNING(wdev->if_dev)))) { 
+        /* the interface is down, so we can not send probe response */ 
+        return -ENETDOWN; 
+	} 
+
 	if (ops->ioctl)
 		ops->ioctl(net_dev, rq, cmd);
 	else

@@ -704,6 +704,7 @@ VOID UpdateDot11hForWdev(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, BOOLEAN attac
 				 ("%s(): Detach wdev=%d_Dot11_H!\n", __func__, wdev->wdev_idx));
 		wdev->pDot11_H = NULL;
 		wdev->csa_count = 0;
+		wdev->OmacIdx = 0xff;
 	}
 }
 

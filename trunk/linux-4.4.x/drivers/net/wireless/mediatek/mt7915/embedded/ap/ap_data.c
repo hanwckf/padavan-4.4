@@ -1845,6 +1845,7 @@ INT ap_mlme_dataq_tx(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, TX_BLK *tx_blk)
 			mac_info.hdr_len = 16;
 			mac_info.SpeEn = 0;
 			mac_info.TID = pBar->BarControl.TID;
+			mac_info.q_idx = WMM_UP2AC_MAP[pBar->BarControl.TID];
 			if (
 				(wdev->channel > 14)
 #ifdef GN_MIXMODE_SUPPORT

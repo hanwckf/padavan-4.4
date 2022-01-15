@@ -11465,6 +11465,8 @@ INT Set_PartialScan_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 		wdev->ScanInfo.LastScanChannel = 0;
 	}
 	ScanCtrl->PartialScan.bScanning = bPartialScanning ? TRUE : FALSE;
+	if (!ScanCtrl->PartialScan.bScanning)
+		ScanCtrl->ScanType = SCAN_ACTIVE;
 
 	MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF,
 			("%s(): bScanning = %u\n", __func__, ScanCtrl->PartialScan.bScanning));
