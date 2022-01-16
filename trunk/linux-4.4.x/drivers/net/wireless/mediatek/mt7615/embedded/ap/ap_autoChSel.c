@@ -74,7 +74,8 @@ ULONG AutoChBssSearchWithSSID(
 	IN UCHAR Channel,
 	IN struct wifi_dev *pwdev)
 {
-	UCHAR i;
+	//UCHAR i;
+	UINT i;
 	UCHAR BandIdx = HcGetBandByWdev(pwdev);
 	AUTO_CH_CTRL *pAutoChCtrl = HcGetAutoChCtrlbyBandIdx(pAd, BandIdx);
 	PBSSINFO pBssInfoTab = pAutoChCtrl->pBssInfoTab;

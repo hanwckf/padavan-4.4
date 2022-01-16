@@ -4764,7 +4764,9 @@ BOOLEAN ApCliAutoConnectExec(
 	IN  PRTMP_ADAPTER   pAd,
 	IN struct wifi_dev *wdev)
 {
-	UCHAR			ifIdx, CfgSsidLen, entryIdx;
+	//UCHAR			ifIdx, CfgSsidLen, entryIdx;
+	UCHAR           ifIdx, CfgSsidLen;
+	UINT            entryIdx;
 	RTMP_STRING *pCfgSsid;
 	BSS_TABLE		*pScanTab, *pSsidBssTab;
 	POS_COOKIE pObj = (POS_COOKIE) pAd->OS_Cookie;
@@ -5065,6 +5067,23 @@ BOOLEAN ApCliAutoConnectExec(
 #endif /* APCLI_AUTO_BW_TMP */
 		{
 
+#ifdef CONFIG_APSTA_MIXED_SUPPORT                                           
+			/* Enable beacon tx for the bss which is same band with apcli wdev */										 
+			int Index;										   
+			struct wifi_dev *wdevEach;
+													
+			for (Index = 0; Index < WDEV_NUM_MAX; Index++) {															  
+				wdevEach = pAd->wdev_list[Index];															  
+				if (wdevEach == NULL)																			  
+					continue;															 
+				if (wdevEach->pHObj == NULL)																			
+					continue;
+																			   
+				if ((HcGetBandByWdev(wdevEach) == HcGetBandByWdev(wdev)) && wdevEach->bAllowBeaconing && (wdevEach->bcn_buf.bBcnSntReq == FALSE) ) {
+					UpdateBeaconHandler(pAd, wdevEach, BCN_UPDATE_ENABLE_TX);														   
+				}
+			}
+#endif 
 
 #ifdef APCLI_OWE_SUPPORT
 			if (switch_to_owe_channel)

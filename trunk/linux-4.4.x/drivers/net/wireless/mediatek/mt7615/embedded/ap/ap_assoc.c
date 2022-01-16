@@ -2439,7 +2439,7 @@ assoc_post:
 		pEntry->IsReassocSta = isReassoc;
 		/* clear txBA bitmap */
 		pEntry->TXBAbitmap = 0;
-
+/*
 		if (pEntry->MaxHTPhyMode.field.MODE >= MODE_HTMIX) {
 			CLIENT_STATUS_SET_FLAG(pEntry, fCLIENT_STATUS_WMM_CAPABLE);
 
@@ -2450,7 +2450,7 @@ assoc_post:
 
 			ba_ori_session_setup(pAd, pEntry, 5, 0, 10, FALSE);
 		}
-
+*/
 #ifdef DOT11R_FT_SUPPORT
 
 		/*	If the length of FTIE field of the (re)association-request frame
