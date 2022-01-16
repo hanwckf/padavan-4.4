@@ -506,8 +506,11 @@ USHORT APBuildAssociation(
 							      &pEntry->SecConfig,
 							      &ie_list->RSN_IE[0],
 							      ie_list->RSNIE_Len);
-#ifdef DOT11_SAE_SUPPORT
+#ifdef DOT11R_FT_SUPPORT
+				if (!IS_FT_STA(pEntry)) /* IS_FT_RSN_STA should be use at 4-way only due to rnsie is assigned at assoc state */
+#endif
 				{
+#ifdef DOT11_SAE_SUPPORT
 					INT cacheidx;
 
 					if ((StatusCode == MLME_SUCCESS)
@@ -520,8 +523,10 @@ USHORT APBuildAssociation(
 									   &cacheidx))
 						&& (cacheidx == INVALID_PMKID_IDX))
 						StatusCode = MLME_INVALID_PMKID;
-				}
 #endif /* DOT11_SAE_SUPPORT */
+					if (StatusCode == MLME_SUCCESS)
+						StatusCode = parse_rsnxe_ie(&pEntry->SecConfig,
+							&ie_list->rsnxe_ie[0], ie_list->rsnxe_ie_len, TRUE);
 #ifdef CONFIG_OWE_SUPPORT
 				if ((StatusCode == MLME_SUCCESS)
 					&& IS_AKM_OWE(pEntry->SecConfig.AKMMap))
@@ -535,6 +540,7 @@ USHORT APBuildAssociation(
 									    &pmkid_count,
 									    SUBTYPE_ASSOC_REQ);
 #endif /*CONFIG_OWE_SUPPORT*/
+				}
 
 				if (StatusCode != MLME_SUCCESS) {
 					/* send wireless event - for RSN IE sanity check fail */
@@ -918,6 +924,7 @@ BOOLEAN PeerAssocReqCmmSanity(
 				ie_lists->MAP_AttriValue = map_cap;
 #ifdef MAP_R2
 				ie_lists->MAP_ProfileValue = map_profile;
+				ie_lists->MAP_default_vid = map_vid;
 #endif
 			}
 #endif /* CONFIG_MAP_SUPPORT */
@@ -1320,6 +1327,9 @@ VOID ap_cmm_peer_assoc_req_action(
 #endif /* DBG */
 	UCHAR SubType;
 	BOOLEAN bACLReject = FALSE;
+#if defined(CONFIG_MAP_SUPPORT) && defined(MAP_BL_SUPPORT)
+	BOOLEAN bBlReject = FALSE;
+#endif
 #ifdef DOT11R_FT_SUPPORT
 	PFT_CFG pFtCfg = NULL;
 	PFT_INFO FtInfoBuf = NULL;
@@ -1634,6 +1644,14 @@ VOID ap_cmm_peer_assoc_req_action(
 		/* Set key material to Asic */
 
 		os_alloc_mem(pAd, (UCHAR **)&Info, sizeof(ASIC_SEC_INFO));
+		if (Info == NULL) {
+				MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
+						 ("%s(): mem alloc failed\n", __func__));
+#ifdef WAPP_SUPPORT
+				wapp_assoc_fail = MLME_NO_RESOURCE;
+#endif /* WAPP_SUPPORT */
+				goto assoc_check;
+		}
 		os_zero_mem(Info, sizeof(ASIC_SEC_INFO));
 
 		Info->Operation = SEC_ASIC_REMOVE_PAIRWISE_KEY;
@@ -1702,14 +1720,26 @@ VOID ap_cmm_peer_assoc_req_action(
 		;
 	else
 #endif /* WSC_V2_SUPPORT */
+#if defined(CONFIG_MAP_SUPPORT) && defined(MAP_BL_SUPPORT)
+		/* set a flag for sending Assoc-Fail response to unwanted STA later. */
+		if (map_is_entry_bl(pAd, ie_list->Addr2, pEntry->func_tb_idx) == TRUE) {
+			bBlReject = TRUE;
+		} else
+#endif
 
 			/* set a flag for sending Assoc-Fail response to unwanted STA later. */
 			if (!ApCheckAccessControlList(pAd, ie_list->Addr2, pEntry->func_tb_idx))
 				bACLReject = TRUE;
 
+#if defined(CONFIG_MAP_SUPPORT) && defined(MAP_BL_SUPPORT)
 	MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
-			 ("%s - MBSS(%d), receive %s request from %02x:%02x:%02x:%02x:%02x:%02x\n",
-			  sAssoc, pEntry->func_tb_idx, sAssoc, PRINT_MAC(ie_list->Addr2)));
+			 ("%s - MBSS(%d), receive %s request from %02x:%02x:%02x:%02x:%02x:%02x Rej BL/ACL %d/%d\n",
+			  sAssoc, pEntry->func_tb_idx, sAssoc, PRINT_MAC(ie_list->Addr2), bBlReject, bACLReject));
+#else
+	MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
+		 ("%s - MBSS(%d), receive %s request from %02x:%02x:%02x:%02x:%02x:%02x\n",
+		  sAssoc, pEntry->func_tb_idx, sAssoc, PRINT_MAC(ie_list->Addr2)));
+#endif
 
 	/* supported rates array may not be sorted. sort it and find the maximum rate */
 	for (i = 0; i < ie_list->SupportedRatesLen; i++) {
@@ -1856,7 +1886,11 @@ SendAssocResponse:
 	if (FlgIs11bSta == 1)
 		SupRateLen = 4;
 
-	if (bACLReject == TRUE || bAssocSkip) {
+	if (bACLReject == TRUE || bAssocSkip
+#if defined(CONFIG_MAP_SUPPORT) && defined(MAP_BL_SUPPORT)
+		|| bBlReject == TRUE
+#endif
+		) {
 		MgtMacHeaderInit(pAd, &AssocRspHdr, SubType, 0, ie_list->Addr2,
 						 wdev->if_addr, wdev->bssid);
 		StatusCode = MLME_UNSPECIFY_FAIL;
@@ -1868,10 +1902,8 @@ SendAssocResponse:
 						  2,                        &CapabilityInfoForAssocResp,
 						  2,                        &StatusCode,
 						  2,                        &Aid,
-						  1,                        &SupRateIe,
-						  1,                        &SupRateLen,
-						  SupRateLen, rate->SupRate,
 						  END_OF_ARGS);
+		FrameLen += build_support_rate_ie(wdev, rate->SupRate, SupRateLen, pOutBuffer + FrameLen);
 		MiniportMMRequest(pAd, 0, pOutBuffer, FrameLen);
 		MlmeFreeMemory((PVOID) pOutBuffer);
 		RTMPSendWirelessEvent(pAd, IW_MAC_FILTER_LIST_EVENT_FLAG, ie_list->Addr2, wdev->wdev_idx, 0);
@@ -1900,21 +1932,12 @@ SendAssocResponse:
 					  2,                        &CapabilityInfoForAssocResp,
 					  2,                        &StatusCode,
 					  2,                        &Aid,
-					  1,                        &SupRateIe,
-					  1,                        &SupRateLen,
-					  SupRateLen,				rate->SupRate,
 					  END_OF_ARGS);
+	FrameLen += build_support_rate_ie(wdev, rate->SupRate, SupRateLen, pOutBuffer + FrameLen);
 
-	if ((rate->ExtRateLen) && (PhyMode != WMODE_B) && (FlgIs11bSta == 0)) {
-		ULONG TmpLen;
-
-		MakeOutgoingFrame(pOutBuffer + FrameLen,      &TmpLen,
-						  1,                        &ExtRateIe,
-						  1,                        &rate->ExtRateLen,
-						  rate->ExtRateLen, rate->ExtRate,
-						  END_OF_ARGS);
-		FrameLen += TmpLen;
-	}
+	if (FlgIs11bSta == FALSE)
+		FrameLen += build_support_ext_rate_ie(wdev, SupRateLen, rate->ExtRate,
+						rate->ExtRateLen, pOutBuffer + FrameLen);
 
 #ifdef CONFIG_MAP_SUPPORT
 	if (IS_MAP_ENABLE(pAd)) {
@@ -2263,7 +2286,8 @@ SendAssocResponse:
 		/*	Record the MDIE & FTIE of (re)association response of
 			Initial Mobility Domain Association. It's used in
 			FT 4-Way handshaking */
-		if ((IS_AKM_WPA2_Entry(pEntry) || IS_AKM_WPA2PSK_Entry(pEntry))
+		if ((IS_AKM_WPA2_Entry(pEntry) || IS_AKM_WPA2PSK_Entry(pEntry)
+			|| IS_AKM_WPA3PSK_Entry(pEntry) || IS_AKM_WPA3_192BIT_Entry(pEntry))
 			&& ie_list->FtInfo.FtIeInfo.Len == 0) {
 			NdisMoveMemory(&pEntry->InitialMDIE,
 						   mdie_ptr, mdie_len);
@@ -2278,6 +2302,9 @@ SendAssocResponse:
 	ie_info.frame_buf = (UCHAR *)(pOutBuffer + FrameLen);
 	FrameLen += oce_build_ies(pAd, &ie_info, TRUE);
 #endif /*OCE_FILS_SUPPORT */
+
+	FrameLen +=  build_rsnxe_ie(&wdev->SecConfig, (UCHAR *)pOutBuffer + FrameLen);
+
 #ifdef CONFIG_OWE_SUPPORT
 	if (IS_AKM_OWE_Entry(pEntry) && (StatusCode == MLME_SUCCESS)) {
 		BOOLEAN need_ecdh_ie = FALSE;
@@ -2477,6 +2504,14 @@ assoc_post:
 					if (IS_CIPHER_WEP(pEntry->SecConfig.PairwiseCipher)) {
 					        ASIC_SEC_INFO *Info;
                                                 os_alloc_mem(pAd, (UCHAR **)&Info, sizeof(ASIC_SEC_INFO));
+					    if (Info == NULL) {
+							MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
+							("%s(): mem alloc failed\n", __func__));
+#ifdef WAPP_SUPPORT
+							wapp_assoc_fail = MLME_NO_RESOURCE;
+#endif /* WAPP_SUPPORT */
+							goto assoc_check;
+						}
 						os_zero_mem(Info, sizeof(ASIC_SEC_INFO));
 
 						/* Set key material to Asic */						
@@ -2894,10 +2929,10 @@ VOID APPeerDisassocReqAction(RTMP_ADAPTER *pAd, MLME_QUEUE_ELEM *Elem)
 				DIAG_CONN_DEAUTH, REASON_DEAUTH_STA_LEAVING);
 #endif
 	/*	printk("APPeerDisassocReqAction normal\n");*/
-
 		if (IS_ENTRY_CLIENT(pEntry)) {
 #ifdef MAP_R2
-			wapp_send_sta_disassoc_stats_event(pAd, pEntry, Reason);
+			if (IS_MAP_ENABLE(pAd) && IS_MAP_R2_ENABLE(pAd))
+				wapp_send_sta_disassoc_stats_event(pAd, pEntry, Reason);
 		/*	// TODO: if the port secured is not true, then send failed assoc.*/
 #endif
 		}
@@ -3037,7 +3072,8 @@ VOID APMlmeKickOutSta(RTMP_ADAPTER *pAd, UCHAR *pStaAddr, UCHAR Wcid, USHORT Rea
 			return;
 
 #ifdef MAP_R2
-		wapp_handle_sta_disassoc(pAd, Wcid, Reason);
+		if (IS_MAP_ENABLE(pAd) && IS_MAP_R2_ENABLE(pAd))
+			wapp_handle_sta_disassoc(pAd, Wcid, Reason);
 #endif
 
 		MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE,

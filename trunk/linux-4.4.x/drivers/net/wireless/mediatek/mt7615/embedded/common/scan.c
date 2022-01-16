@@ -330,8 +330,8 @@ static INT scan_active(RTMP_ADAPTER *pAd, UCHAR OpMode, UCHAR ScanType, struct w
 		SsidLen = pAd->ScanCtrl.SsidLen;
 
 		{
+			UCHAR SsidIe = 0;
 #ifdef CONFIG_AP_SUPPORT
-
 			/*IF_DEV_CONFIG_OPMODE_ON_AP(pAd) */
 			if (OpMode == OPMODE_AP) {
 				UCHAR *src_mac_addr = NULL;
@@ -369,25 +369,23 @@ static INT scan_active(RTMP_ADAPTER *pAd, UCHAR OpMode, UCHAR ScanType, struct w
 			}
 
 #endif /* CONFIG_AP_SUPPORT */
+			SsidLen = strlen(&pAd->ScanCtrl.Ssid[0]);
+			/* Hidden SSID case */
+			if ((pAd->ScanCtrl.SsidLen == 0) && (SsidLen != 0))
+				pAd->ScanCtrl.SsidLen = SsidLen;
+			else
+				SsidLen = pAd->ScanCtrl.SsidLen;
+
 			MakeOutgoingFrame(frm_buf,               &FrameLen,
 							  sizeof(HEADER_802_11),    &Hdr80211,
 							  1,                        &SsidIe,
 							  1,                        &SsidLen,
 							  SsidLen,			        pAd->ScanCtrl.Ssid,
-							  1,                        &SupRateIe,
-							  1,                        &wdev->rate.SupRateLen,
-							  wdev->rate.SupRateLen,  wdev->rate.SupRate,
 							  END_OF_ARGS);
+			FrameLen += build_support_rate_ie(wdev, wdev->rate.SupRate, wdev->rate.SupRateLen, frm_buf + FrameLen);
 
-			if (wdev->rate.ExtRateLen) {
-				ULONG Tmp;
-				MakeOutgoingFrame(frm_buf + FrameLen,            &Tmp,
-								  1,                                &ExtRateIe,
-								  1,                                &wdev->rate.ExtRateLen,
-								  wdev->rate.ExtRateLen,          wdev->rate.ExtRate,
-								  END_OF_ARGS);
-				FrameLen += Tmp;
-			}
+			FrameLen += build_support_ext_rate_ie(wdev, wdev->rate.SupRateLen,
+					wdev->rate.ExtRate, wdev->rate.ExtRateLen, frm_buf + FrameLen);
 		}
 
 #ifdef DOT11_N_SUPPORT
@@ -600,9 +598,13 @@ VOID ScanNextChannel(RTMP_ADAPTER *pAd, UCHAR OpMode, struct wifi_dev *pwdev)
 			Rsp.data.channel_data.obss_time = pAd->ChannelInfo.ChStats.Obss_Time;
 			Rsp.data.channel_data.channel_idx = pAd->ApCfg.current_channel_index;
 #ifdef MAP_R2
-			/* EDCCA time */
-			RTMP_IO_READ32(pAd, MIB_M0SDR18, &CrValue);
-			Rsp.data.channel_data.edcca = CrValue;
+			if (IS_MAP_ENABLE(pAd) && IS_MAP_R2_ENABLE(pAd)) {
+				Update_Mib_Bucket_500Ms(pAd);
+				Update_Mib_Bucket_for_map(pAd);
+				/* EDCCA time */
+				RTMP_IO_READ32(pAd, MIB_M0SDR18, &CrValue);
+				Rsp.data.channel_data.edcca = CrValue;
+			}
 #endif
 			/* This value to be used by application to calculate  channel busy percentage */
 			Rsp.data.channel_data.actual_measured_time = pAd->ScanCtrl.ScanTimeActualDiff;
@@ -614,8 +616,9 @@ VOID ScanNextChannel(RTMP_ADAPTER *pAd, UCHAR OpMode, struct wifi_dev *pwdev)
 					(UCHAR *) &Rsp,
 					sizeof(OFFCHANNEL_SCAN_MSG));
 			pAd->MsMibBucket.Enabled = TRUE;
+			memset(pAd->ScanCtrl.ScanGivenChannel, 0, MAX_AWAY_CHANNEL);
 			pAd->ScanCtrl.ScanTime[pAd->ScanCtrl.CurrentGivenChan_Index] = 0;
-			pAd->ScanCtrl.CurrentGivenChan_Index++;
+			pAd->ScanCtrl.CurrentGivenChan_Index = 0;
 			pAd->ScanCtrl.state = OFFCHANNEL_SCAN_INVALID;
 		}
 #endif
@@ -633,7 +636,8 @@ VOID ScanNextChannel(RTMP_ADAPTER *pAd, UCHAR OpMode, struct wifi_dev *pwdev)
 				if (IS_MAP_TURNKEY_ENABLE(pAd) && pAd->ScanCtrl.Off_Ch_Scan_BW == BW_20_SCAN) {
 					MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 						("%s Performing Scan in 20 Mhz\n", __func__));
-					wdev->restore_channel = wlan_operate_get_prim_ch(wdev);
+					if (pAd->ScanCtrl.CurrentGivenChan_Index == 0)
+						wdev->restore_channel = wlan_operate_get_prim_ch(wdev);
 					wlan_operate_scan(wdev, pAd->ScanCtrl.Channel);
 				} else {
 #endif

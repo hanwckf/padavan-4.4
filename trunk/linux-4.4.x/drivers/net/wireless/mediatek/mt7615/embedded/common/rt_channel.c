@@ -848,6 +848,15 @@ CH_DESP Country_FI_ChDesp[] = {
 	{ 1,   13, 20, BOTH, FALSE},	/*2402~2482MHz, Ch 1~13,   Max BW: 40 */
 	{ 36,   4, 23, BOTH, FALSE},	/*5170~5250MHz, Ch 36~48, Max BW: 40 */
 	{ 52,   4, 23, BOTH, TRUE},	/*5250~5330MHz, Ch 52~64, Max BW: 40 */
+	{ 100, 11, 30, BOTH, TRUE},	/*5490~5710MHz, Ch 100~140, Max BW: 40 */
+	{ 0},			/* end*/
+};
+/*Faroe Islands (Denmark)*/
+CH_DESP Country_FO_ChDesp[] = {
+	{ 1,   13, 20, BOTH, FALSE},	/*2402~2482MHz, Ch 1~13,   Max BW: 40 */
+	{ 36,   4, 23, BOTH, FALSE},	/*5170~5250MHz, Ch 36~48, Max BW: 40 */
+	{ 52,   4, 23, BOTH, TRUE},	/*5250~5330MHz, Ch 52~64, Max BW: 40 */
+	{ 100, 11, 30, BOTH, TRUE},	/*5490~5710MHz, Ch 100~140, Max BW: 40 */
 	{ 0},			/* end*/
 };
 /*France*/
@@ -1046,7 +1055,7 @@ CH_DESP Country_JP_ChDesp[] = {
 	{ 1,    14, 23, BOTH, FALSE},	/*2402~2472MHz, Ch 1~11,   Max BW: 20 */
 	{ 36,   4, 23, IDOR, FALSE},	/*5170~5250MHz, Ch 36~48, Max BW: 40 */
 	{ 52,   4, 23, IDOR, TRUE},	/*5250~5330MHz, Ch 52~64, Max BW: 40 */
-	{ 100,  11, 23, BOTH, TRUE},	/*5490~5710MHz, Ch 100~140, Max BW: 40 */
+	{ 100,  12, 23, BOTH, TRUE},	/*5490~5710MHz, Ch 100~144, Max BW: 40 */
 	{ 0},			/* end*/
 };
 /*Jordan*/
@@ -1732,7 +1741,7 @@ CH_DESP Country_SY_ChDesp[] = {
 CH_DESP Country_TW_ChDesp[] = {
 	{ 1,   11, 30, BOTH, FALSE},	/*2402~2472MHz, Ch 1~11,   Max BW: 40 */
 	{ 36,   4, 30, BOTH, FALSE},	/*5170~5250MHz, Ch 36~48, Max BW: 40 */
-	{ 52,   4, 30, BOTH, TRUE},	/*5250~5330MHz, Ch 52~64, Max BW: 40 */
+	{ 52,   4, 24, BOTH, TRUE},	/*5250~5330MHz, Ch 52~64, Max BW: 40 */
 	{ 100, 12, 24, BOTH, TRUE},	/*5490~5730MHz, Ch 100~144, Max BW: 40 */
 	{ 149,  5, 30, BOTH, FALSE},	/*5735~5835MHz, Ch 149~165, Max BW: 40 */
 	{ 0},			/* end*/
@@ -2033,6 +2042,7 @@ CH_REGION ChRegion[] = {
 	{"ET", CE, TRUE, Country_ET_ChDesp}, /* Ethiopia */
 	{"FJ", CE, TRUE, Country_FJ_ChDesp}, /* Fiji */
 	{"FI", CE, TRUE, Country_FI_ChDesp}, /* Finland */
+	{"FO", CE, TRUE, Country_FO_ChDesp}, /* Faroe Islands (Denmark) */
 	{"FR", CE, TRUE, Country_FR_ChDesp}, /* France */
 	{"GA", CE, TRUE, Country_GA_ChDesp}, /* Gabon */
 	{"GM", CE, TRUE, Country_GM_ChDesp}, /* Gambia */
@@ -2221,11 +2231,11 @@ static UCHAR FillChList(
 	IN UCHAR Offset,
 	IN UCHAR increment,
 	IN UCHAR regulatoryDomain,
-	IN UCHAR PhyMode)
+	struct wifi_dev *wdev)
 {
 	INT i, j;/* sachin - TODO, l; */
 	UCHAR channel;
-	struct wifi_dev *wdev = &pAd->ApCfg.MBSSID[MAIN_MBSSID].wdev;
+	USHORT PhyMode = wdev->PhyMode;
 	UCHAR BandIdx = HcGetBandByWdev(wdev);
 	CHANNEL_CTRL *pChCtrl = hc_get_channel_ctrl(pAd->hdev_ctrl, BandIdx);
 #if defined(CONFIG_AP_SUPPORT) || defined(RT_CFG80211_SUPPORT)
@@ -2277,21 +2287,6 @@ static UCHAR FillChList(
 		pChCtrl->ChList[j].MaxTxPwr = pChDesp->MaxTxPwr;
 		pChCtrl->ChList[j].DfsReq = pChDesp->DfsReq;
 		pChCtrl->ChList[j].RegulatoryDomain = regulatoryDomain;
-#ifdef DOT11_N_SUPPORT
-
-		if (N_ChannelGroupCheck(pAd, pChCtrl->ChList[j].Channel, wdev))
-			pChCtrl->ChList[j].Flags |= CHANNEL_40M_CAP;
-
-#ifdef DOT11_VHT_AC
-
-		if (vht80_channel_group(pAd, pChCtrl->ChList[j].Channel))
-			pChCtrl->ChList[j].Flags |= CHANNEL_80M_CAP;
-
-		if (vht160_channel_group(pAd, pChCtrl->ChList[j].Channel))
-			pChCtrl->ChList[j].Flags |= CHANNEL_160M_CAP;
-
-#endif /* DOT11_VHT_AC */
-#endif /* DOT11_N_SUPPORT */
 #ifdef RT_CFG80211_SUPPORT
 		CFG80211OS_ChanInfoInit(
 			pAd->pCfg80211_CB,
@@ -2303,29 +2298,37 @@ static UCHAR FillChList(
 #endif /* RT_CFG80211_SUPPORT */
 		j++;
 	}
-
+	hc_set_ChCtrlChListStat(pChCtrl, CH_LIST_STATE_DONE);
 	pChCtrl->ChListNum = j;
+	for (i = 0; i < pChCtrl->ChListNum; i++) {
+#ifdef DOT11_N_SUPPORT
+		if (N_ChannelGroupCheck(pAd, pChCtrl->ChList[i].Channel, wdev))
+			pChCtrl->ChList[i].Flags |= CHANNEL_40M_CAP;
+
+#ifdef DOT11_VHT_AC
+		if (vht80_channel_group(pAd, pChCtrl->ChList[i].Channel))
+			pChCtrl->ChList[i].Flags |= CHANNEL_80M_CAP;
+
+		if (vht160_channel_group(pAd, pChCtrl->ChList[i].Channel))
+			pChCtrl->ChList[i].Flags |= CHANNEL_160M_CAP;
+#endif /* DOT11_VHT_AC */
+#endif /* DOT11_N_SUPPORT */
+	}
+
 	MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("\x1b[1;33m [FillChList] Test - pChCtrl->ChListNum = %d \x1b[m \n", pChCtrl->ChListNum));
 
 	return j;
 }
 
 
-static UCHAR CeateChListByRf(RTMP_ADAPTER *pAd, UCHAR RfIC, PCH_REGION pChRegion, UCHAR Geography, UCHAR offset)
+static UCHAR CeateChListByRf(RTMP_ADAPTER *pAd, UCHAR RfIC, PCH_REGION pChRegion, UCHAR Geography, UCHAR offset, struct wifi_dev *wdev)
 {
 	UCHAR i;
 	PCH_DESP pChDesp;
 	UCHAR ChType;
 	UCHAR increment;
 	UCHAR regulatoryDomain;
-#ifdef RT_CFG80211_SUPPORT
-	UCHAR PhyMode;
-#endif
 	BOOLEAN IsRfSupport = HcIsRfSupport(pAd, RfIC);
-
-#ifdef RT_CFG80211_SUPPORT
-	PhyMode = HcGetRadioPhyMode(pAd);
-#endif
 
 	if (IsRfSupport) {
 		ChBandCheck(RfIC, &ChType);
@@ -2360,9 +2363,18 @@ static UCHAR CeateChListByRf(RTMP_ADAPTER *pAd, UCHAR RfIC, PCH_REGION pChRegion
 				else
 					regulatoryDomain = pChRegion->op_class_region;
 
-				offset = FillChList(pAd, &pChDesp[i], offset, increment, regulatoryDomain, PhyMode);
+				offset = FillChList(pAd, &pChDesp[i], offset, increment, regulatoryDomain, wdev);
 			}
 		}
+#ifdef RT_CFG80211_SUPPORT
+	if (ChType == BAND_5G) {
+		if (CFG80211OS_UpdateRegRuleByRegionIdx(pAd->pCfg80211_CB, NULL, pChDesp) != 0)
+			MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("Update RegRule 5G failed!\n"));
+	} else if (ChType == BAND_24G) {
+		if (CFG80211OS_UpdateRegRuleByRegionIdx(pAd->pCfg80211_CB, pChDesp, NULL) != 0)
+			MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("Update RegRule 2.4G failed!\n"));
+	}
+#endif /*RT_CFG80211_SUPPORT*/
 	}
 
 	return offset;
@@ -2372,7 +2384,8 @@ static UCHAR CeateChListByRf(RTMP_ADAPTER *pAd, UCHAR RfIC, PCH_REGION pChRegion
 static inline VOID CreateChList(
 	IN PRTMP_ADAPTER pAd,
 	IN PCH_REGION pChRegion,
-	IN UCHAR Geography)
+	IN UCHAR Geography,
+	struct wifi_dev *wdev)
 {
 	UCHAR offset = 0;
 	/* INT i,PhyIdx; */
@@ -2381,21 +2394,39 @@ static inline VOID CreateChList(
 	/* UCHAR increment; */
 	/* UCHAR regulatoryDomain; */
 
+	UCHAR BandIdx = HcGetBandByWdev(wdev);
+	USHORT PhyMode = wdev->PhyMode;
+	/* Get channel ctrl address */
+	CHANNEL_CTRL *pChCtrl = hc_get_channel_ctrl(pAd->hdev_ctrl, BandIdx);
+
 	if (pChRegion == NULL)
 		return;
 
-	offset = CeateChListByRf(pAd, RFIC_24GHZ, pChRegion, Geography, offset);
-	offset = CeateChListByRf(pAd, RFIC_5GHZ, pChRegion, Geography, offset);
+	/* Check state of channel list */
+	if (hc_check_ChCtrlChListStat(pChCtrl, CH_LIST_STATE_DONE)) {
+		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
+			("%s(): BandIdx %d, channel list is already DONE\n", __func__, BandIdx));
+		return;
+	}
+
+	/* Initialize channel list*/
+	os_zero_mem(pChCtrl->ChList, MAX_NUM_OF_CHANNELS * sizeof(CHANNEL_TX_POWER));
+	pChCtrl->ChListNum = 0;
+	if (WMODE_CAP_2G(PhyMode))
+		offset = CeateChListByRf(pAd, RFIC_24GHZ, pChRegion, Geography, offset, wdev);
+	if (WMODE_CAP_5G(PhyMode))
+		offset = CeateChListByRf(pAd, RFIC_5GHZ, pChRegion, Geography, offset, wdev);
 }
 
 
 VOID BuildChannelListEx(
-	IN PRTMP_ADAPTER pAd)
+	IN PRTMP_ADAPTER pAd,
+	IN struct wifi_dev *wdev)
 {
 	PCH_REGION pChReg;
 
 	pChReg = GetChRegion(pAd->CommonCfg.CountryCode);
-	CreateChList(pAd, pChReg, pAd->CommonCfg.Geography);
+	CreateChList(pAd, pChReg, pAd->CommonCfg.Geography, wdev);
 }
 
 VOID BuildBeaconChList(

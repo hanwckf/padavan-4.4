@@ -54,6 +54,11 @@ typedef struct {
 	BEHAVIOR_LIMITS_SET behavior_limit_set; /* Behavior limits set */
 } REG_CLASS_VHT, *PREG_CLASS_VHT;
 
+#ifdef MAP_R2
+#define TX_MAX_STREAM 4
+#define RX_MAX_STREAM 4
+#endif
+
 /*
 	Table E-1—Operating classes in the United States  (11N)
 */
@@ -159,17 +164,17 @@ REG_CLASS reg_class_jp[] = {
 	{31,  82, FREQ_2G414,  BW_25, {14, 0},																			LICENSEEXEMPTBEHAVIOR},
 	{32, 118, FREQ_5G00,   BW_20, {52, 56, 60, 64, 0},																COMMON},
 	{33, 118, FREQ_5G00,   BW_20, {52, 56, 60, 64, 0},																COMMON},
-	{34, 121, FREQ_5G00,   BW_20, {100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140, 0},						DFS_50_100_BEHAVIOR},
+	{34, 121, FREQ_5G00,   BW_20, {100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140, 144, 0},						DFS_50_100_BEHAVIOR},
 	{35, 121, FREQ_5G00,   BW_20, {100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140, 0},						DFS_50_100_BEHAVIOR},
 	{36, 116, FREQ_5G00,   BW_40, {36, 44, 0},																		PRIMARYCHANNELLOWERBEHAVIOR},
 	{37, 119, FREQ_5G00,   BW_40, {52, 60, 0},																		PRIMARYCHANNELLOWERBEHAVIOR},
 	{38, 119, FREQ_5G00,   BW_40, {52, 60, 0},																		PRIMARYCHANNELLOWERBEHAVIOR},
-	{39, 122, FREQ_5G00,   BW_40, {100, 108, 116, 124, 132, 0},														PRIMARYCHANNELLOWERBEHAVIOR | DFS_50_100_BEHAVIOR},
+	{39, 122, FREQ_5G00,   BW_40, {100, 108, 116, 124, 132, 140, 0},														PRIMARYCHANNELLOWERBEHAVIOR | DFS_50_100_BEHAVIOR},
 	{40, 122, FREQ_5G00,   BW_40, {100, 108, 116, 124, 132, 0},														PRIMARYCHANNELLOWERBEHAVIOR | DFS_50_100_BEHAVIOR},
 	{41, 117, FREQ_5G00,   BW_40, {40, 48, 0},																		PRIMARYCHANNELUPPERBEHAVIOR},
 	{42, 120, FREQ_5G00,   BW_40, {56, 64, 0},																		PRIMARYCHANNELUPPERBEHAVIOR},
 	{43, 120, FREQ_5G00,   BW_40, {56, 64, 0},																		PRIMARYCHANNELUPPERBEHAVIOR},
-	{44, 123, FREQ_5G00,   BW_40, {104, 112, 120, 128, 136, 0},														PRIMARYCHANNELUPPERBEHAVIOR | DFS_50_100_BEHAVIOR},
+	{44, 123, FREQ_5G00,   BW_40, {104, 112, 120, 128, 136, 144, 0},														PRIMARYCHANNELUPPERBEHAVIOR | DFS_50_100_BEHAVIOR},
 	{45, 123, FREQ_5G00,   BW_40, {104, 112, 120, 128, 136, 0},														PRIMARYCHANNELUPPERBEHAVIOR | DFS_50_100_BEHAVIOR},
 	{46, 104, FREQ_4G00,   BW_40, {184, 192, 0},																	PRIMARYCHANNELLOWERBEHAVIOR},
 	{47, 104, FREQ_4G00,   BW_40, {184, 192, 0},																	PRIMARYCHANNELLOWERBEHAVIOR},
@@ -310,17 +315,17 @@ REG_CLASS_VHT reg_class_vht_jp[] = {
 	{31,  82, FREQ_2G414,  BW_25, {14, 0}, {0},																		LICENSEEXEMPTBEHAVIOR},
 	{32, 118, FREQ_5G00,   BW_20, {52, 56, 60, 64, 0}, {0},															COMMON},
 	{33, 118, FREQ_5G00,   BW_20, {52, 56, 60, 64, 0}, {0},															COMMON},
-	{34, 121, FREQ_5G00,   BW_20, {100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140, 0}, {0},						DFS_50_100_BEHAVIOR},
+	{34, 121, FREQ_5G00,   BW_20, {100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140, 144, 0}, {0},						DFS_50_100_BEHAVIOR},
 	{35, 121, FREQ_5G00,   BW_20, {100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140, 0}, {0},						DFS_50_100_BEHAVIOR},
 	{36, 116, FREQ_5G00,   BW_40, {36, 44, 0}, {0},																	PRIMARYCHANNELLOWERBEHAVIOR},
 	{37, 119, FREQ_5G00,   BW_40, {52, 60, 0}, {0},																		PRIMARYCHANNELLOWERBEHAVIOR},
 	{38, 119, FREQ_5G00,   BW_40, {52, 60, 0}, {0},																		PRIMARYCHANNELLOWERBEHAVIOR},
-	{39, 122, FREQ_5G00,   BW_40, {100, 108, 116, 124, 132, 0}, {0},													PRIMARYCHANNELLOWERBEHAVIOR | DFS_50_100_BEHAVIOR},
+	{39, 122, FREQ_5G00,   BW_40, {100, 108, 116, 124, 132, 140, 0}, {0},													PRIMARYCHANNELLOWERBEHAVIOR | DFS_50_100_BEHAVIOR},
 	{40, 122, FREQ_5G00,   BW_40, {100, 108, 116, 124, 132, 0}, {0},													PRIMARYCHANNELLOWERBEHAVIOR | DFS_50_100_BEHAVIOR},
 	{41, 117, FREQ_5G00,   BW_40, {40, 48, 0}, {0},																	PRIMARYCHANNELUPPERBEHAVIOR},
 	{42, 120, FREQ_5G00,   BW_40, {56, 64, 0}, {0},																		PRIMARYCHANNELUPPERBEHAVIOR},
 	{43, 120, FREQ_5G00,   BW_40, {56, 64, 0}, {0},																		PRIMARYCHANNELUPPERBEHAVIOR},
-	{44, 123, FREQ_5G00,   BW_40, {104, 112, 120, 128, 136, 0}, {0},													PRIMARYCHANNELUPPERBEHAVIOR | DFS_50_100_BEHAVIOR},
+	{44, 123, FREQ_5G00,   BW_40, {104, 112, 120, 128, 136, 144, 0}, {0},													PRIMARYCHANNELUPPERBEHAVIOR | DFS_50_100_BEHAVIOR},
 	{45, 123, FREQ_5G00,   BW_40, {104, 112, 120, 128, 136, 0}, {0},													PRIMARYCHANNELUPPERBEHAVIOR | DFS_50_100_BEHAVIOR},
 	{46, 104, FREQ_4G00,   BW_40, {184, 192, 0}, {0},																	PRIMARYCHANNELLOWERBEHAVIOR},
 	{47, 104, FREQ_4G00,   BW_40, {184, 192, 0}, {0},																	PRIMARYCHANNELLOWERBEHAVIOR},
@@ -335,7 +340,7 @@ REG_CLASS_VHT reg_class_vht_jp[] = {
 	{56,  83, FREQ_2G407,  BW_40, {1, 2, 3, 4, 5, 6, 7, 8, 9, 0}, {0},													LICENSEEXEMPTBEHAVIOR | PRIMARYCHANNELLOWERBEHAVIOR},
 	{57,  84, FREQ_2G407,  BW_40, {5, 6, 7, 8, 9, 10, 11, 12, 13, 0}, {0},												LICENSEEXEMPTBEHAVIOR | PRIMARYCHANNELUPPERBEHAVIOR},
 	{58, 121, FREQ_5G00,   BW_20, {100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140, 0}, {0},						NOMADICBEHAVIOR | LICENSEEXEMPTBEHAVIOR},
-	{128, 128, FREQ_5G00,   BW_80, {0}, {42, 58, 106, 122, 0},															USEEIRPFORVHTTXPOWENV},
+	{128, 128, FREQ_5G00,   BW_80, {0}, {42, 58, 106, 122, 138, 144, 0},															USEEIRPFORVHTTXPOWENV},
 	{129, 129, FREQ_5G00,   BW_160, {0}, {50, 114, 0},																	USEEIRPFORVHTTXPOWENV},
 	{130, 130, FREQ_5G00,   BW_80, {0}, {42, 58, 106, 122, 0},															PLUS_80 | USEEIRPFORVHTTXPOWENV},
 	{0, 0, 0, 0, {0}, {0}, 0}			/* end */
@@ -492,11 +497,24 @@ PUCHAR get_channelset_by_reg_class(
 
 #ifdef DFS_CAC_R2
 #ifdef MT_DFS_SUPPORT
+int get_cac_mode (IN PRTMP_ADAPTER pAd, IN PDFS_PARAM pDfsParam, struct wifi_dev *wdev)
+{
+	if (pDfsParam->bDedicatedZeroWaitSupport &&
+		wlan_config_get_rx_stream(wdev) == RX_MAX_STREAM &&
+		wlan_config_get_tx_stream(wdev) == TX_MAX_STREAM) {
+		return REDUCED_MIMO_CAC;
+	} else if (pDfsParam->bDedicatedZeroWaitSupport) {
+		return DEDICATED_CAC;
+	}
+
+	return CONTINUOUS_CAC;
+}
+
 void wapp_get_cac_cap(IN RTMP_ADAPTER *pAd,
 	struct wifi_dev *wdev,
 	struct cac_capability_lib *cac_cap)
 {
-	UCHAR i = 0, j = 0, k = 0, l = 0, m = 0, dfs_ch = 0, channel = 0;
+	UCHAR i = 0, j = 0, k = 0, l = 0, m = 0, dfs_ch = 0, channel = 0, band_idx = 0;
 	PDFS_PARAM pDfsParam = &pAd->CommonCfg.DfsParameter;
 	BOOLEAN ret = FALSE;
 
@@ -631,6 +649,7 @@ void wapp_get_cac_cap(IN RTMP_ADAPTER *pAd,
 			i++;
 		} while (reg_class[i].reg_class != 0);
 	}
+	cac_cap->cac_mode = get_cac_mode(pAd, pDfsParam, wdev);
 }
 #endif
 #endif

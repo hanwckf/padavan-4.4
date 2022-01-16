@@ -571,6 +571,12 @@ BOOLEAN map_ts_tx_process(RTMP_ADAPTER *pAd, struct wifi_dev *wdev,
 	vlan_tagged = get_vlanid_from_pkt(pkt, &pkt_vid);
 	pSrcBuf = GET_OS_PKT_DATAPTR(pkt);
 
+	pkt_type = (pSrcBuf[12] << 8) | pSrcBuf[13];
+	MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
+		("%s() on %s, DevPeerRole=%02x, profile=%02x, vlan_tagged:%d, DA:%pM, SA:%pM, pkt_type0x%x pkt_vid(%d) conf_vid(%d)\n",
+		__func__, wdev->if_dev->name, peer_entry->DevPeerRole, peer_entry->profile, vlan_tagged,
+		pSrcBuf, (pSrcBuf+6), pkt_type, pkt_vid, conf_vid));
+
 	/*pass through all vlan tagged packet with transparent vlan id*/
 	if (vlan_tagged && is_vid_configed(pkt_vid, wdev->MAPCfg.bitmap_trans_vlan))
 		goto suc;
@@ -589,6 +595,12 @@ BOOLEAN map_ts_tx_process(RTMP_ADAPTER *pAd, struct wifi_dev *wdev,
 			} else
 				goto fail;
 		} else if (peer_entry->profile != 0x02) {
+			if (pkt_vid != wdev->MAPCfg.primary_vid) {
+				MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
+					("map_ts_tx_process %s drop pkts with vid(%d) not equal to primary vlan(%d)\n",
+					wdev->if_dev->name, pkt_vid, wdev->MAPCfg.primary_vid));
+				goto fail;
+			}
 			MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 					("map_ts_tx_process %s remove tag for r1 vid=%d\n",
 					wdev->if_dev->name, pkt_vid));
@@ -786,5 +798,110 @@ BOOLEAN MapNotRequestedChannel(struct wifi_dev *wdev, unsigned char channel)
 			return FALSE;
 	}
 	return TRUE;
+}
+#endif
+
+/* Blacklist for BS2.0 */
+#ifdef MAP_BL_SUPPORT
+BOOLEAN map_is_entry_bl(RTMP_ADAPTER *pAd, UCHAR *pAddr, UCHAR apidx)
+{
+	PLIST_HEADER pBlackList = &pAd->ApCfg.MBSSID[apidx].BlackList;
+	RT_LIST_ENTRY *pListEntry = pBlackList->pHead;
+	PBS_BLACKLIST_ENTRY	pBlEntry = (PBS_BLACKLIST_ENTRY)pListEntry;
+
+	while (pBlEntry != NULL) {
+		if (NdisEqualMemory(pBlEntry->addr, pAddr, MAC_ADDR_LEN))
+			return TRUE;
+
+		pListEntry = pListEntry->pNext;
+		pBlEntry = (PBS_BLACKLIST_ENTRY)pListEntry;
+	}
+
+	return FALSE;
+}
+
+PBS_BLACKLIST_ENTRY	map_find_bl_entry(
+	IN  PLIST_HEADER pBlackList,
+	IN  PUCHAR pMacAddr)
+{
+	PBS_BLACKLIST_ENTRY	pBlEntry = NULL;
+	RT_LIST_ENTRY *pListEntry = NULL;
+
+	pListEntry = pBlackList->pHead;
+	pBlEntry = (PBS_BLACKLIST_ENTRY)pListEntry;
+
+	while (pBlEntry != NULL) {
+		if (NdisEqualMemory(pBlEntry->addr, pMacAddr, MAC_ADDR_LEN))
+			return pBlEntry;
+
+		pListEntry = pListEntry->pNext;
+		pBlEntry = (PBS_BLACKLIST_ENTRY)pListEntry;
+	}
+
+	return NULL;
+}
+
+VOID map_blacklist_add(
+	IN  PLIST_HEADER pBlackList,
+	IN  PUCHAR pMacAddr)
+{
+	PBS_BLACKLIST_ENTRY pBlEntry = NULL;
+
+	pBlEntry = map_find_bl_entry(pBlackList, pMacAddr);
+
+	if (pBlEntry) {
+		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("entry already presnet\n"));
+	} else {
+		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("New entry add\n"));
+		os_alloc_mem(NULL, (UCHAR **)&pBlEntry, sizeof(BS_BLACKLIST_ENTRY));
+		if (pBlEntry) {
+			NdisZeroMemory(pBlEntry, sizeof(BS_BLACKLIST_ENTRY));
+			NdisMoveMemory(pBlEntry->addr, pMacAddr, MAC_ADDR_LEN);
+			insertTailList(pBlackList, (RT_LIST_ENTRY *)pBlEntry);
+		}
+		ASSERT(pBlEntry != NULL);
+	}
+}
+
+VOID map_blacklist_del(
+	IN  PLIST_HEADER pBlackList,
+	IN  PUCHAR pMacAddr)
+{
+	RT_LIST_ENTRY *pListEntry = NULL;
+
+	pListEntry = (RT_LIST_ENTRY *)map_find_bl_entry(pBlackList, pMacAddr);
+
+	if (pListEntry) {
+		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
+			("[%s] : pMacAddr = %02X:%02X:%02X:%02X:%02X:%02X\n", __func__, PRINT_MAC(pMacAddr)));
+		delEntryList(pBlackList, pListEntry);
+		os_free_mem(pListEntry);
+	} else {
+		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
+			("[%s] : Entry not present in list [%02X:%02X:%02X:%02X:%02X:%02X]\n", __func__, PRINT_MAC(pMacAddr)));
+	}
+}
+
+VOID map_blacklist_show(
+	IN RTMP_ADAPTER *pAd,
+	IN UCHAR apidx)
+{
+	BSS_STRUCT *pBss = &pAd->ApCfg.MBSSID[apidx];
+	PLIST_HEADER pBlackList = &pBss->BlackList;
+	PBS_BLACKLIST_ENTRY	pBlEntry = NULL;
+	RT_LIST_ENTRY *pListEntry = NULL;
+
+	if (pBlackList->size != 0) {
+		RTMP_SEM_LOCK(&pBss->BlackListLock);
+		pListEntry = pBlackList->pHead;
+		pBlEntry = (PBS_BLACKLIST_ENTRY)pListEntry;
+		while (pBlEntry != NULL) {
+			MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
+				("STA :: %02x:%02x:%02x:%02x:%02x:%02x\n", PRINT_MAC(pBlEntry->addr)));
+			pListEntry = pListEntry->pNext;
+			pBlEntry = (PBS_BLACKLIST_ENTRY)pListEntry;
+		}
+		RTMP_SEM_UNLOCK(&pBss->BlackListLock);
+	}
 }
 #endif

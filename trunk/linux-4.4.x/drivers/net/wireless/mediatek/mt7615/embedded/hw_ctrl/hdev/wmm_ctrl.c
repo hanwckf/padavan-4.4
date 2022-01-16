@@ -184,6 +184,7 @@ VOID  WcAcquiredEdca(struct hdev_obj *obj, EDCA_PARM *pEdcaParm)
 			os_move_mem(pEdca->Cwmax, pEdcaParm->Cwmax, 4);
 			os_move_mem(pEdca->Cwmin, pEdcaParm->Cwmin, 4);
 			os_move_mem(pEdca->Txop, pEdcaParm->Txop, sizeof(USHORT)*4);
+			os_move_mem(pEdca->bACM, pEdcaParm->bACM, 4);
 			pEdca->RefCnt = 1;
 			pEdca->bValid = TRUE;
 			pEdca->BandIdx = RcGetBandIdx(rdev);

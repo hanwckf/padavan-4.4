@@ -780,8 +780,8 @@ VOID RT_SHA384_End(
 	/* Append bit 1 to end of the message */
 	NdisFillMemory(pSHA_CTX->Block + pSHA_CTX->BlockLen, 1, 0x80);
 
-	/* 119 = 128(SHA256_BLOCK_SIZE) - 16 - 1: append 1 bit(1 byte) and message length (16 bytes) */
-	if (pSHA_CTX->BlockLen > 119)
+	/* 112 = 128(SHA256_BLOCK_SIZE) - 16 - 1: append 1 bit(1 byte) and message length (16 bytes) */
+	if (pSHA_CTX->BlockLen > 112)
 		RT_SHA384_Hash(pSHA_CTX);
 
 	/* End of if */

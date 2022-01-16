@@ -35,7 +35,17 @@
 #include "mac/mac_mt/mt_mac_ctrl.h"
 #endif /* MT_MAC */
 
+/*! Copy memory block with specific size */
+#define kalMemCopy(pvDst, pvSrc, u4Size)            memcpy(pvDst, pvSrc, u4Size)
+
 #define WMM_QUE_NUM 4
+
+#define PRINT_MASK(mask)	\
+	(mask[0], mask[1], mask[2], mask[3])
+
+#define COPY_MASK_ADDR(_pucDestAddr, _pucSrcAddr)    \
+	kalMemCopy(_pucDestAddr, _pucSrcAddr, 16) /* 16: UINT32*sizeof(UINT32) */
+
 
 enum {
 	QID_AC_BK,

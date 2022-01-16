@@ -8,7 +8,8 @@
 
 UINT8 GetRegulatoryMaxTxPwr(
 	IN PRTMP_ADAPTER pAd,
-	IN UINT8 channel);
+	IN UINT8 channel,
+	IN struct wifi_dev *wdev);
 
 CHAR RTMP_GetTxPwr(
 	IN PRTMP_ADAPTER pAd,
@@ -230,12 +231,13 @@ VOID RguClass_BuildBcnChList(
 	IN PRTMP_ADAPTER pAd,
 	OUT PUCHAR pBuf,
 	OUT	PULONG pBufLen,
-	IN UCHAR PhyMode,
+	IN struct wifi_dev *wdev,
 	IN UCHAR RegClass);
 #ifdef CUSTOMER_DCC_FEATURE
 INT NotifyChSwAnnToConnectedSTAs(
 	IN PRTMP_ADAPTER pAd,
 	IN UINT8 		ChSwMode,
+	IN UINT8        OriChannel,
 	IN UINT8 		Channel,
 	struct wifi_dev *wdev);
 

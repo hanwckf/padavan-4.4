@@ -149,6 +149,10 @@ VOID ReadSecurityParameterFromFile(
 	IN RTMP_STRING * tmpbuf,
 	IN RTMP_STRING * pBuffer);
 
+#ifdef DOT11_SAE_PWD_ID_SUPPORT
+VOID sae_pwd_id_deinit(
+	IN PRTMP_ADAPTER pAd);
+#endif
 
 VOID fill_wtbl_key_info_struc(
 	IN struct _ASIC_SEC_INFO *pInfo,
@@ -169,6 +173,18 @@ VOID process_pmkid(
 UCHAR is_pmkid_cache_in_sec_config(
 	IN struct _SECURITY_CONFIG *pSecConfig);
 
+INT build_rsnxe_ie(
+	IN struct _SECURITY_CONFIG *sec_cfg,
+	IN UCHAR *buf);
+
+UINT parse_rsnxe_ie(
+	IN struct _SECURITY_CONFIG *sec_cfg,
+	IN UCHAR *rsnxe_ie,
+	IN UCHAR rsnxe_ie_len,
+	IN UCHAR need_copy);
+
+INT set_wpa3_test(
+	IN RTMP_ADAPTER *ad, RTMP_STRING *arg);
 
 #ifdef CONFIG_AP_SUPPORT
 /* ========================================
@@ -176,6 +192,9 @@ UCHAR is_pmkid_cache_in_sec_config(
   ========================================*/
 INT APSecInit(
 	IN RTMP_ADAPTER * pAd,
+	IN struct wifi_dev *wdev);
+
+INT ap_sec_deinit(
 	IN struct wifi_dev *wdev);
 
 INT APKeyTableInit(

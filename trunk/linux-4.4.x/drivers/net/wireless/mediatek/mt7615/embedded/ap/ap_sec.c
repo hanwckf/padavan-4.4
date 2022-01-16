@@ -143,12 +143,29 @@ INT APSecInit(
 
 		if (IS_AKM_WPA3PSK(pSecConfig->AKMMap))
 			SET_AKM_FT_SAE_SHA256(pSecConfig->AKMMap);
+
+		if (IS_AKM_SUITEB_SHA384(pSecConfig->AKMMap))
+			SET_AKM_FT_WPA2_SHA384(pSecConfig->AKMMap);
 	}
 
 #endif /* DOT11R_FT_SUPPORT */
 #ifdef DOT11W_PMF_SUPPORT
 	APPMFInit(pAd, wdev);
 #endif /* DOT11W_PMF_SUPPORT */
+#ifdef DOT11_SAE_SUPPORT
+#ifdef DOT11_SAE_PWD_ID_SUPPORT
+	if (pSecConfig->pwd_id_cnt == 0) {
+		pSecConfig->pwd_id_only = FALSE;
+		DlListInit(&pSecConfig->pwd_id_list_head.list);
+	}
+#endif /* DOT11_SAE_PWD_ID_SUPPORT */
+
+	if (IS_AKM_SAE(pSecConfig->AKMMap)) {
+		BSS_STRUCT *pMbss = &pAd->ApCfg.MBSSID[wdev->func_idx];
+
+		sae_derive_pt(&pAd->SaeCfg, pSecConfig->PSK, pMbss->Ssid, pMbss->SsidLen, &pSecConfig->pt_list);
+	}
+#endif /* DOT11_SAE_SUPPORT */
 	/* Generate the corresponding RSNIE */
 #ifdef HOSTAPD_SUPPORT
 
@@ -160,6 +177,18 @@ INT APSecInit(
 	return TRUE;
 }
 
+INT ap_sec_deinit(
+		IN struct wifi_dev *wdev)
+{
+#ifdef DOT11_SAE_SUPPORT
+	struct _SECURITY_CONFIG *pSecConfig = &wdev->SecConfig;
+
+	if (IS_AKM_SAE(pSecConfig->AKMMap))
+		sae_pt_list_deinit(&pSecConfig->pt_list);
+#endif
+
+	return TRUE;
+}
 
 INT APKeyTableInit(
 	IN RTMP_ADAPTER * pAd,
@@ -458,7 +487,21 @@ INT Show_APSecurityInfo_Proc(
 				 portsecured[tr_entry->PortSecured]));
 	}
 
-	MTWF_LOG(DBG_CAT_SEC, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("\n"));
+#ifdef DOT11_SAE_PWD_ID_SUPPORT
+	if (!DlListEmpty(&pSecConfig->pwd_id_list_head.list)) {
+		struct pwd_id_list *list = NULL;
+		UCHAR i = 0;
+		DlListForEach(list, &pSecConfig->pwd_id_list_head.list, struct pwd_id_list, list) {
+			MTWF_LOG(DBG_CAT_SEC, DBG_SUBCAT_ALL, DBG_LVL_OFF,
+					("%d pwdid = %s, pwd = %s\n", i++, list->pwd_id, list->pwd));
+			hex_dump_with_lvl("pwdid", list->pwd_id, 40, 1);
+			hex_dump_with_lvl("pwd", list->pwd, LEN_PSK, 1);
+		}
+	}
+	MTWF_LOG(DBG_CAT_SEC, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("PWDID Required = %d\n",
+		pSecConfig->sae_cap.pwd_id_only));
+#endif
+
 #ifdef APCLI_SUPPORT
 	MTWF_LOG(DBG_CAT_SEC, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("Security Infomation: AP Client\n"));
 	MTWF_LOG(DBG_CAT_SEC, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("BSS\tWCID\tAuthMode\tPairwiseCipher\tPortSecured\n"));

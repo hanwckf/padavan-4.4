@@ -142,9 +142,19 @@ static VOID HwCtrlCmdHandler(RTMP_ADAPTER *pAd)
 	NTSTATUS		ntStatus;
 	HwCmdHdlr		Handler = NULL;
 	HW_CTRL_T *pHwCtrl = &pAd->HwCtrl;
+	UINT32		process_cnt = 0;
 
 	while (pAd && pHwCtrl->HwCtrlQ.size > 0) {
 		NdisStatus = NDIS_STATUS_SUCCESS;
+
+		/* For worst case, avoid process HwCtrlQ too long which cause RCU_sched stall */
+		process_cnt++;
+		/* process_cnt-16 */
+		if ((!in_interrupt()) && (process_cnt >= (MAX_LEN_OF_HWCTRL_QUEUE >> 4))) {
+			process_cnt = 0;
+			OS_SCHEDULE();
+		}
+
 		NdisAcquireSpinLock(&pHwCtrl->HwCtrlQLock);
 		HwCtrlDequeueCmd(&pHwCtrl->HwCtrlQ, &cmdqelmt);
 		NdisReleaseSpinLock(&pHwCtrl->HwCtrlQLock);

@@ -333,6 +333,11 @@ VOID operate_loader_phy(struct wifi_dev *wdev, struct freq_cfg *cfg)
 			  oper_radio.cen_ch_2));
 	/*acquire radio resouce*/
 	res.reason = REASON_NORMAL_SW;
+#ifdef OFFCHANNEL_SCAN_FEATURE
+	if (ad->ScanCtrl.state == OFFCHANNEL_SCAN_START) {
+		res.reason = REASON_NORMAL_SCAN;
+	}
+#endif
 	res.oper = &oper_radio;
 
 #ifdef CONFIG_AP_SUPPORT
@@ -482,6 +487,7 @@ BOOLEAN wlan_operate_scan(struct wifi_dev *wdev, UCHAR prim_ch)
 	struct freq_oper oper;
 	BOOLEAN ret;
 
+	os_zero_mem(&oper, sizeof(oper));
 	res->oper = &oper;
 	oper.bw = BW_20;
 	oper.cen_ch_1 = prim_ch;

@@ -818,8 +818,8 @@ MAC_TABLE_ENTRY *MacTableInsertEntry(
 				pCurrEntry = pCurrEntry->pNext;
 
 			if(pCurrEntry != pEntry) {
-				pCurrEntry->pNext = pEntry;
-			}
+			pCurrEntry->pNext = pEntry;
+		}
 		}
 
 #ifdef CONFIG_AP_SUPPORT
@@ -1090,10 +1090,10 @@ BOOLEAN MacTableDeleteEntry(RTMP_ADAPTER *pAd, USHORT wcid, UCHAR *pAddr)
 				IgmpGroupDelMembers(pAd, (PUCHAR)pEntry->Addr, wdev, pEntry->wcid);
 #endif /* IGMP_SNOOP_SUPPORT */
 				if(pAd->ApCfg.MBSSID[pEntry->func_tb_idx].StaCount>0){
-					pAd->ApCfg.MBSSID[pEntry->func_tb_idx].StaCount--;
+				pAd->ApCfg.MBSSID[pEntry->func_tb_idx].StaCount--;
 				}
 				if(pAd->ApCfg.EntryClientCount>0){
-					pAd->ApCfg.EntryClientCount--;
+				pAd->ApCfg.EntryClientCount--;
 				}
 #ifdef CONFIG_LED_ACTIVITY_ON_MAIN_MBSS
 				if (pAd->ApCfg.MBSSID[MAIN_MBSSID].StaCount == 0)
@@ -1372,6 +1372,11 @@ VOID MacTableResetWdev(RTMP_ADAPTER *pAd, struct wifi_dev *wdev)
 					}
 
 					Reason = REASON_NO_LONGER_VALID;
+
+#ifdef MAP_R2
+					if (IS_ENTRY_CLIENT(pMacEntry) && IS_MAP_ENABLE(pAd) && IS_MAP_R2_ENABLE(pAd))
+						wapp_handle_sta_disassoc(pAd, pMacEntry->wcid, Reason);
+#endif
 					MTWF_LOG(DBG_CAT_MLME, DBG_SUBCAT_ALL, DBG_LVL_WARN, ("Send DeAuth (Reason=%d) to %02x:%02x:%02x:%02x:%02x:%02x\n",
 							 Reason, PRINT_MAC(pMacEntry->Addr)));
 					MgtMacHeaderInit(pAd, &DeAuthHdr, SUBTYPE_DEAUTH, 0, pMacEntry->Addr,
@@ -1464,7 +1469,8 @@ VOID MacTableReset(RTMP_ADAPTER *pAd)
 							DIAG_CONN_DEAUTH, Reason);
 #endif
 #ifdef MAP_R2
-					wapp_handle_sta_disassoc(pAd, pMacEntry->wcid, Reason);
+					if (IS_ENTRY_CLIENT(pMacEntry) && IS_MAP_ENABLE(pAd) && IS_MAP_R2_ENABLE(pAd))
+						wapp_handle_sta_disassoc(pAd, pMacEntry->wcid, Reason);
 #endif
 
 					MTWF_LOG(DBG_CAT_MLME, DBG_SUBCAT_ALL, DBG_LVL_WARN, ("Send DeAuth (Reason=%d) to %02x:%02x:%02x:%02x:%02x:%02x\n",

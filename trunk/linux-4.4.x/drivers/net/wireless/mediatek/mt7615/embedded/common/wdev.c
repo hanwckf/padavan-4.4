@@ -729,10 +729,6 @@ void wdev_sync_prim_ch(struct _RTMP_ADAPTER *ad, struct wifi_dev *wdev)
 		tdev = ad->wdev_list[i];
 		if (tdev && HcIsRadioAcq(tdev) && (band_idx == HcGetBandByWdev(tdev))) {
 			tdev->channel = wdev->channel;
-#ifdef CONFIG_MAP_SUPPORT
-			if (tdev->wdev_type == WDEV_TYPE_AP)
-				tdev->quick_ch_change = wdev->quick_ch_change;
-#endif
 		} else if ((wdev->wdev_type == WDEV_TYPE_AP) &&
 				(tdev != NULL) &&
 				(band_idx == HcGetBandByWdev(tdev))) {
@@ -745,10 +741,10 @@ void wdev_sync_prim_ch(struct _RTMP_ADAPTER *ad, struct wifi_dev *wdev)
 				(((tdev->channel > 14) && (wdev->channel > 14)) ||
 				 ((tdev->channel <= 14) && (wdev->channel <= 14)))) {
 			tdev->channel = wdev->channel;
-#ifdef CONFIG_MAP_SUPPORT
-			tdev->quick_ch_change = wdev->quick_ch_change;
-#endif
 		}
+
+		if (tdev != NULL)
+			tdev->quick_ch_change = wdev->quick_ch_change;
 	}
 }
 

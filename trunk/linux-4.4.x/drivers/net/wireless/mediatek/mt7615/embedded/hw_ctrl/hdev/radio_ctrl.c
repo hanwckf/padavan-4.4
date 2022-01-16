@@ -954,7 +954,10 @@ UCHAR RcGetCentralCh(struct radio_dev *rdev)
 */
 UCHAR RcGetBandIdx(struct radio_dev *rdev)
 {
-	return rdev->pRadioCtrl->BandIdx;
+	if (rdev && rdev->pRadioCtrl)
+		return rdev->pRadioCtrl->BandIdx;
+	else
+		return 0;
 }
 
 /*

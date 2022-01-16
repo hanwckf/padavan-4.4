@@ -84,6 +84,8 @@
 /* RSN IE Length definition */
 #define MAX_LEN_OF_RSNIE			255
 #define MIN_LEN_OF_RSNIE			2
+#define MAX_LEN_OF_RSNXEIE                      255
+#define MIN_LEN_OF_RSNXEIE                      2
 #define MAX_LEN_GTK					32
 #define MIN_LEN_GTK					5
 

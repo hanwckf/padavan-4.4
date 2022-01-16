@@ -883,10 +883,11 @@ VOID MakeCountryIe(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, ULONG *pFrameLen, U
 #endif /* OCE_SUPPORT */
 				if (IS_RRM_ENABLE(wdev)) {
 					UCHAR reg_class = get_regulatory_class(pAd, wdev->channel, wdev->PhyMode, wdev);
-
-					TmpLen2 = 0;
-					NdisZeroMemory(TmpFrame, 256);
-					RguClass_BuildBcnChList(pAd, TmpFrame, &TmpLen2, wdev->PhyMode, reg_class);
+					if (reg_class != 0) {
+						TmpLen2 = 0;
+						NdisZeroMemory(TmpFrame, 256);
+						RguClass_BuildBcnChList(pAd, TmpFrame, &TmpLen2, wdev, reg_class);
+					}
 				}
 #endif /* DOT11K_RRM_SUPPORT */
 #ifdef MBO_SUPPORT
@@ -974,20 +975,8 @@ VOID MakeChReportIe(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, ULONG *pFrameLen, 
 
 VOID MakeExtSuppRateIe(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, ULONG *pFrameLen, UCHAR *pBeaconFrame)
 {
-	ULONG FrameLen = *pFrameLen;
-	ULONG TmpLen;
-	UCHAR PhyMode = wdev->PhyMode;
-
-	if ((wdev->rate.ExtRateLen) && (PhyMode != WMODE_B)) {
-		TmpLen = 0;
-		MakeOutgoingFrame(pBeaconFrame + FrameLen,         &TmpLen,
-						  1,                               &ExtRateIe,
-						  1,                               &wdev->rate.ExtRateLen,
-						  wdev->rate.ExtRateLen,       wdev->rate.ExtRate,
-						  END_OF_ARGS);
-		FrameLen += TmpLen;
-		*pFrameLen = FrameLen;
-	}
+	*pFrameLen += build_support_ext_rate_ie(wdev, wdev->rate.SupRateLen,
+			wdev->rate.ExtRate, wdev->rate.ExtRateLen, pBeaconFrame + *pFrameLen);
 }
 
 VOID MakePwrConstraintIe(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, ULONG *pFrameLen, UCHAR *pBeaconFrame)
@@ -1105,8 +1094,10 @@ VOID ComposeBcnPktTail(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, ULONG *pFrameLe
 
 #endif /* A_BAND_SUPPORT */
 #ifdef CUSTOMER_DCC_FEATURE
-	else if (pComCfg->channelSwitch.CHSWMode == CHANNEL_SWITCHING_MODE)
+	else if (pComCfg->channelSwitch.CHSWMode == CHANNEL_SWITCHING_MODE) {
+		pAd->CommonCfg.bChannelSwitchOn = TRUE;
 		MakeChSwitchAnnounceIEandExtend(pAd, wdev, &FrameLen, pBeaconFrame);
+	}
 #endif
 
 #endif /* CONFIG_AP_SUPPORT */
@@ -1347,7 +1338,8 @@ VOID ComposeBcnPktTail(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, ULONG *pFrameLe
 	vht_ie_info.pos = FrameLen;
 	FrameLen += oce_build_ies(pAd, &vht_ie_info, TRUE);
 #endif
-
+	FrameLen +=  build_rsnxe_ie(&wdev->SecConfig,
+			(UCHAR *)pBeaconFrame + FrameLen);
 	*pFrameLen = FrameLen;
 }
 VOID updateBeaconRoutineCase(RTMP_ADAPTER *pAd, BOOLEAN UpdateAfterTim)
@@ -1454,6 +1446,11 @@ VOID UpdateBeaconHandler(
 			__func__, wdev->wdev_idx));
 		goto end;
 	}
+
+#ifdef CUSTOMER_DCC_FEATURE
+	if (pAd->CommonCfg.bChannelSwitchOn == TRUE)
+		goto end;
+#endif
 
 	if ((BCN_UPDATE_REASON == BCN_UPDATE_INIT) && (wdev != NULL)) {
 		MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s, BCN_UPDATE_INIT, OmacIdx = %x\n",
@@ -1611,7 +1608,7 @@ ULONG ComposeBcnPktHead(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, UCHAR *pBeacon
 {
 	ULONG FrameLen = 0;
 	ULONG TmpLen;
-	UCHAR DsLen = 1, SsidLen = 0, SupRateLen;
+	UCHAR DsLen = 1, SsidLen = 0;
 	HEADER_802_11 BcnHdr;
 	LARGE_INTEGER FakeTimestamp;
 	UCHAR PhyMode;
@@ -1677,18 +1674,8 @@ ULONG ComposeBcnPktHead(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, UCHAR *pBeacon
 	  if wdev is AP, SupRateLen is global setting,
 	  shall check each's wdev setting to update SupportedRate.
 	*/
-	SupRateLen = wdev->rate.SupRateLen;
-
-	if (PhyMode == WMODE_B)
-		SupRateLen = 4;
-
-	TmpLen = 0;
-	MakeOutgoingFrame(pBeaconFrame + FrameLen,      &TmpLen,
-					  1,                              &SupRateIe,
-					  1,                              &SupRateLen,
-					  SupRateLen,                     wdev->rate.SupRate,
-					  END_OF_ARGS);
-	FrameLen += TmpLen;
+	FrameLen += build_support_rate_ie(wdev, wdev->rate.SupRate, wdev->rate.SupRateLen,
+			pBeaconFrame + FrameLen);
 	TmpLen = 0;
 	MakeOutgoingFrame(pBeaconFrame + FrameLen,        &TmpLen,
 					  1,                              &DsIe,

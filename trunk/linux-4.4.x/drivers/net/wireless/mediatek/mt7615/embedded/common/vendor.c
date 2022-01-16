@@ -195,6 +195,8 @@ INT vie_oper_proc(struct _RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 							__func__, (oper == VIE_ADD) ? "add" : "update"));
 				}
 			}
+			if (ret)
+				UpdateBeaconHandler(pAd, wdev, BCN_UPDATE_IE_CHG);
 		} else if (oper == VIE_SHOW)
 			print_vie(wdev, frm_map);
 	}
@@ -445,8 +447,7 @@ VOID init_vie_ctrl(struct wifi_dev *wdev)
 
 		/*should be not necessary for this step.*/
 		while (vie != NULL) {
-			if (vie->next_vie != NULL)
-				temp_vie = vie->next_vie;
+			temp_vie = vie->next_vie;
 
 			if (vie->ie_ctnt != NULL) {
 				os_free_mem(vie->ie_ctnt);
@@ -474,8 +475,7 @@ VOID deinit_vie_ctrl(struct wifi_dev *wdev)
 		vie_ctrl->type = 0;
 
 		while ((vie != NULL) && (vie_ctrl->vie_num > 0)) {
-			if (vie->next_vie != NULL)
-				temp_vie = vie->next_vie;
+			temp_vie = vie->next_vie;
 
 			if (vie->ie_ctnt != NULL) {
 				os_free_mem(vie->ie_ctnt);

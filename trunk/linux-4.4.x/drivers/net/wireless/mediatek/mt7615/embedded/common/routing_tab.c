@@ -541,7 +541,7 @@ VOID RoutingTabMaintain(
 		struct net_device *pBridgeNetDev = NULL;
 		struct net *net = &init_net;
 		for_each_netdev(net, pBridgeNetDev) {
-			if (pBridgeNetDev->priv_flags == IFF_EBRIDGE) {
+			if (pBridgeNetDev->priv_flags & IFF_EBRIDGE) {
 				const struct in_device *pBridgeInDev = pBridgeNetDev->ip_ptr;
 				if (pBridgeInDev) {
 					const struct in_ifaddr *ifa = pBridgeInDev->ifa_list;

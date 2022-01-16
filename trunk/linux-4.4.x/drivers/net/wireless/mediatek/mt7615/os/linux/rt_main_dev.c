@@ -414,6 +414,7 @@ int virtual_if_up_handler(VOID *dev)
 				__func__, wdev->wdev_idx));
 		}
 	}
+	wdev->open_state = TRUE;
 
 	return retval;
 }
@@ -437,6 +438,12 @@ int virtual_if_down_handler(VOID *dev)
 		MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("%s() wdev fail!!!\n", __func__));
 		retval = -1;
 		return retval;
+	}
+	wdev->open_state = FALSE;
+	if (wdev->start_stop_running) {
+		MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("%s() wdev idx %d wait to complete start stop op\n", __func__, wdev->wdev_idx));
+		RTMP_OS_INIT_COMPLETION(&wdev->start_stop_complete);
+		RTMP_OS_WAIT_FOR_COMPLETION_TIMEOUT(&wdev->start_stop_complete, 500);
 	}
 
 	wdev_if_up_down(pAd, wdev, FALSE);
@@ -541,6 +548,15 @@ PNET_DEV RtmpPhyNetDevInit(VOID *pAd, RTMP_OS_NETDEV_OP_HOOK *pNetDevHook)
 	RTMP_DRIVER_OP_MODE_GET(pAd, &OpMode);
 	/* put private data structure */
 	RTMP_OS_NETDEV_SET_PRIV(net_dev, pAd);
+
+
+#ifdef CONFIG_APSTA_MIXED_SUPPORT
+#if WIRELESS_EXT >= 12
+	if (OpMode == OPMODE_AP) {
+		pNetDevHook->iw_handler = (void *)&rt28xx_ap_iw_handler_def;
+	}
+#endif /*WIRELESS_EXT >= 12 */
+#endif /* CONFIG_STA_SUPPORT */
 
 	/* double-check if pAd is associated with the net_dev */
 	if (RTMP_OS_NETDEV_GET_PRIV(net_dev) == NULL) {

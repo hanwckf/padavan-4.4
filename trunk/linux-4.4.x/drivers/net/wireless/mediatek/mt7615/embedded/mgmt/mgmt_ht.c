@@ -368,6 +368,10 @@ VOID RTMPSetHT(
 	RTMPZeroMemory(&pAd->CommonCfg.NewExtChanOffset, sizeof(pAd->CommonCfg.NewExtChanOffset));
 
 	/* Decide Rx MCSSet*/
+	ht_cap->MCSSet[3] =  0x00;
+	ht_cap->MCSSet[2] =  0x00;
+	ht_cap->MCSSet[1] =  0x00;
+	ht_cap->MCSSet[0] =  0x00;
 	switch (wlan_config_get_rx_stream(wdev)) {
 	case 4:
 #ifdef CONFIG_RA_PHY_RATE_SUPPORT

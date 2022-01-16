@@ -51,7 +51,7 @@ typedef NTSTATUS(*HwCmdCb)(struct _RTMP_ADAPTER *pAd, VOID * Args);
 #define ETSI_RXBLOCKER4R 4
 #define ETSI_RXBLOCKER1R 1
 
-
+#define MAX_LEN_OF_HWCTRL_QUEUE            (MAX_LEN_OF_MAC_TABLE<<1)
 
 /*for command classify*/
 enum {

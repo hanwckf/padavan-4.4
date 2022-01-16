@@ -93,7 +93,8 @@ VOID APMlmeBroadcastDeauthReqAction(
 			pEntry->Addr, 0, 0);
 		ApLogEvent(pAd, pInfo->Addr, EVENT_DISASSOCIATED);
 #ifdef MAP_R2
-		wapp_handle_sta_disassoc(pAd, wcid, pInfo->Reason);
+		if (IS_MAP_ENABLE(pAd) && IS_MAP_R2_ENABLE(pAd))
+			wapp_handle_sta_disassoc(pAd, wcid, pInfo->Reason);
 #endif
 		MacTableDeleteEntry(pAd, wcid, pEntry->Addr);
 	}
@@ -161,7 +162,8 @@ VOID APMlmeDeauthReqAction(
 			DiagConnError(pAd, pEntry->func_tb_idx, pEntry->Addr, DIAG_CONN_DEAUTH, pInfo->Reason);
 #endif
 #ifdef MAP_R2
-		wapp_handle_sta_disassoc(pAd, Elem->Wcid, pInfo->Reason);
+		if (IS_ENTRY_CLIENT(pEntry) && IS_MAP_ENABLE(pAd) && IS_MAP_R2_ENABLE(pAd))
+			wapp_handle_sta_disassoc(pAd, Elem->Wcid, pInfo->Reason);
 #endif
 
 		/* 1. remove this STA from MAC table */
@@ -546,6 +548,10 @@ static VOID APPeerAuthReqAtIdleAction(RTMP_ADAPTER *pAd, MLME_QUEUE_ELEM *Elem)
 	MAP_CHANNEL_ID_TO_KHZ(pAd->LatchRfRegs.Channel, freq);
 	freq /= 1000;
 #endif /* RADIUS_MAC_AUTH_SUPPORT */
+#if defined(CONFIG_MAP_SUPPORT) && defined(MAP_BL_SUPPORT)
+	BOOLEAN bACLReject = FALSE;
+	BOOLEAN bBlReject = FALSE;
+#endif
 
 	os_alloc_mem_suspend(pAd, (UCHAR **)&pAuth_info, sizeof(AUTH_FRAME_INFO));
 
@@ -666,14 +672,22 @@ SendAuth:
 	/* Do not check ACL when WPS V2 is enabled and ACL policy is positive. */
 	if ((wdev->WscControl.WscConfMode != WSC_DISABLE) &&
 		(wdev->WscControl.WscV2Info.bEnableWpsV2) &&
-		(wdev->WscControl.WscV2Info.bWpsEnable) &&
-		(pMbss->AccessControlList.Policy == 1))
+		(wdev->WscControl.WscV2Info.bWpsEnable))
 		;
 	else
 #endif /* WSC_V2_SUPPORT */
+#if defined(CONFIG_MAP_SUPPORT) && defined(MAP_BL_SUPPORT)
+	/* set a flag for sending Assoc-Fail response to unwanted STA later. */
+	if (map_is_entry_bl(pAd, pAuth_info->addr2, apidx) == TRUE) {
+		bBlReject = TRUE;
+	} else
+#endif
 
 		/* fail in ACL checking => send an AUTH-Fail seq#2. */
 		if (!ApCheckAccessControlList(pAd, pAuth_info->addr2, apidx)) {
+#if defined(CONFIG_MAP_SUPPORT) && defined(MAP_BL_SUPPORT)
+			bACLReject = TRUE;
+#endif
 #ifdef ACL_BLK_COUNT_SUPPORT
 			if (pAd->ApCfg.MBSSID[apidx].AccessControlList.Policy == 2) {
 				ULONG idx;
@@ -688,6 +702,11 @@ SendAuth:
 				}
 			}
 #endif/*ACL_BLK_COUNT_SUPPORT*/
+#if defined(CONFIG_MAP_SUPPORT) && defined(MAP_BL_SUPPORT)
+		}
+		/* fail in ACL checking => send an AUTH-Fail seq#2. */
+		if (bBlReject || bACLReject) {
+#endif
 			ASSERT(pAuth_info->auth_seq == 1);
 			ASSERT(pEntry == NULL);
 #ifdef WAPP_SUPPORT
@@ -702,9 +721,15 @@ SendAuth:
 				MacTableDeleteEntry(pAd, pEntry->wcid, pEntry->Addr);
 
 			RTMPSendWirelessEvent(pAd, IW_MAC_FILTER_LIST_EVENT_FLAG, pAuth_info->addr2, wdev->wdev_idx, 0);
+#if defined(CONFIG_MAP_SUPPORT) && defined(MAP_BL_SUPPORT)
+			MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
+					 ("Failed in BL/ACL %d/%d checking => send an AUTH seq#2 with Status code = %d\n"
+					  , bBlReject, bACLReject, MLME_UNSPECIFY_FAIL));
+#else
 			MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 					 ("Failed in ACL checking => send an AUTH seq#2 with Status code = %d\n"
 					  , MLME_UNSPECIFY_FAIL));
+#endif
 
 
 #ifdef WAPP_SUPPORT
@@ -921,6 +946,7 @@ SendAuth:
 #ifdef DOT11_SAE_SUPPORT
 	if ((pAuth_info->auth_alg == AUTH_MODE_SAE) &&
 		(IS_AKM_SAE_SHA256(pMbss->wdev.SecConfig.AKMMap))) {
+		UCHAR is_h2e_connect;
 		UCHAR *pmk;
 #ifdef DOT11W_PMF_SUPPORT
 
@@ -949,8 +975,12 @@ SendAuth:
 		/* ap is passive, so do not consider the retrun value of sae_handle_auth */
 		sae_handle_auth(pAd, &pAd->SaeCfg, Elem->Msg, Elem->MsgLen,
 				pMbss->wdev.SecConfig.PSK,
-				pAuth_info->auth_seq, pAuth_info->auth_status, &pmk);
-
+				pMbss->wdev.SecConfig.pt_list,
+				&pMbss->wdev.SecConfig.sae_cap,
+#ifdef DOT11_SAE_PWD_ID_SUPPORT
+				&pMbss->wdev.SecConfig.pwd_id_list_head,
+#endif
+				pAuth_info->auth_seq, pAuth_info->auth_status, &pmk, &is_h2e_connect);
 		if (pmk) {
 
 			if (!pEntry)
@@ -963,6 +993,8 @@ SendAuth:
 				/*According to specific, if it already in SST_ASSOC, it can not go back */
 				if (pEntry->Sst != SST_ASSOC)
 					pEntry->Sst = SST_AUTH;
+				pEntry->SecConfig.is_h2e_connect = is_h2e_connect;
+				pEntry->SecConfig.sae_cap.gen_pwe_method = pMbss->wdev.SecConfig.sae_cap.gen_pwe_method;
 				if (sae_get_pmk_cache(&pAd->SaeCfg, pAuth_info->addr1, pAuth_info->addr2, pmkid, NULL)) {
 					RTMPAddPMKIDCache(&pAd->ApCfg.PMKIDCache,
 							  apidx,

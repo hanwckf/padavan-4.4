@@ -288,7 +288,7 @@ VOID CFG80211OS_UnRegister(VOID *pCB, VOID *pNetDevOrg)
 #endif /* RFKILL_HW_SUPPORT */
 		wiphy_unregister(pCfg80211_CB->pCfg80211_Wdev->wiphy);
 		wiphy_free(pCfg80211_CB->pCfg80211_Wdev->wiphy);
-		kfree(pCfg80211_CB->pCfg80211_Wdev);
+		os_free_mem(pCfg80211_CB->pCfg80211_Wdev);
 
 		if (pCfg80211_CB->pCfg80211_Channels != NULL)
 			kfree(pCfg80211_CB->pCfg80211_Channels);
@@ -1102,7 +1102,8 @@ void CFG80211OS_P2pClientConnectResultInform(
 		return;
 
 	if (FlgIsSuccess) {
-		CFG80211DBG(DBG_LVL_ERROR, ("APCLI: ReqIeLen %d, RspIeLen, %d\n", ReqIeLen, RspIeLen));
+		CFG80211DBG(DBG_LVL_ERROR, ("CFG80211 Connection Success APCLI: ReqIeLen %d, RspIeLen, %d Bssid %02x %02x %02x %02x %02x %02x\n",
+			ReqIeLen, RspIeLen, pBSSID[0], pBSSID[1], pBSSID[2], pBSSID[3], pBSSID[4], pBSSID[5]));
 		hex_dump("APCLI Req:", pReqIe, ReqIeLen);
 		hex_dump("APCLI Rsp:", pRspIe, RspIeLen);
 		cfg80211_connect_result(pNetDev,
@@ -1114,6 +1115,8 @@ void CFG80211OS_P2pClientConnectResultInform(
 								WLAN_STATUS_SUCCESS,
 								GFP_KERNEL);
 	} else {
+			CFG80211DBG(DBG_LVL_ERROR, ("CFG80211 Connection Failure Bssid %02x %02x %02x %02x %02x %02x\n",
+				pBSSID[0], pBSSID[1], pBSSID[2], pBSSID[3], pBSSID[4], pBSSID[5]));
 		cfg80211_connect_result(pNetDev,
 								pBSSID,
 								NULL, 0, NULL, 0,
@@ -1300,7 +1303,11 @@ INT32 CFG80211OS_UpdateRegRuleByRegionIdx(IN VOID *pCB, IN VOID *pChDesc2G, IN V
 	CFG80211_CB *pCfg80211_CB = (CFG80211_CB *) pCB;
 	struct wiphy *pWiphy = NULL;
 	UINT32 freq_start_mhz = 0, freq_end_mhz = 0;
+#ifdef EXT_BUILD_CHANNEL_LIST
+	PCH_DESP pChDesc = NULL;
+#else
 	PCH_DESC pChDesc = NULL;
+#endif
 	INT32 n_channels = 0;
 	INT32 ii = 0;
 	struct ieee80211_supported_band *pSband;
@@ -1310,7 +1317,11 @@ INT32 CFG80211OS_UpdateRegRuleByRegionIdx(IN VOID *pCB, IN VOID *pChDesc2G, IN V
 	if (!pWiphy)
 		CFG80211DBG(DBG_LVL_ERROR, ("80211> %s: invalid pWiphy!!\n", __FUNCTION__));
 	/* 2GHz rules */
+#ifdef EXT_BUILD_CHANNEL_LIST
+	pChDesc = (PCH_DESP) pChDesc2G;
+#else
 	pChDesc = (PCH_DESC) pChDesc2G;
+#endif
 	n_channels = pCfg80211_CB->Cfg80211_bands[IEEE80211_BAND_2GHZ].n_channels;
 	if (pChDesc && n_channels > 0) {
 		struct ieee80211_channel pTmpCh[n_channels];
@@ -1337,16 +1348,27 @@ INT32 CFG80211OS_UpdateRegRuleByRegionIdx(IN VOID *pCB, IN VOID *pChDesc2G, IN V
 			freq_end_mhz = ieee80211_channel_to_frequency(
 				pChDesc->FirstChannel + (pChDesc->NumOfCh - 1));
 #endif /* LINUX_VERSION_CODE */
+#ifdef EXT_BUILD_CHANNEL_LIST
+			CFG80211OS_EnableChanFlagsByBand(pTmpCh, n_channels, freq_start_mhz,
+									freq_end_mhz,
+									0);
+#else
 			CFG80211OS_EnableChanFlagsByBand(pTmpCh, n_channels, freq_start_mhz,
 							 freq_end_mhz,
 							 (UINT32) pChDesc->ChannelProp);
+#endif
+
 			pChDesc++;
 		}
 		pSband = pWiphy->bands[IEEE80211_BAND_2GHZ];		
 		CFG80211OS_ForceUpdateChanFlagsByBand(pSband, pTmpCh);
 	}
 	/* 5GHz rules */
+#ifdef EXT_BUILD_CHANNEL_LIST
+	pChDesc = (PCH_DESP) pChDesc5G;
+#else
 	pChDesc = (PCH_DESC) pChDesc5G;
+#endif
 	n_channels = pCfg80211_CB->Cfg80211_bands[IEEE80211_BAND_5GHZ].n_channels;
 	if (pChDesc && n_channels > 0) {
 		struct ieee80211_channel pTmpCh2[n_channels];
@@ -1374,9 +1396,16 @@ INT32 CFG80211OS_UpdateRegRuleByRegionIdx(IN VOID *pCB, IN VOID *pChDesc2G, IN V
 				pChDesc->FirstChannel +
 					((pChDesc->NumOfCh - 1) * 4));
 #endif
+#ifdef EXT_BUILD_CHANNEL_LIST
+			CFG80211OS_EnableChanFlagsByBand(pTmpCh2, n_channels, freq_start_mhz,
+									freq_end_mhz,
+									0);
+#else
 			CFG80211OS_EnableChanFlagsByBand(pTmpCh2, n_channels, freq_start_mhz,
 							 freq_end_mhz,
 							 (UINT32) pChDesc->ChannelProp);
+#endif
+
 			pChDesc++;
 		}
 		pSband = pWiphy->bands[IEEE80211_BAND_5GHZ];

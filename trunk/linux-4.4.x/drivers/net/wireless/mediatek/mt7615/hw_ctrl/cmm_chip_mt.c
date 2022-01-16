@@ -136,6 +136,8 @@ VOID MTRadioOff(PRTMP_ADAPTER pAd, struct wifi_dev *wdev)
 	else
 		RTMP_RADIO_ON_OFF_CTRL(pAd, HcGetBandByChannel(pAd, wdev->channel), WIFI_RADIO_OFF);
 
+	msleep(1000);
+
 	if (IS_MT7622(pAd)) {
 		/* Polling RX path until packets empty when all bands are in radio off */
 		if (IsHcAllSupportedBandsRadioOff(pAd)) {

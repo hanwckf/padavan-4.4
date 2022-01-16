@@ -741,7 +741,7 @@ INT MtBfBackOffLoadParam(RTMP_ADAPTER *pAd)
 	{
 		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s: RF_LOCKDOWN Feature OFF !!!\n", __FUNCTION__));
 		/* open card information file*/
-		sku_path = get_single_sku_path(pAd);
+		sku_path = get_bf_sku_path(pAd);
 		if (sku_path && *sku_path)
 			srcf = os_file_open(sku_path, O_RDONLY, 0);
 		else
@@ -930,7 +930,7 @@ VOID MtBfBackOffUnloadParam(RTMP_ADAPTER *pAd)
 	}
 }
 
-VOID MtFillSkuParam(RTMP_ADAPTER *pAd, UINT8 channel, UCHAR Band, UCHAR TxStream, UINT8 *txPowerSku)
+VOID MtFillSkuParam(RTMP_ADAPTER *pAd, UINT8 channel, UCHAR Band, UCHAR TxStream, UINT8 *txPowerSku, UINT8 update_ctrl_ch_pwr)
 {
 	CH_POWER *ch, *ch_temp;
 	UCHAR start_ch;
@@ -1010,62 +1010,68 @@ VOID MtFillSkuParam(RTMP_ADAPTER *pAd, UINT8 channel, UCHAR Band, UCHAR TxStream
 
 					MTWF_LOG(DBG_CAT_FW, DBG_SUBCAT_ALL, DBG_LVL_INFO, ("TxOffset = %d\n", TxOffset));
 					/* Fill in the SKU table for destination channel*/
-					txPowerSku[SKU_CCK_1_2]	   = ch->u1PwrLimitCCK[0]	?  (ch->u1PwrLimitCCK[0]	+ TxOffset) : 0x3F;
-					txPowerSku[SKU_CCK_55_11]	   = ch->u1PwrLimitCCK[1]	?  (ch->u1PwrLimitCCK[1]	+ TxOffset) : 0x3F;
-					txPowerSku[SKU_OFDM_6_9]	   = ch->u1PwrLimitOFDM[0]   ?  (ch->u1PwrLimitOFDM[0]   + TxOffset) : 0x3F;
-					txPowerSku[SKU_OFDM_12_18]	 = ch->u1PwrLimitOFDM[1]   ?  (ch->u1PwrLimitOFDM[1]   + TxOffset) : 0x3F;
-					txPowerSku[SKU_OFDM_24_36]	 = ch->u1PwrLimitOFDM[2]   ?  (ch->u1PwrLimitOFDM[2]   + TxOffset) : 0x3F;
+					txPowerSku[SKU_CCK_1_2]		= ch->u1PwrLimitCCK[0]	?  (ch->u1PwrLimitCCK[0]	+ TxOffset) : 0x3F;
+					txPowerSku[SKU_CCK_55_11]	= ch->u1PwrLimitCCK[1]	?  (ch->u1PwrLimitCCK[1]	+ TxOffset) : 0x3F;
+					txPowerSku[SKU_OFDM_6_9]	= ch->u1PwrLimitOFDM[0]   ?  (ch->u1PwrLimitOFDM[0]   + TxOffset) : 0x3F;
+					txPowerSku[SKU_OFDM_12_18]	= ch->u1PwrLimitOFDM[1]   ?  (ch->u1PwrLimitOFDM[1]   + TxOffset) : 0x3F;
+					txPowerSku[SKU_OFDM_24_36]	= ch->u1PwrLimitOFDM[2]   ?  (ch->u1PwrLimitOFDM[2]   + TxOffset) : 0x3F;
 					txPowerSku[SKU_OFDM_48]		= ch->u1PwrLimitOFDM[3]   ?  (ch->u1PwrLimitOFDM[3]   + TxOffset) : 0x3F;
 					txPowerSku[SKU_OFDM_54]		= ch->u1PwrLimitOFDM[4]   ?  (ch->u1PwrLimitOFDM[4]   + TxOffset) : 0x3F;
-					txPowerSku[SKU_HT20_0_8]	   = ch->u1PwrLimitVHT20[0]  ?  (ch->u1PwrLimitVHT20[0]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_HT20_0_8]	= ch->u1PwrLimitVHT20[0]  ?  (ch->u1PwrLimitVHT20[0]  + TxOffset) : 0x3F;
 					/*MCS32 is a special rate will chose the max power, normally will be OFDM 6M */
-					txPowerSku[SKU_HT20_32]	   =  ch->u1PwrLimitOFDM[0]  ?  (ch->u1PwrLimitOFDM[0]   + TxOffset) : 0x3F;
-					txPowerSku[SKU_HT20_1_2_9_10]  = ch->u1PwrLimitVHT20[1]  ?  (ch->u1PwrLimitVHT20[1]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_HT20_3_4_11_12] = ch->u1PwrLimitVHT20[2]  ?  (ch->u1PwrLimitVHT20[2]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_HT20_5_13]	   = ch->u1PwrLimitVHT20[3]  ?  (ch->u1PwrLimitVHT20[3]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_HT20_6_14]	   = ch->u1PwrLimitVHT20[3]  ?  (ch->u1PwrLimitVHT20[3]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_HT20_7_15]	   = ch->u1PwrLimitVHT20[4]  ?  (ch->u1PwrLimitVHT20[4]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_HT40_0_8]	   = ch->u1PwrLimitVHT40[0]  ?  (ch->u1PwrLimitVHT40[0]  + TxOffset) : 0x3F;
-					/*MCS32 is a special rate will chose the max power, normally will be OFDM 6M */
-					txPowerSku[SKU_HT40_32]	   =  ch->u1PwrLimitOFDM[0]  ?  (ch->u1PwrLimitOFDM[0]   + TxOffset) : 0x3F;
-					txPowerSku[SKU_HT40_1_2_9_10]  = ch->u1PwrLimitVHT40[1]  ?  (ch->u1PwrLimitVHT40[1]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_HT40_3_4_11_12] = ch->u1PwrLimitVHT40[2]  ?  (ch->u1PwrLimitVHT40[2]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_HT40_5_13]	   = ch->u1PwrLimitVHT40[3]  ?  (ch->u1PwrLimitVHT40[3]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_HT40_6_14]	   = ch->u1PwrLimitVHT40[3]  ?  (ch->u1PwrLimitVHT40[3]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_HT40_7_15]	   = ch->u1PwrLimitVHT40[4]  ?  (ch->u1PwrLimitVHT40[4]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_VHT20_0]	   = ch->u1PwrLimitVHT20[0]  ?  (ch->u1PwrLimitVHT20[0]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_VHT20_1_2]	   = ch->u1PwrLimitVHT20[1]  ?  (ch->u1PwrLimitVHT20[1]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_VHT20_3_4]	   = ch->u1PwrLimitVHT20[2]  ?  (ch->u1PwrLimitVHT20[2]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_VHT20_5_6]	   = ch->u1PwrLimitVHT20[3]  ?  (ch->u1PwrLimitVHT20[3]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_VHT20_7]	   = ch->u1PwrLimitVHT20[4]  ?  (ch->u1PwrLimitVHT20[4]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_VHT20_8]	   = ch->u1PwrLimitVHT20[5]  ?  (ch->u1PwrLimitVHT20[5]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_VHT20_9]	   = ch->u1PwrLimitVHT20[6]  ?  (ch->u1PwrLimitVHT20[6]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_VHT40_0]	   = ch->u1PwrLimitVHT40[0]  ?  (ch->u1PwrLimitVHT40[0]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_VHT40_1_2]	   = ch->u1PwrLimitVHT40[1]  ?  (ch->u1PwrLimitVHT40[1]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_VHT40_3_4]	   = ch->u1PwrLimitVHT40[2]  ?  (ch->u1PwrLimitVHT40[2]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_VHT40_5_6]	   = ch->u1PwrLimitVHT40[3]  ?  (ch->u1PwrLimitVHT40[3]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_VHT40_7]	   = ch->u1PwrLimitVHT40[4]  ?  (ch->u1PwrLimitVHT40[4]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_VHT40_8]	   = ch->u1PwrLimitVHT40[5]  ?  (ch->u1PwrLimitVHT40[5]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_VHT40_9]	   = ch->u1PwrLimitVHT40[6]  ?  (ch->u1PwrLimitVHT40[6]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_VHT80_0]	   = ch->u1PwrLimitVHT80[0]  ?  (ch->u1PwrLimitVHT80[0]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_VHT80_1_2]	   = ch->u1PwrLimitVHT80[1]  ?  (ch->u1PwrLimitVHT80[1]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_VHT80_3_4]	   = ch->u1PwrLimitVHT80[2]  ?  (ch->u1PwrLimitVHT80[2]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_VHT80_5_6]	   = ch->u1PwrLimitVHT80[3]  ?  (ch->u1PwrLimitVHT80[3]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_VHT80_7]	   = ch->u1PwrLimitVHT80[4]  ?  (ch->u1PwrLimitVHT80[4]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_VHT80_8]	   = ch->u1PwrLimitVHT80[5]  ?  (ch->u1PwrLimitVHT80[5]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_VHT80_9]	   = ch->u1PwrLimitVHT80[6]  ?  (ch->u1PwrLimitVHT80[6]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_VHT160_0]	   = ch->u1PwrLimitVHT160[0] ?  (ch->u1PwrLimitVHT160[0] + TxOffset) : 0x3F;
-					txPowerSku[SKU_VHT160_1_2]	   = ch->u1PwrLimitVHT160[1] ?  (ch->u1PwrLimitVHT160[1] + TxOffset) : 0x3F;
-					txPowerSku[SKU_VHT160_3_4]	   = ch->u1PwrLimitVHT160[2] ?  (ch->u1PwrLimitVHT160[2] + TxOffset) : 0x3F;
-					txPowerSku[SKU_VHT160_5_6]	   = ch->u1PwrLimitVHT160[3] ?  (ch->u1PwrLimitVHT160[3] + TxOffset) : 0x3F;
-					txPowerSku[SKU_VHT160_7]	   = ch->u1PwrLimitVHT160[4] ?  (ch->u1PwrLimitVHT160[4] + TxOffset) : 0x3F;
-					txPowerSku[SKU_VHT160_8]	   = ch->u1PwrLimitVHT160[5] ?  (ch->u1PwrLimitVHT160[5] + TxOffset) : 0x3F;
-					txPowerSku[SKU_VHT160_9]	   = ch->u1PwrLimitVHT160[6] ?  (ch->u1PwrLimitVHT160[6] + TxOffset) : 0x3F;
-					txPowerSku[SKU_1SS_Delta]	   = ch->u1PwrLimitTxNSSDelta[0] ?  ch->u1PwrLimitTxNSSDelta[0] : 0x0;
-					txPowerSku[SKU_2SS_Delta]	   = ch->u1PwrLimitTxNSSDelta[1] ?  ch->u1PwrLimitTxNSSDelta[1] : 0x0;
-					txPowerSku[SKU_3SS_Delta]	   = ch->u1PwrLimitTxNSSDelta[2] ?  ch->u1PwrLimitTxNSSDelta[2] : 0x0;
-					txPowerSku[SKU_4SS_Delta]	   = ch->u1PwrLimitTxNSSDelta[3] ?  ch->u1PwrLimitTxNSSDelta[3] : 0x0;
+					txPowerSku[SKU_HT20_32]			=  ch->u1PwrLimitOFDM[0]  ?  (ch->u1PwrLimitOFDM[0]   + TxOffset) : 0x3F;
+					txPowerSku[SKU_HT20_1_2_9_10]	= ch->u1PwrLimitVHT20[1]  ?  (ch->u1PwrLimitVHT20[1]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_HT20_3_4_11_12]	= ch->u1PwrLimitVHT20[2]  ?  (ch->u1PwrLimitVHT20[2]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_HT20_5_13]		= ch->u1PwrLimitVHT20[3]  ?  (ch->u1PwrLimitVHT20[3]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_HT20_6_14]		= ch->u1PwrLimitVHT20[3]  ?  (ch->u1PwrLimitVHT20[3]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_HT20_7_15]		= ch->u1PwrLimitVHT20[4]  ?  (ch->u1PwrLimitVHT20[4]  + TxOffset) : 0x3F;
 
+					/*MCS32 is a special rate will chose the max power, normally will be OFDM 6M */
+					txPowerSku[SKU_HT40_32]		=  ch->u1PwrLimitOFDM[0]  ?  (ch->u1PwrLimitOFDM[0]   + TxOffset) : 0x3F;
+
+					txPowerSku[SKU_VHT20_0]		= ch->u1PwrLimitVHT20[0]  ?  (ch->u1PwrLimitVHT20[0]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_VHT20_1_2]	= ch->u1PwrLimitVHT20[1]  ?  (ch->u1PwrLimitVHT20[1]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_VHT20_3_4]	= ch->u1PwrLimitVHT20[2]  ?  (ch->u1PwrLimitVHT20[2]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_VHT20_5_6]	= ch->u1PwrLimitVHT20[3]  ?  (ch->u1PwrLimitVHT20[3]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_VHT20_7]		= ch->u1PwrLimitVHT20[4]  ?  (ch->u1PwrLimitVHT20[4]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_VHT20_8]		= ch->u1PwrLimitVHT20[5]  ?  (ch->u1PwrLimitVHT20[5]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_VHT20_9]		= ch->u1PwrLimitVHT20[6]  ?  (ch->u1PwrLimitVHT20[6]  + TxOffset) : 0x3F;
+
+					if (!update_ctrl_ch_pwr) {
+						txPowerSku[SKU_HT40_0_8]	   = ch->u1PwrLimitVHT40[0]  ?  (ch->u1PwrLimitVHT40[0]  + TxOffset) : 0x3F;
+
+						txPowerSku[SKU_HT40_1_2_9_10]  = ch->u1PwrLimitVHT40[1]  ?  (ch->u1PwrLimitVHT40[1]  + TxOffset) : 0x3F;
+						txPowerSku[SKU_HT40_3_4_11_12] = ch->u1PwrLimitVHT40[2]  ?  (ch->u1PwrLimitVHT40[2]  + TxOffset) : 0x3F;
+						txPowerSku[SKU_HT40_5_13]	   = ch->u1PwrLimitVHT40[3]  ?  (ch->u1PwrLimitVHT40[3]  + TxOffset) : 0x3F;
+						txPowerSku[SKU_HT40_6_14]	   = ch->u1PwrLimitVHT40[3]  ?  (ch->u1PwrLimitVHT40[3]  + TxOffset) : 0x3F;
+						txPowerSku[SKU_HT40_7_15]	   = ch->u1PwrLimitVHT40[4]  ?  (ch->u1PwrLimitVHT40[4]  + TxOffset) : 0x3F;
+
+						txPowerSku[SKU_VHT40_0]	   = ch->u1PwrLimitVHT40[0]  ?  (ch->u1PwrLimitVHT40[0]  + TxOffset) : 0x3F;
+						txPowerSku[SKU_VHT40_1_2]	   = ch->u1PwrLimitVHT40[1]  ?  (ch->u1PwrLimitVHT40[1]  + TxOffset) : 0x3F;
+						txPowerSku[SKU_VHT40_3_4]	   = ch->u1PwrLimitVHT40[2]  ?  (ch->u1PwrLimitVHT40[2]  + TxOffset) : 0x3F;
+						txPowerSku[SKU_VHT40_5_6]	   = ch->u1PwrLimitVHT40[3]  ?  (ch->u1PwrLimitVHT40[3]  + TxOffset) : 0x3F;
+						txPowerSku[SKU_VHT40_7]	   = ch->u1PwrLimitVHT40[4]  ?  (ch->u1PwrLimitVHT40[4]  + TxOffset) : 0x3F;
+						txPowerSku[SKU_VHT40_8]	   = ch->u1PwrLimitVHT40[5]  ?  (ch->u1PwrLimitVHT40[5]  + TxOffset) : 0x3F;
+						txPowerSku[SKU_VHT40_9]	   = ch->u1PwrLimitVHT40[6]  ?  (ch->u1PwrLimitVHT40[6]  + TxOffset) : 0x3F;
+						txPowerSku[SKU_VHT80_0]	   = ch->u1PwrLimitVHT80[0]  ?  (ch->u1PwrLimitVHT80[0]  + TxOffset) : 0x3F;
+						txPowerSku[SKU_VHT80_1_2]	   = ch->u1PwrLimitVHT80[1]  ?  (ch->u1PwrLimitVHT80[1]  + TxOffset) : 0x3F;
+						txPowerSku[SKU_VHT80_3_4]	   = ch->u1PwrLimitVHT80[2]  ?  (ch->u1PwrLimitVHT80[2]  + TxOffset) : 0x3F;
+						txPowerSku[SKU_VHT80_5_6]	   = ch->u1PwrLimitVHT80[3]  ?  (ch->u1PwrLimitVHT80[3]  + TxOffset) : 0x3F;
+						txPowerSku[SKU_VHT80_7]	   = ch->u1PwrLimitVHT80[4]  ?  (ch->u1PwrLimitVHT80[4]  + TxOffset) : 0x3F;
+						txPowerSku[SKU_VHT80_8]	   = ch->u1PwrLimitVHT80[5]  ?  (ch->u1PwrLimitVHT80[5]  + TxOffset) : 0x3F;
+						txPowerSku[SKU_VHT80_9]	   = ch->u1PwrLimitVHT80[6]  ?  (ch->u1PwrLimitVHT80[6]  + TxOffset) : 0x3F;
+						txPowerSku[SKU_VHT160_0]	   = ch->u1PwrLimitVHT160[0] ?  (ch->u1PwrLimitVHT160[0] + TxOffset) : 0x3F;
+						txPowerSku[SKU_VHT160_1_2]	   = ch->u1PwrLimitVHT160[1] ?  (ch->u1PwrLimitVHT160[1] + TxOffset) : 0x3F;
+						txPowerSku[SKU_VHT160_3_4]	   = ch->u1PwrLimitVHT160[2] ?  (ch->u1PwrLimitVHT160[2] + TxOffset) : 0x3F;
+						txPowerSku[SKU_VHT160_5_6]	   = ch->u1PwrLimitVHT160[3] ?  (ch->u1PwrLimitVHT160[3] + TxOffset) : 0x3F;
+						txPowerSku[SKU_VHT160_7]	   = ch->u1PwrLimitVHT160[4] ?  (ch->u1PwrLimitVHT160[4] + TxOffset) : 0x3F;
+						txPowerSku[SKU_VHT160_8]	   = ch->u1PwrLimitVHT160[5] ?  (ch->u1PwrLimitVHT160[5] + TxOffset) : 0x3F;
+						txPowerSku[SKU_VHT160_9]	   = ch->u1PwrLimitVHT160[6] ?  (ch->u1PwrLimitVHT160[6] + TxOffset) : 0x3F;
+						txPowerSku[SKU_1SS_Delta]	   = ch->u1PwrLimitTxNSSDelta[0] ?  ch->u1PwrLimitTxNSSDelta[0] : 0x0;
+						txPowerSku[SKU_2SS_Delta]	   = ch->u1PwrLimitTxNSSDelta[1] ?  ch->u1PwrLimitTxNSSDelta[1] : 0x0;
+						txPowerSku[SKU_3SS_Delta]	   = ch->u1PwrLimitTxNSSDelta[2] ?  ch->u1PwrLimitTxNSSDelta[2] : 0x0;
+						txPowerSku[SKU_4SS_Delta]	   = ch->u1PwrLimitTxNSSDelta[3] ?  ch->u1PwrLimitTxNSSDelta[3] : 0x0;
+					}
 					for (i = 0; i < SKU_TOTAL_SIZE; i++)
 						MTWF_LOG(DBG_CAT_FW, DBG_SUBCAT_ALL, DBG_LVL_INFO, ("txPowerSku[%d]: 0x%x\n", i, txPowerSku[i]));
 

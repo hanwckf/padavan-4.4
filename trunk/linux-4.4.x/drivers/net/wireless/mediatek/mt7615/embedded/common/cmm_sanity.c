@@ -246,6 +246,12 @@ BOOLEAN PeerDelBAActionSanity(
 }
 
 
+static inline void copy_to_vie(UCHAR *ptr, USHORT *len_vie, UCHAR *ptr_eid, EID_STRUCT *eid)
+{
+	NdisMoveMemory(ptr + *len_vie, ptr_eid, eid->Len + 2);
+	*len_vie += (eid->Len + 2);
+}
+
 /*
     ==========================================================================
     Description:
@@ -374,8 +380,8 @@ BOOLEAN PeerBeaconAndProbeRspSanity(
 		case IE_SUPP_RATES:
 			if (pEid->Len <= MAX_LEN_OF_SUPPORTED_RATES) {
 				Sanity |= 0x2;
-				NdisMoveMemory(&ie_list->SupRate[0], pEid->Octet, pEid->Len);
 				ie_list->SupRateLen = pEid->Len;
+				parse_support_rate_ie((struct dev_rate_info *)&ie_list->SupRate[0], pEid);
 				/*
 				TODO: 2004-09-14 not a good design here, cause it exclude extra
 				rates from ScanTab. We should report as is. And filter out
@@ -751,18 +757,7 @@ BOOLEAN PeerBeaconAndProbeRspSanity(
 			break;
 
 		case IE_EXT_SUPP_RATES:
-			if (pEid->Len <= MAX_LEN_OF_SUPPORTED_RATES) {
-				NdisMoveMemory(&ie_list->ExtRate[0], pEid->Octet, pEid->Len);
-				ie_list->ExtRateLen = pEid->Len;
-				/*
-				TODO: 2004-09-14 not a good design here, cause it exclude extra rates
-				from ScanTab. We should report as is. And filter out unsupported
-				rates in MlmeAux
-				*/
-				/* Check against the supported rates*/
-				/* RTMPCheckRates(pAd, ExtRate, pExtRateLen,wdev->PhyMode);*/
-			}
-
+			parse_support_ext_rate_ie((struct dev_rate_info *)&ie_list->ExtRate[0], pEid);
 			break;
 
 		case IE_ERP:
@@ -804,12 +799,16 @@ BOOLEAN PeerBeaconAndProbeRspSanity(
 			/* There is no OUI for version anymore, check the group cipher OUI before copying*/
 			if (RTMPEqualMemory(pEid->Octet + 2, RSN_OUI, 3)) {
 				/* Copy to pVIE which will report to microsoft bssid list.*/
-				Ptr = (PUCHAR) pVIE;
-				NdisMoveMemory(Ptr + *LengthVIE, ptr_eid, pEid->Len + 2);
-				*LengthVIE += (pEid->Len + 2);
+				copy_to_vie((UCHAR *)pVIE, LengthVIE, ptr_eid, pEid);
 			}
 
 			break;
+
+		case IE_RSNXE:
+			/* Copy to pVIE which will report to microsoft bssid list.*/
+			copy_to_vie((UCHAR *)pVIE, LengthVIE, ptr_eid, pEid);
+			break;
+
 
 		case IE_QBSS_LOAD:
 			if (pEid->Len == 5) {

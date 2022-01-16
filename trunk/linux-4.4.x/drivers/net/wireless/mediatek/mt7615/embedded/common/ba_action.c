@@ -33,6 +33,9 @@ static inline void ba_enqueue_head(struct reordering_list *list, struct reorderi
 	list->qlen++;
 	mpdu_blk->next = list->next;
 	list->next = mpdu_blk;
+
+	if (!list->tail)
+		list->tail = mpdu_blk;
 }
 
 static inline void ba_enqueue_tail(struct reordering_list *list, struct reordering_mpdu *mpdu_blk)
@@ -59,9 +62,8 @@ static inline struct reordering_mpdu *ba_dequeue_head(struct reordering_list *li
 		mpdu_blk = list->next;
 		list->next = mpdu_blk->next;
 
-		if (!list->next)
-			if (!list->next)
-				mpdu_blk->next = NULL;
+		if (mpdu_blk == list->tail)
+			list->tail = NULL;
 	}
 
 	return mpdu_blk;
@@ -315,6 +317,9 @@ static BOOLEAN ba_reordering_mpdu_insertsorted(struct reordering_list *list, str
 			break;
 		}
 	}
+
+	if (*ppScan == NULL)
+		list->tail = mpdu;
 
 	mpdu->next = *ppScan;
 	*ppScan = mpdu;
@@ -1662,8 +1667,10 @@ static VOID ba_enqueue_reordering_packet(
 		}
 
 		NdisGetSystemUpTime(&Now32);
+		NdisAcquireSpinLock(&pBAEntry->RxReRingLock);
 		pBAEntry->LastIndSeqAtTimer = Now32;
 		pBAEntry->CurMpdu = NULL;
+		NdisReleaseSpinLock(&pBAEntry->RxReRingLock);
 	}
 }
 

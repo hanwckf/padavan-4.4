@@ -265,9 +265,17 @@ static NTSTATUS CmdApCliIfDown(IN PRTMP_ADAPTER pAd, IN PCmdQElmt CMDQelmt)
 	if (apcliEn == TRUE) {
 		pAd->ApCfg.ApCliTab[apidx].Enable = FALSE;
 		ApCliIfDown(pAd);
+		pAd->ApCfg.ApCliTab[apidx].Enable = apcliEn;
 	}
-
-	pAd->ApCfg.ApCliTab[apidx].Enable = apcliEn;
+#ifdef CONFIG_MAP_SUPPORT
+	else if ((pAd->ApCfg.ApCliTab[apidx].wdev.WscControl.WscConfMode != WSC_DISABLE)
+	&& (pAd->ApCfg.ApCliTab[apidx].wdev.WscControl.bWscTrigger) && IS_MAP_ENABLE(pAd)) {
+		MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
+			("MAP WPS CASE FIRST LINKDOWN THEN CONNECTION apidx=%u, apcliEn=%d\n", apidx, apcliEn));
+		ApCliIfDown(pAd);
+		pAd->ApCfg.ApCliTab[apidx].Enable = TRUE;
+	}
+#endif
 	return NDIS_STATUS_SUCCESS;
 }
 
@@ -517,6 +525,9 @@ static MT_CMD_TABL_T CMDHdlrTable[] = {
 #endif /* defined(RLM_CAL_CACHE_SUPPORT) || defined(PRE_CAL_TRX_SET2_SUPPORT) */ 	
 #ifdef CONFIG_AP_SUPPORT
 	{CMDTHRED_DOT11H_SWITCH_CHANNEL, Dot11HCntDownTimeoutAction},
+#ifdef CUSTOMER_DCC_FEATURE
+	{CMDTREAD_AP_SWITCH_CHANNEL, APChannelSwitch},
+#endif
 #endif /* CONFIG_AP_SUPPORT */
 #ifdef MT_DFS_SUPPORT
 	{CMDTHRED_DFS_CAC_TIMEOUT, DfsChannelSwitchTimeoutAction},
@@ -560,9 +571,19 @@ VOID CMDHandler(RTMP_ADAPTER *pAd)
 	NDIS_STATUS	NdisStatus = NDIS_STATUS_SUCCESS;
 	NTSTATUS		ntStatus;
 	CMDHdlr		Handler = NULL;
+	UINT32          process_cnt = 0;
 
 	while (pAd && pAd->CmdQ.size > 0) {
 		NdisStatus = NDIS_STATUS_SUCCESS;
+
+		/* For worst case, avoid process CmdQ too long which cause RCU_sched stall */
+		process_cnt++;
+		/* process_cnt-16 */
+		if ((!in_interrupt()) && (process_cnt >= (MAX_LEN_OF_CMD_QUEUE >> 4))) {
+			process_cnt = 0;
+			OS_SCHEDULE();
+		}
+
 		NdisAcquireSpinLock(&pAd->CmdQLock);
 		RTThreadDequeueCmd(&pAd->CmdQ, &cmdqelmt);
 		NdisReleaseSpinLock(&pAd->CmdQLock);

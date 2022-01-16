@@ -76,9 +76,30 @@ static VOID ap_tx_ok_update(struct _RTMP_ADAPTER *ad, struct wifi_dev *wdev, TX_
 	}
 
 #ifdef WHNAT_SUPPORT
+#ifdef MAP_R2
+/*if WHNAT enable, query from CR4 and then update it, but before returning update uc and mc counts*/
+	if (IS_MAP_ENABLE(ad) && IS_MAP_R2_ENABLE(ad)) {
+		if ((ad->CommonCfg.whnat_en) && (IS_ASIC_CAP(ad, fASIC_CAP_MCU_OFFLOAD))) {
+			BSS_STRUCT *mbss = txblk->pMbss;
+			if (mbss != NULL) {
+				mbss->TransmittedByteCount += txblk->SrcBufLen;
+				mbss->TxCount++;
+				if (IS_MULTICAST_MAC_ADDR(txblk->pSrcBufHeader)) {
+					mbss->mcPktsTx++;
+					mbss->mcBytesTx += txblk->SrcBufLen;
+				} else if (IS_BROADCAST_MAC_ADDR(txblk->pSrcBufHeader)) {
+					mbss->bcPktsTx++;
+					mbss->bcBytesTx += txblk->SrcBufLen;
+				}
+			}
+			return;
+		}
+	}
+#else
 	/*if WHNAT enable, query from CR4 and then update it*/
 	if ((ad->CommonCfg.whnat_en) && (IS_ASIC_CAP(ad, fASIC_CAP_MCU_OFFLOAD)))
 		return;
+#endif
 #endif /*WHNAT_SUPPORT*/
 
 	/* calculate Tx count and ByteCount per BSS */
@@ -95,17 +116,20 @@ static VOID ap_tx_ok_update(struct _RTMP_ADAPTER *ad, struct wifi_dev *wdev, TX_
 			if (IS_MULTICAST_MAC_ADDR(txblk->pSrcBufHeader)) {
 				mbss->mcPktsTx++;
 #ifdef MAP_R2
-				mbss->mcBytesTx += txblk->SrcBufLen;
+				if (IS_MAP_ENABLE(ad) && IS_MAP_R2_ENABLE(ad))
+					mbss->mcBytesTx += txblk->SrcBufLen;
 #endif
 			} else if (IS_BROADCAST_MAC_ADDR(txblk->pSrcBufHeader)) {
 				mbss->bcPktsTx++;
 #ifdef MAP_R2
-				mbss->bcBytesTx += txblk->SrcBufLen;
+				if (IS_MAP_ENABLE(ad) && IS_MAP_R2_ENABLE(ad))
+					mbss->bcBytesTx += txblk->SrcBufLen;
 #endif
 			} else {
 				mbss->ucPktsTx++;
 #ifdef MAP_R2
-				mbss->ucBytesTx += txblk->SrcBufLen;
+				if (IS_MAP_ENABLE(ad) && IS_MAP_R2_ENABLE(ad))
+					mbss->ucBytesTx += txblk->SrcBufLen;
 #endif
 			}
 		}
@@ -466,7 +490,7 @@ INT ap_tx_pkt_allowed(
 	}
 
 	if (tr_entry->PortSecured == WPA_802_1X_PORT_NOT_SECURED) {
-		if (!((IS_AKM_WPA_CAPABILITY_Entry(wdev) || (entry->bWscCapable)
+		if (!((IS_AKM_WPA_CAPABILITY_Entry(wdev) || (entry && entry->bWscCapable)
 #ifdef DOT1X_SUPPORT
 			   || (IS_IEEE8021X_Entry(wdev))
 #endif /* DOT1X_SUPPORT */
@@ -3347,7 +3371,8 @@ INT ap_rx_pkt_allowed(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, RX_BLK *pRxBlk)
 				*/
 
 #ifdef MAP_R2
-				wapp_handle_sta_disassoc(pAd, pEntry->wcid, REASON_DEAUTH_STA_LEAVING);
+				if (IS_MAP_ENABLE(pAd) && IS_MAP_R2_ENABLE(pAd))
+					wapp_handle_sta_disassoc(pAd, pMovedEntry->wcid, REASON_DEAUTH_STA_LEAVING);
 #endif
 
 				mac_entry_delete(pAd, pMovedEntry);
@@ -3533,6 +3558,32 @@ INT ap_rx_ps_handle(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, RX_BLK *pRxBlk)
 	return TRUE;
 }
 
+#ifdef MBSS_AS_WDS_AP_SUPPORT
+INT RxWdsPktFw(RTMP_ADAPTER *pAd, struct wifi_dev *bdst_wdev, struct wifi_dev *wdev, PNDIS_PACKET pPacket, UCHAR wcid)
+{
+	PNDIS_PACKET pForwardPacket;
+
+	pForwardPacket = DuplicatePacket(wdev->if_dev, pPacket);
+
+	if (pForwardPacket == NULL)
+		return FALSE;
+	RTMP_SET_PACKET_WDEV(pForwardPacket, bdst_wdev->wdev_idx);
+	RTMP_SET_PACKET_WCID(pForwardPacket, wcid);
+
+	RTMP_SET_PACKET_MOREDATA(pForwardPacket, FALSE);
+
+#ifdef REDUCE_TCP_ACK_SUPPORT
+			ReduceAckUpdateDataCnx(pAd, pForwardPacket);
+
+			if (ReduceTcpAck(pAd, pForwardPacket) == FALSE)
+#endif
+			{
+				send_data_pkt(pAd, wdev, pForwardPacket);
+			}
+	return TRUE;
+}
+#endif
+
 INT ap_rx_pkt_foward(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, PNDIS_PACKET pPacket)
 {
 	MAC_TABLE_ENTRY *pEntry = NULL;
@@ -3677,9 +3728,19 @@ INT ap_rx_pkt_foward(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, PNDIS_PACKET pPac
 			if ((pEntryAddr != NULL)
 				&& (!MAC_ADDR_EQUAL(pEntryAddr, pHeader802_3 + 6))) {
 				pEntry = MacTableLookup(pAd, pEntryAddr);
-				if (pEntry && (pEntry->Sst == SST_ASSOC) && pEntry->wdev && (!pEntry->wdev->bVLAN_Tag)) {
+				if (pEntry && (pEntry->Sst == SST_ASSOC) && pEntry->wdev
+#ifndef RTMP_UDMA_SUPPORT
+#ifndef ALLOW_INTER_STA_TRAFFIC_BTN_BSSID
+					&& (!pEntry->wdev->bVLAN_Tag)
+#endif
+#endif
+					) {
+#ifndef RTMP_UDMA_SUPPORT
+#ifndef ALLOW_INTER_STA_TRAFFIC_BTN_BSSID
 					to_os = FALSE;
 					to_air = TRUE;
+#endif
+#endif
 					dst_wdev = pEntry->wdev;
 					if (wdev == dst_wdev) {
 							/*
@@ -3769,34 +3830,43 @@ INT ap_rx_pkt_foward(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, PNDIS_PACKET pPac
 			if ((wdev == bdst_wdev) && bdst_wdev->wds_enable && (pMbss->StaCount <= 1))
 				continue;
 
+			if ((wdev == bdst_wdev) && (pMbss->StaCount <= 1))
+				continue;
+
 			if(wdev->VLAN_VID != bdst_wdev->VLAN_VID)
 				continue;
 
-			pForwardPacket = DuplicatePacket(wdev->if_dev, pPacket);
+			if (!bdst_wdev->wds_enable) {
+				wcid = bdst_wdev->tr_tb_idx;
+				if (!RxWdsPktFw(pAd, bdst_wdev, wdev, pPacket, wcid))
+					return to_os;
+			} else if (bdst_wdev->wds_enable) {
+				MAC_TABLE_ENTRY *pWdsEntry = NULL;
+				PUCHAR pEntryWdsAddr = NULL;
+				UINT32 i;
 
-			if (pForwardPacket == NULL)
-				return to_os;
-			wcid = bdst_wdev->tr_tb_idx;
-			RTMP_SET_PACKET_WDEV(pForwardPacket, bdst_wdev->wdev_idx);
-			RTMP_SET_PACKET_WCID(pForwardPacket, wcid);
-			RTMP_SET_PACKET_MOREDATA(pForwardPacket, FALSE);
+				pWdsEntry = MacTableLookup(pAd, pHeader802_3+6);
+				if (!pWdsEntry) {
+					pEntryWdsAddr = (PUCHAR)CliWds_ProxyLookup(pAd, pHeader802_3+6);
+					if (pEntryWdsAddr != NULL)
+						pEntry = MacTableLookup(pAd, pEntryWdsAddr);
+				}
 
+				for (i = 0; VALID_UCAST_ENTRY_WCID(pAd, i); i++) {
+					PMAC_TABLE_ENTRY pEntryWds = &pAd->MacTab.Content[i];
 
-#ifdef REDUCE_TCP_ACK_SUPPORT
-			ReduceAckUpdateDataCnx(pAd, pForwardPacket);
+					if ((pEntryWds->Sst != SST_ASSOC) && (pEntryWds->wdev != bdst_wdev))
+						continue;
 
-			if (ReduceTcpAck(pAd, pForwardPacket) == FALSE)
-#endif
-			{
-#ifndef A4_CONN
-				send_data_pkt(pAd, wdev, pForwardPacket);
-#else
-				RTMP_SET_PACKET_A4_FWDDATA(pForwardPacket, TRUE);
-				Ret = send_data_pkt(pAd, wdev, pForwardPacket);
-				/* send bc/mc frame back to the same bss */
-				if ((pHeader802_3[0] & 0x01) && (Ret == NDIS_STATUS_SUCCESS))
-					a4_send_clone_pkt(pAd, wdev->func_idx, pPacket, pHeader802_3 + MAC_ADDR_LEN);
-#endif /* A4_CONN */
+					if (pEntry && MAC_ADDR_EQUAL(pEntry->Addr, pEntryWds->Addr))
+						continue;
+
+						wcid = pEntryWds->wcid;
+
+					if (!RxWdsPktFw(pAd, bdst_wdev, wdev, pPacket, wcid))
+						return to_os;
+
+				}
 			}
 		}
 		if(to_os == TRUE)

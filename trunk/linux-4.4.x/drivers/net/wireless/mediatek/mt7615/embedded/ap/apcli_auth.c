@@ -758,39 +758,38 @@ VOID ApCliMlmeSaeAuthReqAction(RTMP_ADAPTER *pAd, MLME_QUEUE_ELEM *Elem)
 	UCHAR *pSae_cfg_group = NULL;
 	SAE_CFG *pSaeCfg = NULL;
 	APCLI_CTRL_MSG_STRUCT ApCliCtrlMsg;
-
-
 	pSaeCfg = &pAd->SaeCfg;
 
-		if ((ifIndex >= MAX_APCLI_NUM)
+	if ((ifIndex >= MAX_APCLI_NUM)
 #ifdef MAC_REPEATER_SUPPORT
-			&& (ifIndex < REPT_MLME_START_IDX)
+		&& (ifIndex < REPT_MLME_START_IDX)
 #endif /* MAC_REPEATER_SUPPORT */
-		   )
+	)
 		return;
 
 	NdisZeroMemory(if_addr, MAC_ADDR_LEN);
 #ifdef MAC_REPEATER_SUPPORT
-		if (ifIndex >= REPT_MLME_START_IDX) {
-			CliIdx = ifIndex - REPT_MLME_START_IDX;
-			pReptEntry = &pAd->ApCfg.pRepeaterCliPool[CliIdx];
-			pSae_cfg_group = &pReptEntry->sae_cfg_group;
-			ifIndex = pReptEntry->wdev->func_idx;
-			apcli_entry = &pAd->ApCfg.ApCliTab[ifIndex];
-			pCurrState = &pReptEntry->AuthCurrState;
-			COPY_MAC_ADDR(if_addr, pReptEntry->CurrentAddress);
-		} else
+	if (ifIndex >= REPT_MLME_START_IDX) {
+		CliIdx = ifIndex - REPT_MLME_START_IDX;
+		pReptEntry = &pAd->ApCfg.pRepeaterCliPool[CliIdx];
+		pSae_cfg_group = &pReptEntry->sae_cfg_group;
+		ifIndex = pReptEntry->wdev->func_idx;
+		apcli_entry = &pAd->ApCfg.ApCliTab[ifIndex];
+		pCurrState = &pReptEntry->AuthCurrState;
+		COPY_MAC_ADDR(if_addr, pReptEntry->CurrentAddress);
+	} else
 #endif /* MAC_REPEATER_SUPPORT */
-		{
-			apcli_entry = &pAd->ApCfg.ApCliTab[ifIndex];
-			pSae_cfg_group = &apcli_entry->sae_cfg_group;
-			pCurrState = &pAd->ApCfg.ApCliTab[ifIndex].AuthCurrState;
-			COPY_MAC_ADDR(if_addr, pAd->ApCfg.ApCliTab[ifIndex].wdev.if_addr);
-		}
+	{
+		apcli_entry = &pAd->ApCfg.ApCliTab[ifIndex];
+		pSae_cfg_group = &apcli_entry->sae_cfg_group;
+		pCurrState = &pAd->ApCfg.ApCliTab[ifIndex].AuthCurrState;
+		COPY_MAC_ADDR(if_addr, pAd->ApCfg.ApCliTab[ifIndex].wdev.if_addr);
+	}
 	MTWF_LOG(DBG_CAT_SEC, CATSEC_SAE, DBG_LVL_OFF, ("==>%s()\n", __func__));
 
 	if (sae_auth_init(pAd, &pAd->SaeCfg, if_addr, AuthReq->Addr,
-					  apcli_entry->MlmeAux.Bssid, apcli_entry->wdev.SecConfig.PSK, *pSae_cfg_group))
+				apcli_entry->MlmeAux.Bssid, apcli_entry->wdev.SecConfig.PSK,
+				apcli_entry->wdev.SecConfig.pt_list, *pSae_cfg_group))
 		*pCurrState = AUTH_WAIT_SAE;
 	else {
 		*pCurrState = AUTH_REQ_IDLE;
@@ -822,17 +821,18 @@ VOID ApCliMlmeSaeAuthRspAction(RTMP_ADAPTER *pAd, MLME_QUEUE_ELEM *Elem)
 	USHORT seq;
 	USHORT status;
 	UCHAR *pmk;
+	struct wifi_dev *wdev = Elem->wdev;
 	USHORT ifIndex = (USHORT)(Elem->Priv);
 	PULONG pAuthCurrState = NULL;
 	APCLI_CTRL_MSG_STRUCT ApCliCtrlMsg;
 	APCLI_STRUCT *apcli_entry;
+	UCHAR is_h2e_connect;
 #ifdef MAC_REPEATER_SUPPORT
 	REPEATER_CLIENT_ENTRY *pReptEntry = NULL;
 #endif
 #if defined(MAC_REPEATER_SUPPORT) || defined(FAST_EAPOL_WAR)
 	UCHAR CliIdx = 0xFF;
 #endif /* MAC_REPEATER_SUPPORT */
-
 
 	if ((ifIndex >= MAX_APCLI_NUM)
 #ifdef MAC_REPEATER_SUPPORT
@@ -856,11 +856,14 @@ VOID ApCliMlmeSaeAuthRspAction(RTMP_ADAPTER *pAd, MLME_QUEUE_ELEM *Elem)
 
 	NdisMoveMemory(&seq,    &Fr->Octet[2], 2);
 	NdisMoveMemory(&status, &Fr->Octet[4], 2);
-
-
 	if (FALSE == sae_handle_auth(pAd, &pAd->SaeCfg, Elem->Msg, Elem->MsgLen,
 						  Elem->wdev->SecConfig.PSK,
-						  seq, status, &pmk)){
+						  wdev->SecConfig.pt_list,
+						  &wdev->SecConfig.sae_cap,
+#ifdef DOT11_SAE_PWD_ID_SUPPORT
+						  &Elem->wdev->SecConfig.pwd_id_list_head,
+#endif
+						  seq, status, &pmk, &is_h2e_connect)) {
 
 		*pAuthCurrState = APCLI_AUTH_REQ_IDLE;
 	/*If SAE instance has been deleted*/

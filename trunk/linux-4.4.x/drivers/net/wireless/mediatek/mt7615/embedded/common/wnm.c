@@ -1589,12 +1589,19 @@ static VOID ReceiveBTMRsp(IN PRTMP_ADAPTER pAd,
 	/* Send BTM confirm to daemon */
 	VarLen = Elem->MsgLen -
 		(sizeof(HEADER_802_11) + 1 + sizeof(WNMFrame->u.BTM_RSP)) + 1;
-
+#ifdef WAPP_SUPPORT
+	SendBTMConfirmEvent(NetDev,
+						WNMFrame->Hdr.Addr2,
+						(PUCHAR)&(WNMFrame->u.BTM_RSP.Variable),
+						VarLen,
+						RA_WEXT);
+#else
 	SendBTMConfirmEvent(NetDev,
 						WNMFrame->Hdr.Addr2,
 						(PUCHAR)&(WNMFrame->u.BTM_RSP.DialogToken),
 						VarLen,
 						RA_WEXT);
+#endif
 #else
 		VarLen = Elem->MsgLen - (sizeof(HEADER_802_11) + 1 + sizeof(WNMFrame->u.BTM_RSP));
 

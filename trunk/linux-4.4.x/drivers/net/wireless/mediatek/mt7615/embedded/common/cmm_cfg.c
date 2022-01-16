@@ -30,6 +30,9 @@
 #ifdef TR181_SUPPORT
 #include "hdev/hdev_basic.h"
 #endif
+#ifdef MAP_R2
+#include "map.h"
+#endif
 
 static BOOLEAN RT_isLegalCmdBeforeInfUp(RTMP_STRING *SetCmd);
 RTMP_STRING *wdev_type2str(int type);
@@ -1395,7 +1398,7 @@ INT RTMP_COM_IoctlHandle(
 									pAd->ApCfg.RssiSample.AvgRssi[1],
 									pAd->ApCfg.RssiSample.AvgRssi[2]
 #if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT)
-									, pMacEntry->RssiSample.AvgRssi[3]
+									, ((pMacEntry) ? pMacEntry->RssiSample.AvgRssi[3] : -127)
 #endif
 									) -
 						RTMPMinSnr(pAd, pAd->ApCfg.RssiSample.AvgSnr[0],
@@ -4113,6 +4116,10 @@ INT SetPowerDropCtrl(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 	CHAR	*value = 0;
 	UINT8 	ucPowerDrop = 0;
 	INT     status = TRUE;
+#ifdef MGMT_TXPWR_CTRL
+	INT     ret = FALSE;
+	BSS_STRUCT *pMbss = NULL;
+#endif
 	UINT8   ucBandIdx = 0;
 	struct  wifi_dev *wdev;
 #ifdef CONFIG_ATE
@@ -4175,7 +4182,39 @@ INT SetPowerDropCtrl(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 #endif /* DBDC_MODE */
 #endif /* CONFIG_ATE */
 
+
+#ifdef MGMT_TXPWR_CTRL
+	ret = TxPowerDropCtrl(pAd, ucPowerDrop, ucBandIdx);
+	if (!ret) {
+		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("ERROR: TxPowerDropCtrl() FAILED!\n"));
+		return FALSE;
+	}
+
+	for (i = 0; i < pAd->ApCfg.BssidNum; i++) {
+		pMbss = &pAd->ApCfg.MBSSID[i];
+		wdev = &pMbss->wdev;
+		if (HcGetBandByWdev(wdev) != ucBandIdx)
+			continue;
+
+		/*clear old data for iwpriv set channel*/
+		wdev->bPwrCtrlEn = FALSE;
+		wdev->TxPwrDelta = 0;
+		/* Get EPA info by Tx Power info cmd*/
+		pAd->ApCfg.fEpaReq = TRUE;
+		TxPowerShowInfo(pAd, 0, ucBandIdx);
+
+		/* Update beacon/probe TxPwr wrt profile param */
+		if (wdev->MgmtTxPwr) {
+			/* wait until TX Pwr event rx*/
+			RtmpusecDelay(50);
+			update_mgmt_frame_power(pAd, wdev);
+		}
+
+	}
+	return ret;
+#else
 	return TxPowerDropCtrl(pAd, ucPowerDrop, ucBandIdx);
+#endif
 }
 
 INT SetBfBackoffCtrl(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
@@ -6699,17 +6738,17 @@ INT set_hnat_register(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 		if (pAd->wdev_list[idx]) {
 			wdev = pAd->wdev_list[idx];
 			MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_INFO, ("\tWDEV %02d:, Name:%s, Wdev(list) Idx:%d\n",
-					 idx, RTMP_OS_NETDEV_GET_DEVNAME(wdev->if_dev), wdev->wdev_idx));
+						 idx, RTMP_OS_NETDEV_GET_DEVNAME(wdev->if_dev), wdev->wdev_idx));
 			MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_INFO, ("\t\t Idx:%d\n", RtmpOsGetNetIfIndex(wdev->if_dev)));
 #if defined(CONFIG_FAST_NAT_SUPPORT)
 
-			if (ppe_dev_unregister_hook != NULL &&
-				ppe_dev_register_hook != NULL) {
-				if (reg_en)
-					ppe_dev_register_hook(wdev->if_dev);
-				else
-					ppe_dev_unregister_hook(wdev->if_dev);
-			}
+				if (ppe_dev_unregister_hook != NULL &&
+					ppe_dev_register_hook != NULL) {
+					if (reg_en)
+						ppe_dev_register_hook(wdev->if_dev);
+					else
+						ppe_dev_unregister_hook(wdev->if_dev);
+				}
 #endif /*CONFIG_FAST_NAT_SUPPORT*/
 		} else
 			MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_INFO, ("\n"));
@@ -8186,14 +8225,14 @@ INT set_mgmt_frame_power(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 
 	if (*arg == '.') { /* handle .5 arg value*/
 		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("unable to update tx pwr %s\n", arg));
-		return TRUE;
+		return FALSE;
 	}
 
 	tmp = rstrtok(arg, ".");
 
 	if (!tmp) {
 		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("Please enter valid tx pwr\n"));
-		return;
+		return FALSE;
 	}
 
 	value = os_str_tol(tmp, 0, 10);
@@ -8209,7 +8248,7 @@ INT set_mgmt_frame_power(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 			return TRUE;
 		}
 	}
-
+	wdev->MgmtTxPwrBak = wdev->MgmtTxPwr;
 	wdev->MgmtTxPwr = target_pwr;
 	update_mgmt_frame_power(pAd, wdev);
 
@@ -8247,9 +8286,15 @@ INT update_mgmt_frame_power(RTMP_ADAPTER *pAd, struct wifi_dev *wdev)
 		if (OpMode == MODE_CCK) {
 			RTMP_IO_READ32(pAd, FPR3, &cr_value);
 			wdev->TxBasePwr = cr_value & CCK0_FRAME_POWER0_DBM_MASK;
+			wdev->TxBasePwr |= ((wdev->TxBasePwr & 0x40) << 1);
+			if (pAd->ApCfg.fgEPA[BAND0])
+				wdev->TxBasePwr += pAd->ApCfg.EpaGain[BAND0];
 		} else if (OpMode == MODE_OFDM) {
 			RTMP_IO_READ32(pAd, FPR0, &cr_value);
 			wdev->TxBasePwr = cr_value & LG_OFDM0_FRAME_POWER0_DBM_MASK;
+			wdev->TxBasePwr |= ((wdev->TxBasePwr & 0x40) << 1);
+			if (pAd->ApCfg.fgEPA[BAND1])
+				wdev->TxBasePwr += pAd->ApCfg.EpaGain[BAND1];
 		} else {
 			MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
 				("[%s] Invalid mlme rate settings...exit!!!\n", __func__));
@@ -8259,7 +8304,8 @@ INT update_mgmt_frame_power(RTMP_ADAPTER *pAd, struct wifi_dev *wdev)
 
 	delta_pwr = target_pwr - wdev->TxBasePwr;
 
-	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("[%s] Target_Pwr=%d.%d Base_Pwr=%d.%d delta_Pwr=%d.%d!!!\n",
+
+	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("[%s] Target_Pwr=%d.%d Base_Pwr=%d.%d delta_Pwr=%d.%d!!!\n",
 		__func__, target_pwr/2, (target_pwr%2 ? 5:0), wdev->TxBasePwr/2,
 		(wdev->TxBasePwr%2 ? 5:0), delta_pwr/2, (delta_pwr%2 ? 5:0)));
 
@@ -8268,9 +8314,10 @@ INT update_mgmt_frame_power(RTMP_ADAPTER *pAd, struct wifi_dev *wdev)
 		wdev->bPwrCtrlEn = TRUE;
 		wdev->TxPwrDelta = delta_pwr;
 		wtbl_update_pwr_offset(pAd, wdev);
+		wdev->MgmtTxPwrBak = wdev->MgmtTxPwr;
 	} else {
 		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("[%s] unable to adjust target pwr\n", __func__));
-		return TRUE;
+		wdev->MgmtTxPwr = wdev->MgmtTxPwrBak;
 	}
 
 exit:
@@ -8306,9 +8353,15 @@ INT show_mgmt_frame_power(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 		if (wdev->channel <= 14) {
 			RTMP_IO_READ32(pAd, FPR3, &cr_value);
 			Tx_Base_pwr = cr_value & CCK0_FRAME_POWER0_DBM_MASK;
+			Tx_Base_pwr |= ((Tx_Base_pwr & 0x40) << 1);
+			if (pAd->ApCfg.fgEPA[BAND0])
+				Tx_Base_pwr += pAd->ApCfg.EpaGain[BAND0];
 		} else {
 			RTMP_IO_READ32(pAd, FPR0, &cr_value);
 			Tx_Base_pwr = cr_value & LG_OFDM0_FRAME_POWER0_DBM_MASK;
+			Tx_Base_pwr |= ((Tx_Base_pwr & 0x40) << 1);
+			if (pAd->ApCfg.fgEPA[BAND1])
+				Tx_Base_pwr += pAd->ApCfg.EpaGain[BAND1];
 		}
 	} else {
 		Tx_Base_pwr = wdev->TxBasePwr;
@@ -8322,4 +8375,35 @@ INT show_mgmt_frame_power(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 	return TRUE;
 }
 #endif
+
+#ifdef MLME_MULTI_QUEUE_SUPPORT
+INT set_mlme_queue_ration(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
+{
+	RTMP_STRING *str1  = NULL;
+	RTMP_STRING *str2  = NULL;
+	UCHAR hp_q_ration = RATION_OF_MLME_HP_QUEUE;
+	UCHAR np_q_ration = RATION_OF_MLME_QUEUE;
+	UCHAR lp_q_ration = RATION_OF_MLME_LP_QUEUE;
+	if (arg == NULL || strlen(arg) == 0)
+		goto error;
+	str1 = strsep(&arg, "-");
+	str2 = strsep(&arg, "-");
+	if (str1 == NULL || str2 == NULL ||  arg == NULL)
+		goto error;
+	hp_q_ration = os_str_tol(str1, 0, 10);
+	np_q_ration = os_str_tol(str2, 0, 10);
+	lp_q_ration = os_str_tol(arg, 0, 10);
+	pAd->Mlme.HPQueue.Ration = hp_q_ration;
+	pAd->Mlme.Queue.Ration = np_q_ration;
+	pAd->Mlme.LPQueue.Ration = lp_q_ration;
+	MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF,
+		("%s(): [hp_q_ration]-[np_q_ration]-[lp_q_ration] = %d-%d-%d\n",
+		__func__, hp_q_ration, np_q_ration, lp_q_ration));
+	return TRUE;
+error:
+	MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
+		("%s(): Invalid parameter, format: [hp_q_ration]-[np_q_ration]-[lp_q_ration] \n", __func__));
+	return FALSE;
+}
+#endif /*MLME_MULTI_QUEUE_SUPPORT*/
 

@@ -189,6 +189,7 @@ static VOID DEVEXIT mt_rbus_remove(struct pci_dev *pci_dev)
 {
 	struct net_device *net_dev = pci_get_drvdata(pci_dev);
 	RTMP_ADAPTER *pAd;
+	PUINT8 csr_addr = NULL;
 
 	if (net_dev == NULL)
 		return;
@@ -197,8 +198,10 @@ static VOID DEVEXIT mt_rbus_remove(struct pci_dev *pci_dev)
 	GET_PAD_FROM_NET_DEV(pAd, net_dev);
 
 	if (pAd != NULL) {
+		csr_addr = pAd->PciHif.CSRBaseAddress;
 		RtmpPhyNetDevExit(pAd, net_dev);
 		RtmpRaDevCtrlExit(pAd);
+		iounmap(csr_addr);
 	} else
 		RtmpOSNetDevDetach(net_dev);
 

@@ -65,7 +65,8 @@ INT wapp_send_bss_state_change(
 
 INT wapp_send_ch_change_rsp(
 	PRTMP_ADAPTER pAd,
-	MT_SWITCH_CHANNEL_CFG SwChCfg
+	struct wifi_dev *wdev,
+	UINT8 ch
 );
 
 INT wapp_send_apcli_association_change(
@@ -117,7 +118,8 @@ VOID wapp_send_cac_period_event(
 	IN PRTMP_ADAPTER pAd,
 	IN UINT32 ifindex,
 	IN UCHAR channel,
-	IN UCHAR cac_enable);
+	IN UCHAR cac_enable,
+	IN USHORT cac_time);
 #endif
 VOID wapp_bss_load_check(
 	struct _RTMP_ADAPTER *ad);
@@ -225,6 +227,9 @@ void wext_send_dpp_frame_tx_status(PRTMP_ADAPTER pAd, struct wifi_dev *wdev,
 				BOOLEAN tx_error, UINT16 seq_no);
 
 #endif /* DPP_SUPPORT */
+#ifdef MAP_R2
+VOID Update_Mib_Bucket_for_map(RTMP_ADAPTER *pAd);
+#endif
 #endif /* WAPP_SUPPORT */
 #endif /* _WAPP_H_ */
 

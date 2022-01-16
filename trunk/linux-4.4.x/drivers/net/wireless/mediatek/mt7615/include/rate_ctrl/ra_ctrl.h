@@ -661,6 +661,11 @@ typedef struct _CMD_SET_MAX_PHY_RATA_T {
 	UINT_8  aucReserve[2];
 } CMD_SET_MAX_PHY_RATA, *P_CMD_SET_MAX_PHY_RATA;
 
+typedef struct _EXT_CMD_SET_VHT_IN_2G_T {
+	BOOL fgEnVhtForHtIn2G;
+	UINT_8 au1Reserved[3];
+} EXT_CMD_SET_VHT_IN_2G_T, *P_EXT_CMD_SET_VHT_IN_2G_T;
+
 #ifdef MIN_PHY_RATE_SUPPORT
 typedef struct _CMD_SET_MIN_PHY_RATE_T {
 	UINT_8 ucBssidIdx;

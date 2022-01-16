@@ -520,7 +520,11 @@ BOOLEAN CFG80211DRV_OpsSetChannel(RTMP_ADAPTER *pAd, VOID *pData)
 		BandIdx = HcGetBandByWdev(wdev);
 		pChCtrl = hc_get_channel_ctrl(pAd->hdev_ctrl, BandIdx);
 		hc_set_ChCtrlChListStat(pChCtrl, CH_LIST_STATE_NONE);
+#ifdef EXT_BUILD_CHANNEL_LIST
+		BuildChannelListEx(pAd, wdev);
+#else
 		BuildChannelList(pAd, wdev);
+#endif
 		RTMPSetPhyMode(pAd, wdev, wdev->PhyMode);
 		RfIC = RFIC_5GHZ;
 	} else {
@@ -529,7 +533,11 @@ BOOLEAN CFG80211DRV_OpsSetChannel(RTMP_ADAPTER *pAd, VOID *pData)
 		BandIdx = HcGetBandByWdev(wdev);
 		pChCtrl = hc_get_channel_ctrl(pAd->hdev_ctrl, BandIdx);
 		hc_set_ChCtrlChListStat(pChCtrl, CH_LIST_STATE_NONE);
+#ifdef EXT_BUILD_CHANNEL_LIST
+		BuildChannelListEx(pAd, wdev);
+#else
 		BuildChannelList(pAd, wdev);
+#endif
 		RTMPSetPhyMode(pAd, wdev, wdev->PhyMode);
 		RfIC = RFIC_24GHZ;
 	}

@@ -141,6 +141,12 @@ BOOLEAN HSIPv4Check(
 
 	wdev = pAd->wdev_list[wdev_idx];
 	ops = wdev->wdev_ops;
+
+	if (wdev->wdev_type == WDEV_TYPE_WDS) {
+	    /* Return if WDEV Type is WDS */
+	    return TRUE;
+	}
+
 	ASSERT(wdev->func_idx < pAd->ApCfg.BssidNum);
 	pMbss =  &pAd->ApCfg.MBSSID[wdev->func_idx];
 

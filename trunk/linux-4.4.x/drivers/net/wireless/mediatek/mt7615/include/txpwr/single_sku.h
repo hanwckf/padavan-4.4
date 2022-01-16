@@ -249,10 +249,7 @@ MtBfBackOffUnloadParam(
     RTMP_ADAPTER *pAd
     );
 
-VOID
-MtFillSkuParam(
-    RTMP_ADAPTER *pAd, UINT8 channel, UCHAR Band, UCHAR TxStream, UINT8 *txPowerSku
-    );
+VOID MtFillSkuParam(RTMP_ADAPTER *pAd, UINT8 channel, UCHAR Band, UCHAR TxStream, UINT8 *txPowerSku, UINT8 update_ctrl_ch_pwr);
 
 VOID
 MtFillBackoffParam(

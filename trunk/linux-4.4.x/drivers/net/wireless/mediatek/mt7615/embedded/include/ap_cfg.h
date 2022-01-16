@@ -268,6 +268,10 @@ struct apcfg_parameters {
 	UCHAR ext_channel;
 };
 
+INT Set_Quick_Channel_Switch_En_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg);
+#ifdef CONFIG_AP_SUPPORT
+void ap_phy_rrm_init_byRf(RTMP_ADAPTER *pAd, struct wifi_dev *wdev);
+#endif
 #ifdef CONFIG_MAP_SUPPORT
 INT Set_Bh_Bss_Proc(
 	PRTMP_ADAPTER pAd,
@@ -284,7 +288,7 @@ INT Set_Map_Channel_Proc(
 INT Set_Map_Channel_En_Proc(
 	RTMP_ADAPTER *pAd,
 	RTMP_STRING *arg);
-void update_ch_by_wdev(RTMP_ADAPTER *pAd, struct wifi_dev *wdev);
+VOID MacTableResetNonMapWdev(RTMP_ADAPTER *pAd, struct wifi_dev *wdev);
 
 #ifdef MAP_R2
 INT Set_Map_Bh_Primary_Vid_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg);
@@ -300,6 +304,17 @@ INT Set_MapTS_Proc(
 	PRTMP_ADAPTER pAd,
 	char *arg);
 #endif
+#ifdef MAP_BL_SUPPORT
+INT Set_BlackList_Add(
+	PRTMP_ADAPTER pAd,
+	char *arg);
+INT Set_BlackList_Del(
+	PRTMP_ADAPTER pAd,
+	char *arg);
+INT Set_BlackList_Show(
+	PRTMP_ADAPTER pAd,
+	char *arg);
+#endif /*  MAP_BL_SUPPORT */
 #endif /* CONFIG_MAP_SUPPORT */
 
 #ifdef CONFIG_RA_PHY_RATE_SUPPORT

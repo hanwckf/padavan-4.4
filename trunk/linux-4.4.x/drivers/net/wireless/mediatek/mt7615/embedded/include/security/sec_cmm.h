@@ -11,6 +11,10 @@
 
 #include "security/owe_cmm.h"
 
+#ifdef DOT11_SAE_SUPPORT
+#include "security/sae_cmm.h"
+#endif /* DOT11_SAE_SUPPORT */
+
 /* Key Related definitions */
 #define SEC_SHARE_KEY_NUM 4
 #define SEC_KEY_NUM SEC_SHARE_KEY_NUM
@@ -305,6 +309,7 @@ typedef enum _SEC_CIPHER_MODE {
 								  || IS_AKM_FT_WPA2PSK((_Entry)->SecConfig.AKMMap) \
 								  || IS_AKM_WPA3PSK((_Entry)->SecConfig.AKMMap) \
 								  || IS_AKM_DPP((_Entry)->SecConfig.AKMMap) \
+								  || IS_AKM_FT_SAE_SHA256((_Entry)->SecConfig.AKMMap) \
 								  || IS_AKM_OWE((_Entry)->SecConfig.AKMMap))
 #endif /* DOT11R_FT_SUPPORT */
 
@@ -458,11 +463,24 @@ typedef struct _SECURITY_CONFIG {
 	UCHAR RSNE_EID[SEC_RSNIE_NUM][1];
 	UCHAR RSNE_Len[SEC_RSNIE_NUM];
 	UCHAR RSNE_Content[SEC_RSNIE_NUM][MAX_LEN_OF_RSNIE];
+	UCHAR rsnxe_content[MAX_LEN_OF_RSNXEIE];
+	UCHAR rsnxe_len;
+
 	UCHAR LastGroupKeyId;
 	UCHAR LastGTK[LEN_MAX_GTK];
 #ifdef CONFIG_OWE_SUPPORT
 	OWE_INFO owe;
 #endif /*CONFIG_OWE_SUPPORT*/
+#ifdef DOT11_SAE_SUPPORT
+#ifdef DOT11_SAE_PWD_ID_SUPPORT
+	UCHAR pwd_id_only;
+	UCHAR pwd_id_cnt;
+	struct pwd_id_list pwd_id_list_head;
+#endif
+	struct sae_capability sae_cap;
+	UCHAR is_h2e_connect;
+	struct sae_pt *pt_list;
+#endif
 } SECURITY_CONFIG, *PSECURITY_CONFIG;
 
 

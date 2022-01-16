@@ -32,6 +32,7 @@
 #include "rtmp_type.h"
 #include "security/wpa_cmm.h"
 
+#define MAX_LEN_OF_CMD_QUEUE            256
 
 typedef struct _CmdQElmt {
 	UINT command;
@@ -117,6 +118,7 @@ enum {
 #endif /* defined(RLM_CAL_CACHE_SUPPORT) || defined(PRE_CAL_TRX_SET2_SUPPORT) */
 
 	CMDTHRED_DOT11H_SWITCH_CHANNEL,
+	CMDTREAD_AP_SWITCH_CHANNEL,
 	CMDTHRED_MAC_TABLE_DEL,
 #ifdef MT_DFS_SUPPORT
 	CMDTHRED_DFS_CAC_TIMEOUT,

@@ -816,12 +816,13 @@ VOID AsicSetSlotTime(
 	UCHAR BandIdx;
 #ifdef CONFIG_AP_SUPPORT
 	IF_DEV_CONFIG_OPMODE_ON_AP(pAd) {
-		if (bUseShortSlotTime)
+		if (bUseShortSlotTime) {
 			OPSTATUS_SET_FLAG(pAd, fOP_STATUS_SHORT_SLOT_INUSED);
-		else
+			SlotTime = 9;
+		} else {
 			OPSTATUS_CLEAR_FLAG(pAd, fOP_STATUS_SHORT_SLOT_INUSED);
-
-		SlotTime = (bUseShortSlotTime) ? 9 : wdev->SlotTimeValue;
+			SlotTime = (wdev != NULL) ? wdev->SlotTimeValue : 20;
+		}
 	}
 #endif
 	BandIdx = HcGetBandByChannel(pAd, channel);

@@ -24,6 +24,9 @@
 #define IS_MAP_TURNKEY_ENABLE(pAd) \
 		((pAd->MAPMode == MAP_TURNKEY))
 
+#define IS_MAP_BS_ENABLE(pAd) \
+	((pAd->MAPMode == MAP_BS_2_0))
+
 #define VEND_IE_TYPE 221
 
 #ifdef MAP_R2
@@ -72,6 +75,7 @@ struct GNU_PACKED cac_capability_lib
 	unsigned char active_cac;
 	unsigned char ch_num;
 	unsigned int remain_time;
+	unsigned char cac_mode;
 };
 #endif
 
@@ -204,6 +208,31 @@ void FireExtraProbeReq(
 	struct wifi_dev *wdev,
 	UCHAR *desSsid,
 	UCHAR desSsidLen);
+
+#ifdef MAP_BL_SUPPORT
+/* BS2.0 Blacklisting Support */
+typedef struct _BS_BLACKLIST_ENTRY {
+	struct _BS_BLACKLIST_ENTRY *pNext;
+	UCHAR addr[MAC_ADDR_LEN];
+} BS_BLACKLIST_ENTRY, *PBS_BLACKLIST_ENTRY;
+
+VOID map_blacklist_add(
+	IN  PLIST_HEADER pBlackList,
+	IN  PUCHAR pMacAddr);
+
+VOID map_blacklist_del(
+	IN  PLIST_HEADER pBlackList,
+	IN  PUCHAR pMacAddr);
+
+VOID map_blacklist_show(
+	IN PRTMP_ADAPTER pAd,
+	IN UCHAR apidx);
+
+BOOLEAN map_is_entry_bl(
+	PRTMP_ADAPTER pAd,
+	UCHAR *pAddr,
+	UCHAR apidx);
+#endif /*  MAP_BL_SUPPORT */
 
 #ifdef A4_CONN
 BOOLEAN map_a4_peer_enable(

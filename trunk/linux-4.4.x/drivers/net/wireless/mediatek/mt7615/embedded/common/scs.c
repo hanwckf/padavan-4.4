@@ -146,7 +146,7 @@ VOID SmartCarrierSense_Gen3(RTMP_ADAPTER *pAd)
 					MTWF_LOG(DBG_CAT_HW, DBG_SUBCAT_ALL, DBG_LVL_INFO, ("Disable SCS due to RtsCount=%d RtsRtyCount=%d Main_Tx=%d\n", pSCSCtrl->RtsCount[BandIndex], pSCSCtrl->RtsRtyCount[BandIndex], Main_Tx));
 					WriteDefault = TRUE;
 				}
-		} else {
+			} else if (pSCSCtrl->SCSEnable[BandIndex] != SCS_MANUAL) {
 			WriteDefault = TRUE;
 		}
 		if (WriteDefault) {

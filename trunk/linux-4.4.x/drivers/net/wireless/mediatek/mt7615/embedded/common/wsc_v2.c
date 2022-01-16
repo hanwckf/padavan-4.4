@@ -107,6 +107,40 @@ VOID WscAddEntryToAclList(
 	}
 }
 
+VOID WscDeleteEntryFromAclList(
+	IN  PRTMP_ADAPTER pAd,
+	IN  INT	ApIdx,
+	IN  PUCHAR pMacAddr)
+{
+	PRT_802_11_ACL	pACL = NULL;
+	INT i;
+
+	pACL = &pAd->ApCfg.MBSSID[ApIdx].AccessControlList;
+	if ((pACL->Policy == 0) ||
+		(pACL->Policy == 1))
+		return;
+
+	if (pACL->Num == 0) {
+		MTWF_LOG(DBG_CAT_SEC, CATSEC_WPS, DBG_LVL_WARN, ("The AccessControlList is empty!\n"));
+		return;
+	}
+
+	for (i = 0; i < pACL->Num; i++) {
+		if (NdisEqualMemory(pACL->Entry[i].Addr, pMacAddr, MAC_ADDR_LEN)) {
+			break;
+		}
+	}
+
+	if (i >= pACL->Num) {
+		MTWF_LOG(DBG_CAT_SEC, CATSEC_WPS, DBG_LVL_TRACE, ("No matching entry!\n"));
+		return;
+	}
+
+	NdisMoveMemory(pACL->Entry[i].Addr, pACL->Entry[pACL->Num-1].Addr, MAC_ADDR_LEN);
+	NdisZeroMemory(pACL->Entry[pACL->Num-1].Addr, MAC_ADDR_LEN);
+	pACL->Num--;
+}
+
 VOID WscSetupLockTimeout(
 	IN PVOID SystemSpecific1,
 	IN PVOID FunctionContext,

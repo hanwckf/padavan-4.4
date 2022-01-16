@@ -244,8 +244,10 @@ static INT multi_profile_read(CHAR *fname, CHAR *buf)
 
 		if (retval > 0)
 			retval = NDIS_STATUS_SUCCESS;
-		else
+		else {
 			MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("Read file \"%s\" failed(errCode=%d)!\n", fname, retval));
+			retval = NDIS_STATUS_FAILURE;
+		}
 	} else
 		retval = NDIS_STATUS_FAILURE;
 
@@ -532,6 +534,16 @@ static INT multi_profile_merge_security(
 	multi_profile_merge_separate("PMFMFPR", buf1, buf2, final);
 	/*PMFSHA256*/
 	multi_profile_merge_separate("PMFSHA256", buf1, buf2, final);
+#ifdef DOT11_SAE_SUPPORT
+#ifdef DOT11_SAE_PWD_ID_SUPPORT
+	/*PWDID*/
+	multi_profile_merge_increase(mpf, 1, "PWDID", buf1, buf2, final);
+	/*PWDIDR*/
+	multi_profile_merge_increase(mpf, 1, "PWDIDR", buf1, buf2, final);
+#endif
+	/*PweMethod*/
+	multi_profile_merge_separate("PweMethod", buf1, buf2, final);
+#endif
 	return NDIS_STATUS_SUCCESS;
 }
 
@@ -2029,6 +2041,15 @@ static INT multi_profile_merge_ant_ctrl(
 	return NDIS_STATUS_SUCCESS;
 }
 #endif /* ANTENNA_CONTROL_SUPPORT */
+static INT multi_profile_merge_quick_channel_switch(
+	struct mpf_data *data,
+	CHAR *buf1,
+	CHAR *buf2,
+	CHAR *final)
+{
+	multi_profile_merge_perband(data, "QuickChannelSwitch", buf1, buf2, final);
+	return NDIS_STATUS_SUCCESS;
+}
 
 #ifdef MGMT_TXPWR_CTRL
 static INT multi_profile_merge_mgmt_pwr(
@@ -2167,6 +2188,8 @@ static INT multi_profile_merge(
 	if (multi_profile_merge_ant_ctrl(data, buf1, buf2, final) != NDIS_STATUS_SUCCESS)
 		return retval;
 #endif /* ANTENNA_CONTROL_SUPPORT */
+	if (multi_profile_merge_quick_channel_switch(data, buf1, buf2, final) != NDIS_STATUS_SUCCESS)
+	return retval;
 
 #ifdef MGMT_TXPWR_CTRL
 	if (multi_profile_merge_mgmt_pwr(data, buf1, buf2, final) != NDIS_STATUS_SUCCESS)

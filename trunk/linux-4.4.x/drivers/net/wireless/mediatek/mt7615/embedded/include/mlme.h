@@ -147,8 +147,21 @@ defined(MT7615_FPGA) || defined(MT7622_FPGA) || defined(P18_FPGA) || defined(MT7
 
 #define BSS_NOT_FOUND                    0xFFFFFFFF
 
+#define MAX_NUM_OF_MLME_QUEUE	1
+#ifndef MLME_MULTI_QUEUE_SUPPORT
 #define MAX_LEN_OF_MLME_QUEUE            256
+#else
+#define MAX_LEN_OF_MLME_QUEUE            128
+#define MAX_LEN_OF_MLME_HP_QUEUE		50
+#define MAX_LEN_OF_MLME_LP_QUEUE		128
 
+#define RATION_OF_MLME_HP_QUEUE		5
+#define RATION_OF_MLME_QUEUE			3
+#define RATION_OF_MLME_LP_QUEUE		1
+
+#undef	MAX_NUM_OF_MLME_QUEUE
+#define MAX_NUM_OF_MLME_QUEUE	3
+#endif/*MLME_MULTI_QUEUE_SUPPORT*/
 
 enum SCAN_MODE {
 	/* Active scan, send probe request, and wait beacon and probe response */
@@ -413,6 +426,26 @@ typedef struct GNU_PACKED _EXT_CAP_INFO_ELEMENT {
 	UINT8 twt_responder_support:1;
 	UINT8 rsv_79:1;
 #endif /* OCE_FILS_SUPPORT */
+
+#ifdef RT_BIG_ENDIAN
+	UINT8 rsv87:1;
+	UINT8 rsv86:1;
+	UINT8 rsv85:1;
+	UINT8 rsv84:1;
+	UINT8 rsv83:1;
+	UINT8 sae_pwd_id_used_exclusively:1;
+	UINT8 sae_pwd_id_in_use:1;
+	UINT8 rsv80:1;
+#else
+	UINT8 rsv80:1;
+	UINT8 sae_pwd_id_in_use:1;
+	UINT8 sae_pwd_id_used_exclusively:1;
+	UINT8 rsv83:1;
+	UINT8 rsv84:1;
+	UINT8 rsv85:1;
+	UINT8 rsv86:1;
+	UINT8 rsv87:1;
+#endif /* RT_BIG_ENDIAN */
 } EXT_CAP_INFO_ELEMENT, *PEXT_CAP_INFO_ELEMENT;
 
 #define EXT_CAP_MIN_SAFE_LENGTH		8
@@ -1127,6 +1160,11 @@ typedef struct _BSS_ENTRY {
 #ifdef DOT11W_PMF_SUPPORT
 	BOOLEAN IsSupportSHA256KeyDerivation;
 #endif /* DOT11W_PMF_SUPPORT */
+#ifdef DOT11_SAE_SUPPORT
+	UCHAR rsnxe_content[MAX_LEN_OF_RSNXEIE];
+	UCHAR rsnxe_len;
+	BOOLEAN use_h2e_connect;
+#endif
 
 	/* CCX Ckip information */
 	UCHAR CkipFlag;
@@ -1270,9 +1308,37 @@ typedef struct _MLME_QUEUE {
 	ULONG Num;
 	ULONG Head;
 	ULONG Tail;
+	ULONG MaxLen;
 	NDIS_SPIN_LOCK Lock;
+#ifdef MLME_MULTI_QUEUE_SUPPORT
+	UCHAR Ration;
+#endif
 	MLME_QUEUE_ELEM Entry[MAX_LEN_OF_MLME_QUEUE];
 } MLME_QUEUE, *PMLME_QUEUE;
+
+#ifdef MLME_MULTI_QUEUE_SUPPORT
+/*Mlme High priority queue */
+typedef struct _MLME_HP_QUEUE {
+       ULONG Num;
+       ULONG Head;
+       ULONG Tail;
+       ULONG MaxLen;
+       NDIS_SPIN_LOCK Lock;
+       UCHAR Ration;
+       MLME_QUEUE_ELEM Entry[MAX_LEN_OF_MLME_HP_QUEUE];
+} MLME_HP_QUEUE, *PMLME_HP_QUEUE;
+
+/*Mlme Low priority queue */
+typedef struct _MLME_LP_QUEUE {
+       ULONG Num;
+       ULONG Head;
+       ULONG Tail;
+       ULONG MaxLen;
+       NDIS_SPIN_LOCK Lock;
+       UCHAR Ration;
+       MLME_QUEUE_ELEM Entry[MAX_LEN_OF_MLME_LP_QUEUE];
+} MLME_LP_QUEUE, *PMLME_LP_QUEUE;
+#endif /*MLME_MULTI_QUEUE_SUPPORT*/
 
 typedef VOID(*STATE_MACHINE_FUNC)(VOID * pAd, MLME_QUEUE_ELEM * Elem);
 
@@ -1394,6 +1460,11 @@ typedef struct _MLME_AUX {
 #endif /* DOT11W_PMF_SUPPORT */
 #endif /* APCLI_SUPPORT */
 #endif /* CONFIG_AP_SUPPORT */
+#ifdef DOT11_SAE_SUPPORT
+	BOOLEAN use_h2e_connect;
+	UCHAR rsnxe_content[MAX_LEN_OF_RSNXEIE];
+	UCHAR rsnxe_len;
+#endif
 
 
 	UINT32 AKMMap;
@@ -1524,13 +1595,6 @@ typedef struct GNU_PACKED _FRAME_FTM_ACTION {
 	/*TODO: three optional present IE. (LCI, LCivic, FTM IE)*/
 }   FRAME_FTM_ACTION, *PFRAME_FTM_ACTION;
 
-typedef struct GNU_PACKED _EID_STRUCT {
-	UCHAR   Eid;
-	UCHAR   Len;
-	UCHAR   Octet[1];
-} EID_STRUCT, *PEID_STRUCT, BEACON_EID_STRUCT, *PBEACON_EID_STRUCT;
-
-
 /* ========================== AP mlme.h =============================== */
 #define TBTT_PRELOAD_TIME       384        /* usec. LomgPreamble + 24-byte at 1Mbps */
 #define DEFAULT_DTIM_PERIOD     1
@@ -1626,6 +1690,8 @@ typedef struct _IE_lists {
 	UCHAR SupportedChl[MAX_LEN_OF_SUPPORTED_CHL];
 	UCHAR RSN_IE[MAX_LEN_OF_RSNIE];
 	UCHAR RSNIE_Len;
+	UCHAR rsnxe_ie[MAX_LEN_OF_RSNXEIE];
+	UCHAR rsnxe_ie_len;
 	BOOLEAN bWmmCapable;
 #if defined(WSC_AP_SUPPORT) || defined(RT_CFG80211_SUPPORT)
 	BOOLEAN bWscCapable;

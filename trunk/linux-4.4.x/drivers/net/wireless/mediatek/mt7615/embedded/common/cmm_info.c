@@ -405,14 +405,16 @@ INT Set_Channel_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 	POS_COOKIE	pObj = (POS_COOKIE) pAd->OS_Cookie;
 	UCHAR if_idx = pObj->ioctl_if;
 	struct wifi_dev *wdev = get_wdev_by_ioctl_idx_and_iftype(pAd, if_idx, pObj->ioctl_if_type);
-	UCHAR Channel = (UCHAR) os_str_tol(arg, 0, 10);
-#if defined(DFS_CAC_R2) || defined(TR181_SUPPORT)
+	UCHAR Channel = 0;
 	INT32 success = FALSE;
-#endif
 #ifdef TR181_SUPPORT
 	UCHAR old_channel = wdev->channel;
 	struct hdev_obj *hdev = (struct hdev_obj *)wdev->pHObj;
 #endif
+#ifdef MAP_R2
+	RTMP_STRING *token;
+#endif
+	INT ret = 0;
 
 	if (wdev == NULL) {
 		MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("%s: wdev == NULL! if_type %d, if_idx = %d\n", __func__,
@@ -421,16 +423,23 @@ INT Set_Channel_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 		return FALSE;
 	}
 
+#ifdef MAP_R2
+	token = rstrtok(arg, ":");
+	if (token)
+		Channel = (UCHAR)simple_strtol(token, 0, 10);
+#else
+	Channel = (UCHAR)simple_strtol(arg, 0, 10);
+#endif
 
 #if defined(MT_DFS_SUPPORT) && defined(BACKGROUND_SCAN_SUPPORT)
 	DfsDedicatedExamineSetNewCh(pAd, Channel);
 	DedicatedZeroWaitStop(pAd, TRUE);
 #endif
 
-#ifdef CONFIG_MAP_SUPPORT
-	wdev->quick_ch_change = FALSE;
-#endif
+	MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("%s: Channel(%d), Quick(%d)\n",
+			 __func__, Channel, wdev->quick_ch_change));
 
+	pAd->CommonCfg.iwpriv_event_flag = TRUE;
 #ifdef TR181_SUPPORT
 	success = rtmp_set_channel(pAd, wdev, Channel);
 
@@ -441,17 +450,28 @@ INT Set_Channel_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 						__func__, success, hdev->rdev->pRadioCtrl->ManualChannelChangeCount,
 						hdev->rdev->pRadioCtrl->TotalChannelChangeCount));
 	}
-	return success;
 #else
 #ifdef DFS_CAC_R2
+	if (IS_MAP_TURNKEY_ENABLE(pAd)) {
+		success = rtmp_set_channel(pAd, wdev, Channel);
+		if (success == FALSE)
+			wapp_send_cac_stop(pAd, RtmpOsGetNetIfIndex(wdev->if_dev), wdev->channel, FALSE);
+		/*return success; after set channel finished,then return iwpriv.*/
+	} else
+#endif
 	success = rtmp_set_channel(pAd, wdev, Channel);
-	if (success == FALSE)
-		wapp_send_cac_stop(pAd, RtmpOsGetNetIfIndex(wdev->if_dev), wdev->channel, FALSE);
+#endif
+	if (pAd->CommonCfg.set_ch_async_flag == TRUE) {
+		ret = RTMP_OS_WAIT_FOR_COMPLETION_TIMEOUT(&pAd->CommonCfg.set_ch_aync_done, ((50*100*OS_HZ)/1000));/*Wait 5s.*/
+		if (ret)
+			MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s() wait channel setting success.\n", __func__));
+		else {
+			MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s() wait channel setting timeout.\n", __func__));
+			pAd->CommonCfg.set_ch_async_flag = FALSE;
+		}
+	}
+	pAd->CommonCfg.iwpriv_event_flag = FALSE;
 	return success;
-#else
-	return rtmp_set_channel(pAd, wdev, Channel);
-#endif
-#endif
 }
 
 #ifdef CONVERTER_MODE_SWITCH_SUPPORT
@@ -500,9 +520,110 @@ INT Set_V10ConverterMode_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 
 #endif /*CONVERTER_MODE_SWITCH_SUPPORT*/
 
+/*
+*    ==========================================================================
+*    Description:
+*	Enable/disable quick Channel Switch feature
+*    Return:
+*	TRUE if all parameters are OK, FALSE otherwise
+*    ==========================================================================
+*/
+INT Set_Quick_Channel_Switch_En_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
+{
+	UCHAR Bandidx = 0, QuickChannelEn = 0;
+	UCHAR i = 0;
+	INT32 success = TRUE;	/*FALSE = 0*/
+	POS_COOKIE	pObj = (POS_COOKIE) pAd->OS_Cookie;
+	UCHAR if_idx = pObj->ioctl_if;
+	struct wifi_dev *wdev = get_wdev_by_ioctl_idx_and_iftype(pAd, if_idx, pObj->ioctl_if_type);
+	struct wifi_dev *tdev;
+
+	if (!wdev)
+		return FALSE;
+	Bandidx = HcGetBandByWdev(wdev);
+	QuickChannelEn = (UCHAR) os_str_tol(arg, 0, 10);
+
+	for (i = 0; i < WDEV_NUM_MAX; i++) {
+		tdev = pAd->wdev_list[i];
+		if (tdev && HcIsRadioAcq(tdev) && (Bandidx == HcGetBandByWdev(tdev))) {
+			if (!QuickChannelEn)
+				tdev->quick_ch_change = QUICK_CH_SWICH_DISABLE;
+			else
+				tdev->quick_ch_change = QUICK_CH_SWICH_ENABLE_W_DISCONNECTION;
+		}
+	}
+
+	MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF,
+			("%s(): Bandidx(%d) Quick Channel Switch Enable = %d\n", __func__, Bandidx, QuickChannelEn));
+	return success;
+}
+
+#ifdef CONFIG_AP_SUPPORT
+void ap_phy_rrm_init_byRf(RTMP_ADAPTER *pAd, struct wifi_dev *wdev)
+{
+	UCHAR i = 0;
+	struct wifi_dev *tdev;
+	UCHAR band_idx = HcGetBandByWdev(wdev);
+
+	for (i = 0; i < WDEV_NUM_MAX; i++) {
+
+		tdev = pAd->wdev_list[i];
+		if (tdev && HcIsRadioAcq(tdev) && (band_idx == HcGetBandByWdev(tdev))
+			&& tdev->wdev_type == WDEV_TYPE_AP) {
+			if (tdev->quick_ch_change == QUICK_CH_SWICH_ENABLE_WO_DISCONNECTION) {
 #ifdef CONFIG_MAP_SUPPORT
+				if (IS_MAP_ENABLE(pAd))
+					MacTableResetNonMapWdev(pAd, tdev);
+#endif
+			} else
+				MacTableResetWdev(pAd, tdev);
 
+			if (WMODE_CAP_5G(tdev->PhyMode)) {
+#ifdef MT_DFS_SUPPORT /* Jelly20150217 */
+				WrapDfsRadarDetectStop(pAd);
+				/* Zero wait hand off recovery for CAC period + interface down case */
+				DfsZeroHandOffRecovery(pAd, tdev);
+#endif
+			}
+		}
+	}
 
+	/* second loop for wlan_operate_init and UpdateBeaconHandler */
+	for (i = 0; i < WDEV_NUM_MAX; i++) {
+		tdev = pAd->wdev_list[i];
+		if (tdev && HcIsRadioAcq(tdev) && (band_idx == HcGetBandByWdev(tdev))) {
+			MTWF_LOG(DBG_CAT_MLME, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
+				("Wlan_operate_init for : %s\n", (char *)tdev->if_dev->name));
+			wlan_operate_init(tdev);
+			/* wdev->quick_ch_change = QUICK_CH_SWICH_DISABLE; */
+			UpdateBeaconHandler(pAd, tdev, BCN_UPDATE_IE_CHG);
+		}
+	}
+	if (WMODE_CAP_2G(wdev->PhyMode)) {
+		/*Do Obss scan*/
+		UINT8 idx;
+		BSS_STRUCT *pCurMbss = NULL;
+
+		for (idx = 0; idx < pAd->ApCfg.BssidNum; idx++) {
+			pCurMbss = &pAd->ApCfg.MBSSID[idx];
+
+			/* check MBSS status is up */
+			if (!pCurMbss->wdev.if_up_down_state)
+				continue;
+
+			if (wdev->channel <  14) {
+				/* check MBSS work on the same RF(channel) */
+				if (pCurMbss->wdev.channel == wdev->channel) {
+					ap_over_lapping_scan(pAd, pCurMbss);
+					break;
+				}
+			}
+		}
+	}
+}
+#endif
+
+#ifdef CONFIG_MAP_SUPPORT
 
 /*
 *	==========================================================================
@@ -596,82 +717,6 @@ VOID MacTableResetNonMapWdev(RTMP_ADAPTER *pAd, struct wifi_dev *wdev)
 #endif /* CONFIG_AP_SUPPORT */
 }
 
-void update_ch_by_wdev(RTMP_ADAPTER *pAd, struct wifi_dev *wdev)
-{
-	if (wdev->wdev_type == WDEV_TYPE_AP) {
-		/* disconnect all STA in case of 2.4G, and non MAP sta in case of 5G*/
-		if (wdev->channel > 14)
-			MacTableResetNonMapWdev(pAd, wdev);
-		else
-			MacTableResetWdev(pAd, wdev);
-
-		if (WMODE_CAP_5G(wdev->PhyMode)) {
-#ifdef MT_DFS_SUPPORT /* Jelly20150217 */
-			WrapDfsRadarDetectStop(pAd);
-			/* Zero wait hand off recovery for CAC period + interface down case */
-			DfsZeroHandOffRecovery(pAd, wdev);
-#endif
-		}
-#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT)
-		if (pAd->ApEnableBeaconTable)
-			BssTableInit(&pAd->AvailableBSS);
-#endif
-	}
-	wlan_operate_init(wdev);
-	wdev->quick_ch_change = FALSE;
-	UpdateBeaconHandler(pAd, wdev, BCN_UPDATE_IE_CHG);
-}
-
-
-void ap_phy_rrm_init_byRf(RTMP_ADAPTER *pAd, struct wifi_dev *wdev)
-{
-	UCHAR i = 0;
-	struct wifi_dev *tdev;
-	UCHAR band_idx = HcGetBandByWdev(wdev);
-
-	for (i = 0; i < WDEV_NUM_MAX; i++) {
-
-		tdev = pAd->wdev_list[i];
-		if (tdev && HcIsRadioAcq(tdev) && (band_idx == HcGetBandByWdev(tdev))) {
-			MTWF_LOG(DBG_CAT_MLME, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
-				("Wlan_operate_init for : %s\n", (char *)tdev->if_dev->name));
-			update_ch_by_wdev(pAd, tdev);
-		} else if ((wdev->wdev_type == WDEV_TYPE_APCLI) &&
-				(tdev != NULL) &&
-				(tdev->wdev_type == WDEV_TYPE_AP) &&
-				(tdev->if_up_down_state == 0) &&
-				(((tdev->channel > 14) && (wdev->channel > 14)) ||
-				((tdev->channel <= 14) && (wdev->channel <= 14)))) {
-			MTWF_LOG(DBG_CAT_MLME, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
-				("Wlan_operate_init--1 for : %s\n", (char *)tdev->if_dev->name));
-			update_ch_by_wdev(pAd, tdev);
-		}
-	}
-	if (wdev->channel < 14) {
-		/*Do Obss scan*/
-		UINT8 idx;
-		BSS_STRUCT *pCurMbss = NULL;
-
-		for (idx = 0; idx < pAd->ApCfg.BssidNum; idx++) {
-			pCurMbss = &pAd->ApCfg.MBSSID[idx];
-
-			/* check MBSS status is up */
-			if (!pCurMbss->wdev.if_up_down_state)
-				continue;
-
-			if (wdev->channel <  14) {
-				/* check MBSS work on the same RF(channel) */
-				if (pCurMbss->wdev.channel == wdev->channel) {
-					ap_over_lapping_scan(pAd, pCurMbss);
-					break;
-				}
-			}
-		}
-	}
-}
-
-
-
 
 /*
 *    ==========================================================================
@@ -712,9 +757,8 @@ INT Set_Map_Channel_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 	UCHAR Channel;
 #ifdef MAP_R2
 	UCHAR cac_req;
-#ifdef MT_DFS_SUPPORT
+	UCHAR dev_role;
 	UINT32 i;
-#endif
 	RTMP_STRING *token;
 #endif
 #ifdef MAP_R2
@@ -733,6 +777,16 @@ INT Set_Map_Channel_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 			}
 		}
 #endif
+	}
+	token = rstrtok(NULL, ":");
+	if (token) {
+		dev_role = os_str_tol(token, 0, 10);
+		MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
+			("%s:dev_role %d\n", __func__, dev_role));
+		for (i = 0; i < HW_BEACON_MAX_NUM; i++) {
+			if (pAd->ApCfg.MBSSID[i].wdev.channel == wdev->channel)
+				pAd->ApCfg.MBSSID[i].wdev.dev_role = dev_role;
+		}
 	}
 #else
 	Channel = (UCHAR) os_str_tol(arg, 0, 10);
@@ -756,7 +810,7 @@ INT Set_Map_Channel_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 	DfsDedicatedExamineSetNewCh(pAd, Channel);
 	DedicatedZeroWaitStop(pAd, TRUE);
 #endif
-	wdev->quick_ch_change = TRUE;
+	wdev->quick_ch_change = QUICK_CH_SWICH_ENABLE_WO_DISCONNECTION;
 
 #ifdef TR181_SUPPORT
 	success = rtmp_set_channel(pAd, wdev, Channel);
@@ -772,7 +826,7 @@ INT Set_Map_Channel_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 #else
 	success = rtmp_set_channel(pAd, wdev, Channel);
 	if (wdev->wdev_type == WDEV_TYPE_APCLI)
-		wdev->quick_ch_change = FALSE;
+		wdev->quick_ch_change = QUICK_CH_SWICH_DISABLE;
 
 	return success;
 #endif
@@ -1002,6 +1056,8 @@ INT	rtmp_set_channel(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, UCHAR Channel)
 #ifdef MT_DFS_SUPPORT
 	PDFS_PARAM pDfsParam = &pAd->CommonCfg.DfsParameter;
 #endif
+
+	pAd->CommonCfg.set_ch_async_flag = FALSE;
 	if (wdev == NULL) {
 		MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("%s: wdev == NULL!\n", __func__));
 		return FALSE;
@@ -1033,6 +1089,21 @@ INT	rtmp_set_channel(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, UCHAR Channel)
 	/*used for not support MCC*/
 	wdev->channel = Channel;
 	/*sync to other device*/
+#ifdef CONFIG_MAP_SUPPORT	
+		if (RadarChannelCheck(pAd, OriChannel))
+		{
+			MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF,
+					 ("[%s] send cac stop OriChannel = %d, wdev->channel = %d \n", __func__ , OriChannel, wdev->channel));
+			if (IS_MAP_TURNKEY_ENABLE(pAd)) {
+				wapp_send_cac_stop(pAd, RtmpOsGetNetIfIndex(wdev->if_dev), OriChannel, TRUE);
+			}
+
+			if (RadarChannelCheck(pAd, Channel) == FALSE) {
+				pDot11h->RDMode = RD_NORMAL_MODE;
+			}
+		}
+#endif
+
 	wdev_sync_prim_ch(wdev->sys_handle, wdev);
 #ifdef CONFIG_AP_SUPPORT
 	if (pAd->CommonCfg.bIEEE80211H == TRUE) {
@@ -1040,6 +1111,10 @@ INT	rtmp_set_channel(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, UCHAR Channel)
 			MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_ERROR, (
 				"%s: Can not update channel(%d), restoring old channel(%d)\n",
 					__func__, wdev->channel, OriChannel));
+#ifdef WAPP_SUPPORT
+				wapp_send_radar_detect_notif(pAd, wdev, wdev->channel, 0);
+#endif
+
 			wdev->channel = OriChannel;
 			wdev_sync_prim_ch(wdev->sys_handle, wdev);
 			return FALSE;
@@ -1108,7 +1183,7 @@ INT	rtmp_set_channel(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, UCHAR Channel)
 				}
 #ifdef CONFIG_MAP_SUPPORT
 #ifdef MT_DFS_SUPPORT
-				if (!(mt_validate_dfs_channel_for_cac(pAd, wdev)) && pAd->CommonCfg.DfsParameter.bDfsEnable) {
+				if (IS_MAP_TURNKEY_ENABLE(pAd) && !(mt_validate_dfs_channel_for_cac(pAd, wdev)) && pAd->CommonCfg.DfsParameter.bDfsEnable) {
 					for (i = 0; i < HW_BEACON_MAX_NUM; i++) {
 						if (pAd->ApCfg.MBSSID[i].wdev.channel == wdev->channel)
 							pAd->ApCfg.MBSSID[i].wdev.cac_not_required = TRUE;
@@ -1121,40 +1196,42 @@ INT	rtmp_set_channel(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, UCHAR Channel)
 				if ((pDot11h->RDMode == RD_SILENCE_MODE)
 					|| ((ndev_ap_if != NULL) && (!RTMP_OS_NETDEV_STATE_RUNNING(ndev_ap_if)))) {
 					pDot11h->RDMode = RD_SWITCHING_MODE;
-#ifdef CONFIG_MAP_SUPPORT
-					if (/*IS_MAP_ENABLE(pAd) &&*/ wdev->quick_ch_change == FALSE) {
-#endif
-						if (pMbss != NULL)
-							APStop(pAd, pMbss, AP_BSS_OPER_BY_RF);
-#ifdef MT_DFS_SUPPORT
-						if (DfsStopWifiCheck(pAd)) {
-							MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("[%s] Stop AP Startup\n", __FUNCTION__));
-							return FALSE;
-						}
-#endif
-						if (pMbss != NULL)
-							APStartUp(pAd, pMbss, AP_BSS_OPER_BY_RF);
+						if (/*IS_MAP_ENABLE(pAd) &&*/ wdev->quick_ch_change == QUICK_CH_SWICH_DISABLE) {
 
+							if (pMbss != NULL)
+								APStop(pAd, pMbss, AP_BSS_OPER_BY_RF);
+#ifdef MT_DFS_SUPPORT
+							if (DfsStopWifiCheck(pAd)) {
+								MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("[%s] Stop AP Startup\n", __FUNCTION__));
+								return FALSE;
+							}
+#endif
+							if (pMbss != NULL)
+								APStartUp(pAd, pMbss, AP_BSS_OPER_BY_RF);
+#ifdef CONFIG_MAP_SUPPORT
+							if (pAd->MAPMode == MAP_BS_2_0)
+								wapp_send_ch_change_rsp(pAd, wdev, wdev->channel);
+#endif
 #if defined(MT_DFS_SUPPORT) && defined(BACKGROUND_SCAN_SUPPORT)
-						if (IS_SUPPORT_DEDICATED_ZEROWAIT_DFS(pAd)) {
-							DfsSetCacRemainingTime(pAd, wdev);
-							DfsDedicatedScanStart(pAd);
-						}
+							if (IS_SUPPORT_DEDICATED_ZEROWAIT_DFS(pAd)) {
+								DfsSetCacRemainingTime(pAd, wdev);
+								DfsDedicatedScanStart(pAd);
+							}
 #endif
 #ifdef CONFIG_MAP_SUPPORT
-					if (pMbss && pMbss->wdev.cac_not_required) {
-						for (i = 0; i < HW_BEACON_MAX_NUM; i++) {
-							if (pAd->ApCfg.MBSSID[i].wdev.channel == wdev->channel)
-								pAd->ApCfg.MBSSID[i].wdev.cac_not_required = FALSE;
+							if (IS_MAP_TURNKEY_ENABLE(pAd)) {
+								if (pMbss && pMbss->wdev.cac_not_required) {
+									for (i = 0; i < HW_BEACON_MAX_NUM; i++) {
+										if (pAd->ApCfg.MBSSID[i].wdev.channel == wdev->channel)
+											pAd->ApCfg.MBSSID[i].wdev.cac_not_required = FALSE;
+									}
+									pDot11h->RDCount = pDot11h->ChMovingTime;
+								}
+							}
+#endif
+						} else {
+							ap_phy_rrm_init_byRf(pAd, wdev);
 						}
-						pDot11h->RDCount = pDot11h->ChMovingTime;
-					}
-#endif
-#ifdef CONFIG_MAP_SUPPORT
-					} else {
-						ap_phy_rrm_init_byRf(pAd, wdev);
-					}
-#endif
 #ifdef CONVERTER_MODE_SWITCH_SUPPORT
 				/* When this Procuct is in CNV mode or */
 				/* REP mode and if ApCli is not connected */
@@ -1190,9 +1267,9 @@ INT	rtmp_set_channel(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, UCHAR Channel)
 					}
 				}
 			} else {
-#ifdef CONFIG_MAP_SUPPORT
-				if (/*IS_MAP_ENABLE(pAd) &&*/ wdev->quick_ch_change == FALSE) {
-#endif
+
+				if (/*IS_MAP_ENABLE(pAd) &&*/ wdev->quick_ch_change == QUICK_CH_SWICH_DISABLE) {
+
 
 					wlan_operate_set_prim_ch(wdev, wdev->channel);
 					if (pMbss != NULL) {
@@ -1223,20 +1300,29 @@ INT	rtmp_set_channel(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, UCHAR Channel)
 #endif
 						APStartUp(pAd, pMbss, AP_BSS_OPER_BY_RF);
 					}
-
 #ifdef CONFIG_MAP_SUPPORT
+					if (pAd->MAPMode == MAP_BS_2_0)
+						wapp_send_ch_change_rsp(pAd, wdev, wdev->channel);
+#endif
+
 				} else {
 					ap_phy_rrm_init_byRf(pAd, wdev);
 				}
-#endif
+
 
 			}
 		}
 	}
 #endif /* CONFIG_AP_SUPPORT */
 
-	if (Success == TRUE)
+	if (Success == TRUE) {
 		MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("Set_Channel_Proc_by_Wdev::(Channel=%d)\n", Channel));
+#ifdef CONFIG_MAP_SUPPORT
+		if (IS_MAP_TURNKEY_ENABLE(pAd)) {
+			wdev->map_indicate_channel_change = 1;
+		}
+#endif
+	}
 
 #ifdef CONFIG_AP_SUPPORT
 	IF_DEV_CONFIG_OPMODE_ON_AP(pAd) {
@@ -1641,8 +1727,16 @@ INT	Set_ApChannelSwitch_Proc(
 				break;
 			}
 		} else if (WMODE_CAP_2G(PhyMode)) {
+			if (offset) {
+				offset = (offset == 1) ? EXTCHA_ABOVE : EXTCHA_BELOW;
 				wlan_config_set_ext_cha(wdev, offset);
-				SetCommonHtVht(pAd, wdev);
+				wlan_config_set_ht_bw(wdev, HT_BW_40);
+				op_ht_bw = HT_BW_40;
+			} else {
+				wlan_config_set_ext_cha(wdev, offset);
+				wlan_config_set_ht_bw(wdev, HT_BW_20);
+			}
+			SetCommonHtVht(pAd, wdev);
 		}
 	} else if ((offset != 0) && (PhyMode < PHY_11ABGN_MIXED)) {
 		return FALSE;
@@ -1769,9 +1863,12 @@ INT	Set_ApChannelSwitch_Proc(
 #endif /* CONFIG_AP_SUPPORT */
 
 	pAd->CommonCfg.channelSwitch.Channel = Channel;
-	if (Channel <= 14)
-		pAd->CommonCfg.NewExtChanOffset.NewExtChanOffset = HcGetExtCha(pAd, Channel);
-	if (NotifyChSwAnnToConnectedSTAs(pAd, CHANNEL_SWITCHING_MODE, Channel, wdev) == FALSE)
+	if (Channel <= 14) {
+		pAd->CommonCfg.NewExtChanOffset.NewExtChanOffset = wlan_config_get_ext_cha(wdev);
+		pAd->CommonCfg.Bss2040NeedFallBack = 0;
+		pAd->ApCfg.ObssGBandChanBitMap = 0;
+	}
+	if (NotifyChSwAnnToConnectedSTAs(pAd, CHANNEL_SWITCHING_MODE, OriChannel, Channel, wdev) == FALSE)
 		return FALSE;
 
 	if (Success == TRUE)
@@ -1898,7 +1995,11 @@ INT Set_MaxTxPwr_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 		BandIdx = HcGetBandByWdev(wdev);
 		pChCtrl = hc_get_channel_ctrl(pAd->hdev_ctrl, BandIdx);
 		hc_set_ChCtrlChListStat(pChCtrl, CH_LIST_STATE_NONE);
+#ifdef EXT_BUILD_CHANNEL_LIST
+		BuildChannelListEx(pAd, wdev);
+#else
 		BuildChannelList(pAd, wdev);
+#endif
 		MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF,
 			("Set MaxTxPwr = %d\n", MaxTxPwr));
 		return TRUE;
@@ -2398,7 +2499,7 @@ INT Set_ChannelListAdd_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 	}
 	/* Parsing the arg, IN:arg; OUT:inChRegion */
 	{
-		UCHAR strBuff[64], count = 0;
+		UCHAR strBuff[64] = "", count = 0;
 		PUCHAR	pStart, pEnd, tempIdx, tempBuff[5];
 
 		if (strlen(arg) < 64)
@@ -2782,6 +2883,7 @@ static PCHAR cat_str[32] = {
 	"P2P",
 	"TOKEN",
 	"CMW",
+	"IGMP",
 };
 
 
@@ -2808,6 +2910,7 @@ static PCHAR sub_cat_str[32][32] = {
 	{"MISC"}, /* P2P, Miracast */
 	{"MISC", "INFO", "PROFILE", "TRACE"}, /* token */
 	{"MISC"}, /* CMW Link Test related */
+	{"MISC"}, /* IGMP related*/
 };
 
 
@@ -3877,6 +3980,9 @@ INT	Set_ResetStatCounter_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 
 	if (wdev != NULL)
 		ucBand = HcGetBandByWdev(wdev);
+
+	if (ucBand >= DBDC_BAND_NUM)
+		return FALSE;
 
 	MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("==>Set_ResetStatCounter_Proc\n"));
 	/* add the most up-to-date h/w raw counters into software counters*/
@@ -8819,62 +8925,31 @@ INT show_sysinfo_proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 void wifi_dump_info(void)
 {
 	RTMP_ADAPTER *pAd = NULL;
-	struct net_device *ndev = NULL;
+	UCHAR idx = 0;
 
 	MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s--------------------\n", __func__));
-	ndev = dev_get_by_name(&init_net, "ra0");
 
-	if (ndev) {
-		MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("--------RA0--------\n"));
-		pAd = ((struct mt_dev_priv *)netdev_priv(ndev))->sys_handle;
-		show_tpinfo_proc(pAd, "");
-		show_trinfo_proc(pAd, "");
-		ShowPLEInfo(pAd, "");
-		ShowPseInfo(pAd, "");
-		Show_PSTable_Proc(pAd, "");
+	for (idx = 0; idx < MAX_NUM_OF_INF; idx++) {
+		if (adapt_list[idx]) {
+			pAd = adapt_list[idx];
+			show_tpinfo_proc(pAd, "");
+			show_trinfo_proc(pAd, "");
+			ShowPLEInfo(pAd, "");
+			ShowPseInfo(pAd, "");
+			Show_PSTable_Proc(pAd, "");
 #ifdef CONFIG_AP_SUPPORT
-		set_qiscdump_proc(pAd, "");
+			set_qiscdump_proc(pAd, "");
 #endif /*CONFIG_AP_SUPPORT*/
-		show_swqinfo(pAd, "");
+			show_swqinfo(pAd, "");
 #ifdef ERR_RECOVERY
-		ShowSerProc2(pAd, "");
+			ShowSerProc2(pAd, "");
 #endif
 #ifdef FQ_SCH_SUPPORT
-		show_fq_info(pAd, "");
+			show_fq_info(pAd, "");
 #endif
-	}
-
-	ndev = dev_get_by_name(&init_net, "rai0");
-
-	if (ndev) {
-		MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("--------RAI0--------\n"));
-		pAd = ((struct mt_dev_priv *)netdev_priv(ndev))->sys_handle;
-		show_tpinfo_proc(pAd, "");
-		show_trinfo_proc(pAd, "");
-		ShowPLEInfo(pAd, "");
-		Show_PSTable_Proc(pAd, "");
-#ifdef FQ_SCH_SUPPORT
-		show_fq_info(pAd, "");
-#endif
-	}
-
-	ndev = dev_get_by_name(&init_net, "rae0");
-
-	if (ndev) {
-		MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("--------RAE0--------\n"));
-		pAd = ((struct mt_dev_priv *)netdev_priv(ndev))->sys_handle;
-		show_tpinfo_proc(pAd, "");
-		show_trinfo_proc(pAd, "");
-		ShowPLEInfo(pAd, "");
-		Show_PSTable_Proc(pAd, "");
-#ifdef FQ_SCH_SUPPORT
-		show_fq_info(pAd, "");
-#endif
+		}
 	}
 }
-#ifndef MT76XX_COMBO_DUAL_DRIVER_SUPPORT
-EXPORT_SYMBOL(wifi_dump_info);
-#endif /* MT76XX_COMBO_DUAL_DRIVER_SUPPORT */
 
 INT show_tpinfo_proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 {
@@ -10532,6 +10607,25 @@ INT Set_VhtNDPA_Sounding_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 }
 #endif /* VHT_TXBF_SUPPORT */
 
+
+#ifdef MT_MAC
+INT Set_Force_Vht_For_Ht(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
+{
+	BOOLEAN fgEnVhtForHtIn2G;
+
+	if (arg == NULL)
+		return FALSE;
+
+	fgEnVhtForHtIn2G = (BOOLEAN) os_str_tol(arg, 0, 10);
+
+	if (fgEnVhtForHtIn2G)
+		fgEnVhtForHtIn2G = TRUE;
+
+	MtCmdSetVhtRateIn2G(pAd, fgEnVhtForHtIn2G);
+	return TRUE;
+}
+#endif
+
 #if defined(MT76x2) || defined(MT7636)
 #ifdef TXBF_SUPPORT
 
@@ -11979,7 +12073,8 @@ INT Set_MonitorMode_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 	BandIdx = HcGetBandByWdev(wdev);
 #endif
 	MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF,
-					 ("-->%s():current monitor net_device for %s(BandIdx=%d)\n", __func__, wdev->if_dev, BandIdx));
+			("-->%s():current monitor net_device for %s(BandIdx=%d)\n",
+			__func__, wdev->if_dev->name, BandIdx));
 
 	pAd->monitor_ctrl[BandIdx].CurrentMonitorMode = os_str_tol(arg, 0, 10);
 
@@ -11987,8 +12082,8 @@ INT Set_MonitorMode_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 		pAd->monitor_ctrl[BandIdx].CurrentMonitorMode = MONITOR_MODE_OFF;
 
 	MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
-			 ("set Current Monitor Mode = %d , range(%d ~ %d)\n"
-			  , pAd->monitor_ctrl[BandIdx].CurrentMonitorMode, MONITOR_MODE_OFF, MONITOR_MODE_FULL));
+			 ("set Current Monitor Mode = %d , range(%d ~ %d)\n",
+			 pAd->monitor_ctrl[BandIdx].CurrentMonitorMode, MONITOR_MODE_OFF, MONITOR_MODE_FULL));
 
 	switch (pAd->monitor_ctrl[BandIdx].CurrentMonitorMode) {
 	case MONITOR_MODE_OFF:			/* reset to normal */
@@ -12030,7 +12125,8 @@ INT Set_MonitorFilterSize_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 #ifdef DBDC_MODE
 	BandIdx = HcGetBandByWdev(wdev);
 #endif
-	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("-->%s():wdev=%s, BandIdx=%d\n", __func__, wdev->if_dev, BandIdx));
+	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF,
+			("-->%s():wdev=%s, BandIdx=%d\n", __func__, wdev->if_dev->name, BandIdx));
 	pAd->monitor_ctrl[BandIdx].FilterSize = os_str_tol(arg, 0, 10);
 	if (pAd->monitor_ctrl[BandIdx].FilterSize < sizeof(struct mtk_radiotap_header))
 		pAd->monitor_ctrl[BandIdx].FilterSize = RX_BUFFER_SIZE_MIN + sizeof(struct mtk_radiotap_header);
@@ -12048,7 +12144,8 @@ INT Set_MonitorFrameType_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 #ifdef DBDC_MODE
 	BandIdx = HcGetBandByWdev(wdev);
 #endif
-	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("--> %s():wdev=%s, BandIdx=%d\n", __func__, wdev->if_dev, BandIdx));
+	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF,
+			("--> %s():wdev=%s, BandIdx=%d\n", __func__, wdev->if_dev->name, BandIdx));
 
 	pAd->monitor_ctrl[BandIdx].FrameType = os_str_tol(arg, 0, 10);
 	if (pAd->monitor_ctrl[BandIdx].FrameType > FC_TYPE_DATA)
@@ -12071,7 +12168,8 @@ INT Set_MonitorMacFilter_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 #ifdef DBDC_MODE
 	BandIdx = HcGetBandByWdev(wdev);
 #endif
-	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("-->%s():Enable MacFilter: wdev=%s, BandIdx=%d\n", __func__, wdev->if_dev, BandIdx));
+	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF,
+			("-->%s():Enable MacFilter: wdev=%s, BandIdx=%d\n", __func__, wdev->if_dev->name, BandIdx));
 
 	while ((this_char = strsep((char **)&arg, ";")) != NULL) {
 		if (*this_char == '\0') {
@@ -12119,7 +12217,8 @@ INT Set_MonitorMacFilterOff_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 #ifdef DBDC_MODE
 	BandIdx = HcGetBandByWdev(wdev);
 #endif
-	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("-->%s():DisEnable MacFilter: wdev=%s, BandIdx=%d\n", __func__, wdev->if_dev, BandIdx));
+	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF,
+			("-->%s():DisEnable MacFilter: wdev=%s, BandIdx=%d\n", __func__, wdev->if_dev->name, BandIdx));
 	pAd->monitor_ctrl[BandIdx].MacFilterOn = FALSE;
 	return TRUE;
 }
@@ -13210,8 +13309,9 @@ INT32 Get_RBIST_IQ_Data_Proc(
 		goto error;
 	}
 
-	/* Dynamic allocate memory for data length */
+	/* Dynamic allocate memory for data length & initializing with 0 value */
 	retval = os_alloc_mem(pAd, (UCHAR **)&pDataLen, sizeof(INT32));
+	*pDataLen = 0;
 	if (retval != NDIS_STATUS_SUCCESS) {
 		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
 				("%s : Not enough memory for dynamic allocating !!\n", __func__));
@@ -14477,7 +14577,7 @@ INT TxPowerBfBackoffParaCtrl(
 	/* Update BF Backoff value (BF Backoff ON Table) for different Tx Stream case */
 	if (BF_BACKOFF_1T_MODE != pAd->ucBFBackOffMode) {
 		for (ucBFBackoffCtrlIdx = 0; ucBFBackoffCtrlIdx < BF_BACKOFF_CONTROL_REGISTER_SIZE; ucBFBackoffCtrlIdx++)
-			acTxPwrFccBfOnCase[ucBFBackoffCtrlIdx] = cBfBoundTable[BF_BACKOFF_4T_MODE - pAd->ucBFBackOffMode] + cBFBackOffset[pAd->ucBFBackOffMode - 1][ucBFBackoffCtrlIdx];
+			acTxPwrFccBfOnCase[ucBFBackoffCtrlIdx] = cBfBoundTable[BF_BACKOFF_4T_MODE - pAd->ucBFBackOffMode] + cBFBackOffset[pAd->ucBFBackOffMode - 2][ucBFBackoffCtrlIdx];
 	}
 
 	for (ucBFBackoffCtrlIdx = 0; ucBFBackoffCtrlIdx < BF_BACKOFF_CONTROL_REGISTER_SIZE; ucBFBackoffCtrlIdx++)

@@ -857,6 +857,9 @@ VOID UserCfgExit(RTMP_ADAPTER *pAd)
 #endif /* RADIUS_MAC_ACL_SUPPORT */
 	}
 #endif /* CONFIG_AP_SUPPORT */
+	pAd->CommonCfg.set_ch_async_flag = FALSE;
+	pAd->CommonCfg.iwpriv_event_flag = FALSE;
+	complete_all(&pAd->CommonCfg.set_ch_aync_done);
 	wdev_config_init(pAd);
 #ifdef DOT11_SAE_SUPPORT
 	sae_cfg_deinit(pAd, &pAd->SaeCfg);
@@ -865,6 +868,9 @@ VOID UserCfgExit(RTMP_ADAPTER *pAd)
 	group_info_bi_deinit();
 #endif
 
+#ifdef DOT11_SAE_PWD_ID_SUPPORT
+	sae_pwd_id_deinit(pAd);
+#endif
 #ifdef RATE_PRIOR_SUPPORT
 	RTMP_SEM_LOCK(&pAd->LowRateCtrl.BlackListLock);
 		DlListForEach(pBlackSta, &pAd->LowRateCtrl.BlackList, BLACK_STA, List) {
@@ -880,6 +886,29 @@ VOID UserCfgExit(RTMP_ADAPTER *pAd)
 	NdisFreeSpinLock(&pAd->LowRateCtrl.BlackListLock);
 #endif/*RATE_PRIOR_SUPPORT*/
 
+#if defined(CONFIG_MAP_SUPPORT) && defined(MAP_BL_SUPPORT)
+	{
+		PLIST_HEADER pListHeader = NULL;
+		RT_LIST_ENTRY *pListEntry = NULL;
+		UCHAR apidx = 0;
+
+		for (apidx = 0; apidx < pAd->ApCfg.BssidNum; apidx++) {
+			pListHeader = &pAd->ApCfg.MBSSID[apidx].BlackList;
+
+			if (pListHeader->size == 0)
+				continue;
+
+			pListEntry = pListHeader->pHead;
+
+			while (pListEntry != NULL) {
+				removeHeadList(pListHeader);
+				os_free_mem(pListEntry);
+				pListEntry = pListHeader->pHead;
+			}
+			MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("Clean [%d] BS Blacklist\n", apidx));
+		}
+	}
+#endif
 }
 
 
@@ -1234,6 +1263,10 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 			struct wifi_dev *wdev = &pAd->ApCfg.MBSSID[j].wdev;
 #ifdef CONFIG_MAP_SUPPORT
 		MAP_Init(pAd, wdev, WDEV_TYPE_AP);
+#ifdef MAP_BL_SUPPORT
+		initList(&mbss->BlackList);
+		NdisAllocateSpinLock(pAd, &mbss->BlackListLock);
+#endif /*  MAP_BL_SUPPORT */
 #endif /* CONFIG_MAP_SUPPORT */
 #ifdef DOT1X_SUPPORT
 			/* PMK cache setting*/
@@ -1251,6 +1284,9 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 
 			/* dot1x related per BSS */
 			mbss->wdev.SecConfig.radius_srv_num = 0;
+#ifdef RADIUS_ACCOUNTING_SUPPORT
+			mbss->wdev.SecConfig.radius_acct_srv_num = 0;
+#endif
 			mbss->wdev.SecConfig.NasIdLen = 0;
 			mbss->wdev.SecConfig.IEEE8021X = FALSE;
 			mbss->wdev.SecConfig.PreAuth = FALSE;
@@ -1533,6 +1569,9 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 	FT_CfgInitial(pAd);
 #endif /* DOT11R_FT_SUPPORT */
 #endif /* CONFIG_AP_SUPPORT */
+	pAd->CommonCfg.set_ch_async_flag = FALSE;
+	pAd->CommonCfg.iwpriv_event_flag = FALSE;
+	RTMP_OS_INIT_COMPLETION(&pAd->CommonCfg.set_ch_aync_done);
 #ifdef DOT11_SAE_SUPPORT
 	sae_cfg_init(pAd, &pAd->SaeCfg);
 #endif /* DOT11_SAE_SUPPORT */
@@ -2073,6 +2112,9 @@ VOID RTMP_TimerListRelease(RTMP_ADAPTER *pAd, VOID *pRsc)
 	LIST_RESOURCE_OBJ_ENTRY *pObj;
 	RT_LIST_ENTRY *pListEntry;
 
+	if (pRscList == NULL || pRscList->pHead == NULL)
+		return;
+
 	pListEntry = pRscList->pHead;
 	pObj = (LIST_RESOURCE_OBJ_ENTRY *)pListEntry;
 
@@ -2090,7 +2132,11 @@ VOID RTMP_TimerListRelease(RTMP_ADAPTER *pAd, VOID *pRsc)
 		delEntryList(pRscList, pListEntry);
 		/* free a timer record entry */
 		MTWF_LOG(DBG_CAT_INIT, DBG_SUBCAT_ALL, DBG_LVL_INFO, ("%s: release timer obj %lx!\n", __func__, (ULONG)pRsc));
-		os_free_mem(pObj);
+		if (pObj == (LIST_RESOURCE_OBJ_ENTRY *)pListEntry)
+			os_free_mem(pObj);
+		else
+			MTWF_LOG(DBG_CAT_INIT, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
+					("Pointers mismatch in %s %d\n", __func__, __LINE__));
 	}
 }
 

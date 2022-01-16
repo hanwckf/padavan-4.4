@@ -68,6 +68,7 @@
 #define DBG_CAT_P2P     19 /* P2P, Miracast */
 #define DBG_CAT_TOKEN	20
 #define DBG_CAT_CMW     21 /* CMW Link Test related */
+#define DBG_CAT_IGMP    22 /* IGMP */
 #define DBG_CAT_RSV1    30 /* reserved index for code development */
 #define DBG_CAT_RSV2    31 /* reserved index for code development */
 #define DBG_CAT_MAX     31

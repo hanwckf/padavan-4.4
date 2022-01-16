@@ -2013,10 +2013,14 @@ INT32 MtCmdChannelSwitch(RTMP_ADAPTER *pAd, MT_SWITCH_CHANNEL_CFG SwChCfg)
 	/* Check G-Band/A-Band */
 	if (fg5Gband) {
 		/* apply control channel SKU value */
-		MtFillSkuParam(pAd, SwChCfg.ControlChannel, fg5Gband, ucTxPath, CmdChanSwitch.acTxPowerSKU);
+		MtFillSkuParam(pAd, SwChCfg.ControlChannel, fg5Gband, ucTxPath, CmdChanSwitch.acTxPowerSKU, 0);
 	} else {
 		/* apply central channel SKU value */
-		MtFillSkuParam(pAd, SwChCfg.CentralChannel, fg5Gband, ucTxPath, CmdChanSwitch.acTxPowerSKU);
+		MtFillSkuParam(pAd, SwChCfg.CentralChannel, fg5Gband, ucTxPath, CmdChanSwitch.acTxPowerSKU, 0);
+		/* Check BW if 40Mhz, fill the Control channel SKU for BW20*/
+		if ((SwChCfg.Bw == 1) && (SwChCfg.ControlChannel <= 14)) {
+			MtFillSkuParam(pAd, SwChCfg.ControlChannel, fg5Gband, ucTxPath, CmdChanSwitch.acTxPowerSKU, 1);
+		}
 	}
 #else
 #endif /* defined(MT7615) || defined(MT7622) */
@@ -7182,6 +7186,52 @@ done:
 			 ("%s:(ret = %d)\n", __func__, ret));
 }
 
+INT SetRaOptionFrequecyDup_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
+{
+	INT32 Ret = TRUE;
+	struct cmd_msg *msg = NULL;
+	struct _CMD_ATTRIBUTE attr = {0};
+	UINT32 u4Value;
+
+	if (!arg) {
+		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("%s: Null Parameters\n", __func__));
+		return FALSE;
+	}
+
+	u4Value = os_str_tol(arg, 0, 10);
+
+	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("%s: Enable=%d \n", __func__, u4Value));
+
+	/* Allocate memory for msg */
+	msg = AndesAllocCmdMsg(pAd, sizeof(u4Value));
+	if (!msg) {
+		Ret = 0;
+		goto error;
+	}
+
+	SET_CMD_ATTR_MCU_DEST(attr, HOST2N9);
+	SET_CMD_ATTR_TYPE(attr, EXT_CID);
+	SET_CMD_ATTR_EXT_TYPE(attr, EXT_CMD_ID_RA_OPTION_FREQ_DUP);
+	SET_CMD_ATTR_CTRL_FLAGS(attr, INIT_CMD_SET_AND_RETRY);
+	SET_CMD_ATTR_RSP_WAIT_MS_TIME(attr, 0);
+	SET_CMD_ATTR_RSP_EXPECT_SIZE(attr, 0);
+	SET_CMD_ATTR_RSP_WB_BUF_IN_CALBK(attr, NULL);
+	SET_CMD_ATTR_RSP_HANDLER(attr, NULL);
+	AndesInitCmdMsg(msg, attr);
+#ifdef RT_BIG_ENDIAN
+		u4Value = cpu2le32(u4Value);
+#endif
+	AndesAppendCmdMsg(msg, (char *)&u4Value, sizeof(u4Value));
+	chip_cmd_tx(pAd, msg);
+
+error:
+	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_INFO,
+			("%s:(Ret = %d\n", __func__, Ret));
+
+	return Ret;
+}
+
+
 #if defined(TXRX_STAT_SUPPORT) || defined(EAP_STATS_SUPPORT)
 INT32 MtCmdGetPerStaTxStat(RTMP_ADAPTER *pAd, UINT8 *ucEntryBitmap, UINT8 ucEntryCount)
 {
@@ -11653,6 +11703,44 @@ error:
 }
 #endif /* RACTRL_LIMIT_MAX_PHY_RATE */
 
+/*****************************************
+ *    ExT_CID = 0xA8
+ *****************************************/
+INT32 MtCmdSetVhtRateIn2G(RTMP_ADAPTER *pAd, BOOL fgEnVhtForHtIn2G)
+{
+	struct cmd_msg *msg;
+	EXT_CMD_SET_VHT_IN_2G_T CmdSetVhtIn2G;
+	INT32 ret = 0;
+	struct _CMD_ATTRIBUTE attr = {0};
+	MTWF_LOG(DBG_CAT_FW, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
+			 ("%s: VHT For HT In 2G = %d\n", __func__, fgEnVhtForHtIn2G));
+	msg = MtAndesAllocCmdMsg(pAd, sizeof(CmdSetVhtIn2G));
+
+	if (!msg) {
+		ret = NDIS_STATUS_RESOURCES;
+		goto error;
+	}
+
+	os_zero_mem(&CmdSetVhtIn2G, sizeof(CmdSetVhtIn2G));
+	CmdSetVhtIn2G.fgEnVhtForHtIn2G = fgEnVhtForHtIn2G;
+
+	SET_CMD_ATTR_MCU_DEST(attr, HOST2N9);
+	SET_CMD_ATTR_TYPE(attr, EXT_CID);
+	SET_CMD_ATTR_EXT_TYPE(attr, EXT_CMD_ID_SET_VHT_RATE_IN_2G);
+	SET_CMD_ATTR_CTRL_FLAGS(attr, INIT_CMD_SET);
+	SET_CMD_ATTR_RSP_WAIT_MS_TIME(attr, 0);
+	SET_CMD_ATTR_RSP_EXPECT_SIZE(attr, MT_IGNORE_PAYLOAD_LEN_CHECK);
+	SET_CMD_ATTR_RSP_WB_BUF_IN_CALBK(attr, NULL);
+	SET_CMD_ATTR_RSP_HANDLER(attr, NULL);
+	MtAndesInitCmdMsg(msg, attr);
+	MtAndesAppendCmdMsg(msg, (char *)&CmdSetVhtIn2G,
+						sizeof(CmdSetVhtIn2G));
+	ret = chip_cmd_tx(pAd, msg);
+error:
+	MTWF_LOG(DBG_CAT_FW, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
+			 ("%s:(ret = %d)\n", __func__, ret));
+	return ret;
+}
 
 INT32 MtCmdLinkTestTxCsdCtrl(
 		RTMP_ADAPTER	*pAd,

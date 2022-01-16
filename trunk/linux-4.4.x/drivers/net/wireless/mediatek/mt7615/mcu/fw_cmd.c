@@ -2229,6 +2229,13 @@ static INT32 StaRecUpdateWtbl(RTMP_ADAPTER *pAd, struct cmd_msg *msg, VOID *args
 					 ("%s: Unknown wdev type(%d) do not support header translation\n",
 					  __func__, pEntry->wdev->wdev_type));
 
+#ifdef APCLI_AS_WDS_STA_SUPPORT
+		if ((wdev->wdev_type == WDEV_TYPE_APCLI) && (wdev->wds_enable) && pEntry->bEnable4Addr) {
+			rWtblHdrTrans.ucFd = 1;
+			rWtblHdrTrans.ucTd = 1;
+		}
+#endif
+
 #endif /* HDR_TRANS_TX_SUPPORT */
 #ifdef HDR_TRANS_RX_SUPPORT
 

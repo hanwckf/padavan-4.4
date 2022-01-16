@@ -57,18 +57,21 @@ static VOID radio_operate_init(struct wifi_dev *wdev)
 	if (CheckNonOccupancyChannel(ad, wdev, RDD_CHECK_NOP_BY_WDEV) == FALSE) {
 #ifdef DFS_VENDOR10_CUSTOM_FEATURE
 		UCHAR grpWidth = 0, channel = 0;
-		UCHAR chGrp = DfsV10CheckChnlGrp(wdev->channel);
+		UCHAR chGrp = DfsV10CheckChnlGrp(ad, wdev->channel);
 
 		if (IS_SUPPORT_V10_DFS(ad) && WMODE_CAP_5G(wdev->PhyMode) && (chGrp >= W53 && chGrp <= W56)) {
 			if (chGrp >= W56_UA && chGrp <= W56_UC) {
 				chGrp = W56;
+				if (ad->CommonCfg.bCh144Enabled)
 				grpWidth = V10_W56_SIZE;
+				else
+					grpWidth = V10_W56_SIZE-1;
 			} else if (chGrp == W53)
 				grpWidth = V10_W53_SIZE;
 
 				channel = DfsV10FindNonNopChannel(ad, chGrp, grpWidth);
 				MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("[%s] NOP channel %d grp %d\n", __func__, channel, chGrp));
-				if (channel && (DfsV10CheckChnlGrp(channel) == W56_UC)) {
+				if (channel && (DfsV10CheckChnlGrp(ad, channel) == W56_UC && (ad->CommonCfg.bCh144Enabled == FALSE))) {
 					AutoChSelUpdateChannel(ad, channel, TRUE, wdev);
 					wlan_config_set_ht_bw(wdev, HT_BW_20);
 					wlan_config_set_vht_bw(wdev, VHT_BW_2040);

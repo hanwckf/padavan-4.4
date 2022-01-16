@@ -667,11 +667,17 @@ BOOLEAN DfsV10ACSMarkChnlConsumed(
 	PDFS_PARAM pDfsParam = &pAd->CommonCfg.DfsParameter;
 	UCHAR i = 0;
 	BOOLEAN status = FALSE;
+	UCHAR channelcount = 0;
 
 	if (IS_DFS_V10_ACS_VALID(pAd) == FALSE)
 		return FALSE;
 
-	for (i = 0; i < V10_TOTAL_CHANNEL_COUNT; i++) {
+	if (pAd->CommonCfg.bCh144Enabled)
+		channelcount = V10_TOTAL_CHANNEL_COUNT;
+	else
+		channelcount = V10_TOTAL_CHANNEL_COUNT - 1;
+
+	for (i = 0; i < channelcount; i++) {
 		if (channel == pDfsParam->DfsV10SortedACSList[i].Channel) {
 			pDfsParam->DfsV10SortedACSList[i].isConsumed = TRUE;
 			status = TRUE;
@@ -2596,7 +2602,8 @@ VOID AutoChSelBuildChannelListFor5G(
 				pACSChList[ChIdx].BwCap = TRUE;
 			else {
 #ifdef DFS_VENDOR10_CUSTOM_FEATURE
-				if (IS_SUPPORT_V10_DFS(pAd) && pACSChList[ChIdx].Channel == 140)
+				if ((IS_SUPPORT_V10_DFS(pAd) && pACSChList[ChIdx].Channel == 140 && pAd->CommonCfg.bCh144Enabled == FALSE) ||
+					(IS_SUPPORT_V10_DFS(pAd) && pACSChList[ChIdx].Channel == 144 && pAd->CommonCfg.bCh144Enabled == TRUE))
 					pACSChList[ChIdx].BwCap = TRUE;
 				else
 #endif
@@ -3026,7 +3033,11 @@ VOID AutoChSelScanNextChannel(
 
 		pAutoChCtrl->AutoChSelCtrl.ACSChStat = ACS_CH_STATE_SELECTED;
 		/* Update current state from listen state to idle. */
-		pAutoChCtrl->AutoChSelCtrl.AutoChScanStatMachine.CurrState = AUTO_CH_SEL_SCAN_IDLE;
+		if (pAd->CommonCfg.set_ch_async_flag == FALSE) {
+			pAutoChCtrl->AutoChSelCtrl.AutoChScanStatMachine.CurrState = AUTO_CH_SEL_SCAN_IDLE;
+			if (pAd->CommonCfg.iwpriv_event_flag)
+				RTMP_OS_COMPLETE(&pAd->CommonCfg.set_ch_aync_done);
+		}
 #ifdef ACS_CTCC_SUPPORT
 		pAd->ApCfg.auto_ch_score_flag = FALSE;
 #endif

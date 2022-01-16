@@ -253,6 +253,7 @@ VOID APMlmePeriodicExec(
 	{
 		INT loop;
 		ULONG Now32;
+		MAC_TABLE_ENTRY *pEntry;
 
 #ifdef MAC_REPEATER_SUPPORT
 
@@ -276,8 +277,10 @@ VOID APMlmePeriodicExec(
 			if ((pApCliEntry->Valid == TRUE)
 				&& (VALID_UCAST_ENTRY_WCID(pAd, pApCliEntry->MacTabWCID))) {
 				/* update channel quality for Roaming and UI LinkQuality display */
-				MlmeCalculateChannelQuality(pAd,
-											&pAd->MacTab.Content[pApCliEntry->MacTabWCID], Now32);
+				pEntry = &pAd->MacTab.Content[pApCliEntry->MacTabWCID];
+				/* update channel quality for Roaming and UI LinkQuality display */
+				if (pEntry && (pApCliEntry->MacTabWCID > 0) && IS_ENTRY_AP(pEntry))
+					MlmeCalculateChannelQuality(pAd, pEntry, Now32);
 			}
 		}
 	}
@@ -330,6 +333,14 @@ VOID APMlmePeriodicExec(
 			if (pDot11hTest == NULL)
 				continue;
 #ifdef MT_DFS_SUPPORT
+#ifdef CONFIG_MAP_SUPPORT
+			if (IS_MAP_TURNKEY_ENABLE(pAd)) {
+				if (wdev->map_indicate_channel_change && (wdev->map_radar_detect == 0)) {
+					wdev->map_indicate_channel_change = 0;
+					wapp_send_ch_change_rsp(pAd, wdev, wdev->channel);
+				}
+			}
+#endif
 			if (pDot11hTest->RDMode == RD_SILENCE_MODE) {
 				if (BandInCac[BandIdx] == TRUE)
 					continue;
@@ -347,7 +358,7 @@ VOID APMlmePeriodicExec(
 				if (pDot11hTest->RDCount++ > ChannelMovingTime) {
 					pDot11hTest->RDCount = 0;
 #ifdef CONFIG_MAP_SUPPORT
-					if (IS_MAP_TURNKEY_ENABLE(pAd)) {
+					if (IS_MAP_ENABLE(pAd)) {
 						wapp_send_cac_stop(pAd, RtmpOsGetNetIfIndex(wdev->if_dev), wdev->channel, TRUE);
 					}
 #endif

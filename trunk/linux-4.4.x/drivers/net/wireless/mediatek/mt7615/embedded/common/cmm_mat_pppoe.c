@@ -315,7 +315,7 @@ static PUidMacMappingEntry UidMacTableUpdate(
 {
 	UINT				hashIdx, i = 0, uIDAddByUs = 0;
 	UidMacMappingTable	*pUidMacTable;
-	UidMacMappingEntry	*pEntry = NULL, *pPrev = NULL, *pNewEntry = NULL;
+	UidMacMappingEntry	*pEntry = NULL, *pPrev = NULL, *pNewEntry = NULL, *pTempEntry = NULL;
 	UCHAR				hashVal = 0;
 	PUCHAR				pUIDStr = NULL;
 	ULONG				now;
@@ -368,10 +368,11 @@ static PUidMacMappingEntry UidMacTableUpdate(
 					} else
 						pPrev->pNext = pEntry->pNext;
 
-					/*After remove this entry from macHash list and uidHash list, now free it! */
-					MATDBEntryFree(pMatCfg, (PUCHAR)pEntry);
-					pMatCfg->nodeCount--;
+					pTempEntry = pEntry;
 					pEntry = (pPrev == NULL ? NULL : pPrev->pNext);
+					/*After remove this entry from macHash list and uidHash list, now free it! */
+					MATDBEntryFree(pMatCfg, (PUCHAR)pTempEntry);
+					pMatCfg->nodeCount--;
 				} else {
 					pPrev = pEntry;
 					pEntry = pEntry->pNext;
@@ -498,7 +499,7 @@ static NDIS_STATUS SesMacTableUpdate(
 	IN PUCHAR		outMacAddr)
 {
 	UINT16 hashIdx;
-	SesMacMappingEntry *pEntry, *pPrev, *pNewEntry;
+	SesMacMappingEntry *pEntry = NULL, *pPrev = NULL, *pNewEntry = NULL, *pTempEntry = NULL;
 	SesMacMappingTable *pSesMacTable;
 	ULONG	now;
 	pSesMacTable = (SesMacMappingTable *)pMatCfg->MatTableSet.SesMacTable;
@@ -535,9 +536,10 @@ static NDIS_STATUS SesMacTableUpdate(
 				} else
 					pPrev->pNext = pEntry->pNext;
 
-				MATDBEntryFree(pMatCfg, (PUCHAR)pEntry);
-				pMatCfg->nodeCount--;
+				pTempEntry = pEntry;
 				pEntry = (pPrev == NULL ? NULL : pPrev->pNext);
+				MATDBEntryFree(pMatCfg, (PUCHAR)pTempEntry);
+				pMatCfg->nodeCount--;
 			} else {
 				pPrev = pEntry;
 				pEntry = pEntry->pNext;

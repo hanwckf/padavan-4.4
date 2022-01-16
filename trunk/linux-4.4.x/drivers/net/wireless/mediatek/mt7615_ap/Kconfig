@@ -24,6 +24,10 @@ config VLAN_SUPPORT
 	depends on MT_AP_SUPPORT && WIFI_EAP_FEATURE
 	default y
 
+config MLME_MULTI_QUEUE_SUPPORT
+	bool "Mlme Multi Queue Support"
+	default n
+
 config TXRX_STAT_SUPPORT
 	bool "TxRx Stats Support"
 	depends on WIFI_DRIVER && WIFI_EAP_FEATURE
@@ -44,11 +48,6 @@ config MGMT_TXPWR_CTRL
 	depends on MT_AP_SUPPORT && WIFI_EAP_FEATURE
 	default y
 
-config WMM_EDCA_CTRL
-	bool "WMM EDCA Control"
-	depends on MT_AP_SUPPORT && WIFI_EAP_FEATURE
-	default y
-
 config CHUTIL_SUPPORT
 	bool "Channel Utilization Support"
 	depends on MT_AP_SUPPORT && WIFI_EAP_FEATURE
@@ -59,13 +58,18 @@ config NF_SUPPORT
 	depends on MT_AP_SUPPORT && WIFI_EAP_FEATURE
 	default y
 
-config BEACON_INTERVAL_CTRL
-	bool "Beacon Interval Control"
+config RA_PHY_RATE_SUPPORT
+	bool "RA PHY RATE Support"
 	depends on MT_AP_SUPPORT && WIFI_EAP_FEATURE
 	default y
 
-config RA_PHY_RATE_SUPPORT
-	bool "RA PHY RATE Support"
+config AMPDU_CONF_SUPPORT
+	bool "AMPDU Config retry & agglimit Support"
+	depends on MT_AP_SUPPORT && WIFI_EAP_FEATURE
+	default y
+
+config ACK_CTS_TIMEOUT_SUPPORT
+	bool "ACK CTS Timeout cck & ofdm Support"
 	depends on MT_AP_SUPPORT && WIFI_EAP_FEATURE
 	default y
 
@@ -151,16 +155,16 @@ config OFFCHANNEL_SCAN_FEATURE
         default n
 
 config OCE_SUPPORT
-    bool "Optimized Connectivity Experience Support"
-    depends on MT_AP_SUPPORT
-    depends on CHIP_MT7615E
-    default n
+        bool "Optimized Connectivity Experience Support"
+        depends on MT_AP_SUPPORT
+        depends on CHIP_MT7615E
+        default n
 
 config DPP_FEATURE
-	bool "DPP Support"
-	depends on MT_AP_SUPPORT
+        bool "DPP Support"
+        depends on MT_AP_SUPPORT
 	depends on WIFI_DRIVER
-	default n
+        default n
 
 config ENTERPRISE_AP_SUPPORT
 	bool "Enterprise AP Support"

@@ -681,6 +681,7 @@ typedef struct GNU_PACKED _DOT1X_IDLE_TIMEOUT {
 typedef struct GNU_PACKED _DOT1X_QUERY_STA_AID {
 	UCHAR StaAddr[MAC_ADDR_LEN];
 	UINT aid;
+	UINT wcid;
 } DOT1X_QUERY_STA_AID, *PDOT1X_QUERY_STA_AID;
 
 struct GNU_PACKED DOT1X_QUERY_STA_RSN {
@@ -1096,6 +1097,31 @@ typedef struct _NDIS_802_11_CAPABILITY {
 /* New for MeetingHouse Api support */
 #define OID_MH_802_1X_SUPPORTED               0xFFEDC100
 
+typedef union _HETRANSMIT_SETTING {
+#ifdef RT_BIG_ENDIAN
+	struct {
+		USHORT MODE:3;
+		USHORT eTxBF:1;
+		USHORT STBC:1;
+		USHORT ShortGI:1;
+		USHORT BW:2;
+		USHORT ldpc:1;
+		USHORT MCS:7;
+	} field;
+#else
+	struct {
+		USHORT MCS:7;
+		USHORT ldpc:1;
+		USHORT BW:2;
+		USHORT ShortGI:1;
+		USHORT STBC:1;
+		USHORT eTxBF:1;
+		USHORT MODE:3;
+	} field;
+#endif
+	USHORT word;
+} HETRANSMIT_SETTING, *PHETRANSMIT_SETTING;
+
 /* MIMO Tx parameter, ShortGI, MCS, STBC, etc.  these are fields in TXWI. Don't change this definition!!! */
 typedef union _HTTRANSMIT_SETTING {
 #ifdef RT_BIG_ENDIAN
@@ -1158,7 +1184,7 @@ enum ASYNC_OFFCHANNEL_COMMAND_RSP {
 };
 
 
-typedef struct operating_info {
+typedef struct GNU_PACKED operating_info {
 	UINT8 channel;
 	UCHAR cfg_ht_bw;
 	UCHAR cfg_vht_bw;
@@ -1168,7 +1194,7 @@ typedef struct operating_info {
 	UCHAR vht_cent_ch2;
 } OPERATING_INFO, *POPERATING_INFO;
 
-typedef struct _channel_info {
+typedef struct GNU_PACKED _channel_info {
 	UINT8	channel;
 	UINT8	channel_idx;
 	INT32	NF;
@@ -1187,7 +1213,7 @@ typedef struct _channel_info {
 struct msg_channel_list {
 	CHANNEL_INFO CHANNELLIST[60];
 };
-typedef struct offchannel_param {
+typedef struct GNU_PACKED offchannel_param {
 	UCHAR channel[MAX_AWAY_CHANNEL];
 	UCHAR scan_type[MAX_AWAY_CHANNEL];
 	UCHAR scan_time[MAX_AWAY_CHANNEL];
@@ -1195,7 +1221,7 @@ typedef struct offchannel_param {
 	UINT32 Num_of_Away_Channel;
 } OFFCHANNEL_SCAN_PARAM, *POFFCHANNEL_SCAN_PARAM;
 
-typedef struct sorted_list_info {
+typedef struct GNU_PACKED sorted_list_info {
 	UINT8 size;
 	UINT8 SortedMaxChannelBusyTimeList[MAX_NUM_OF_CHANNELS+1];
 	UINT8 SortedMinChannelBusyTimeList[MAX_NUM_OF_CHANNELS+1];
@@ -1203,7 +1229,7 @@ typedef struct sorted_list_info {
 } SORTED_CHANNEL_LIST, *PSORTED_CHANNEL_LIST;
 
 
-typedef struct _OFFCHANNEL_SCAN_MSG {
+typedef struct GNU_PACKED _OFFCHANNEL_SCAN_MSG {
 UINT8   Action;
 UCHAR ifrn_name[32];
 UINT32 ifIndex;
@@ -1883,7 +1909,7 @@ struct qosmap_data {
 #ifdef CUSTOMER_DCC_FEATURE
 #define OID_802_11_SCAN_BSSID_LIST              0x069b
 #ifdef MEMORY_OPTIMIZATION
-#define MAX_LEN_OF_BSS_TABLE             1
+#define MAX_LEN_OF_BSS_TABLE             128
 #define MAX_REORDERING_MPDU_NUM			 256
 #else
 #define MAX_LEN_OF_BSS_TABLE             256 /* 64 */
@@ -2472,6 +2498,7 @@ struct GNU_PACKED owe_trans_channel_change_info {
 #define OID_GET_NOP_CHANNEL_LIST						0x099C
 #define OID_GET_WMODE									0x099E
 #ifdef MAP_R2
+#define OID_GET_ASSOC_REQ								0x099F
 #define OID_GET_CAC_CAP									0x09A0
 #define OID_802_11_CAC_STOP								0x09A1
 #endif

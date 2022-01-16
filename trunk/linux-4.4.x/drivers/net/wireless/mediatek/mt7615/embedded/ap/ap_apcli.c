@@ -589,7 +589,7 @@ BOOLEAN ApCliLinkUp(RTMP_ADAPTER *pAd, UCHAR ifIndex)
 					for_each_netdev(net, pNetDev)
 #endif
 					{
-						if (pNetDev->priv_flags == IFF_EBRIDGE) {
+						if (pNetDev->priv_flags & IFF_EBRIDGE) {
 							COPY_MAC_ADDR(pAd->ApCfg.BridgeAddress, pNetDev->dev_addr);
 							MTWF_LOG(DBG_CAT_CLIENT, CATCLIENT_APCLI, DBG_LVL_ERROR, (" Bridge Addr = %02X:%02X:%02X:%02X:%02X:%02X. !!!\n",
 									 PRINT_MAC(pAd->ApCfg.BridgeAddress)));
@@ -1295,6 +1295,11 @@ during 3x3 throughput check,so we limit the AMSDU len to 3839*
 #endif /* DOT11_N_SUPPORT */
 
 #if defined(CONFIG_MAP_SUPPORT) && defined(WAPP_SUPPORT)
+	if (IS_MAP_ENABLE(pAd) &&(pMacEntry->DevPeerRole & (BIT(MAP_ROLE_FRONTHAUL_BSS) | BIT(MAP_ROLE_BACKHAUL_BSS)))) {
+		pApCliEntry->PeerMAPEnable = 1;
+	} else {
+		pApCliEntry->PeerMAPEnable = 0;
+	}
 	/*For security NONE & WEP case*/
 	if ((CliIdx == 0xFF) && (tr_entry->PortSecured == WPA_802_1X_PORT_SECURED)) {
 		wapp_send_apcli_association_change(WAPP_APCLI_ASSOCIATED, pAd, pApCliEntry);
@@ -1589,6 +1594,9 @@ VOID ApCliIfUp(RTMP_ADAPTER *pAd)
 		if (APCLI_IF_UP_CHECK(pAd, ifIndex)
 			&& (pApCliEntry->Enable == TRUE)
 			&& (pApCliEntry->Valid == FALSE)
+#ifdef APCLI_CFG80211_SUPPORT
+			&& (pApCliEntry->ReadyToConnect == TRUE)
+#endif
 #ifdef APCLI_CONNECTION_TRIAL
 			&& (ifIndex != (pAd->ApCfg.ApCliNum-1)) /* last IF is for apcli connection trial */
 #endif /* APCLI_CONNECTION_TRIAL */
@@ -3504,7 +3512,7 @@ VOID ApCliPeerCsaAction(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, BCN_IE_LIST *i
 				  ie_list->NewChannel));
 #if defined(WAPP_SUPPORT) && defined(CONFIG_MAP_SUPPORT)
 		if (pAd->bMAPQuickChChangeEn)
-		wdev->quick_ch_change = TRUE;
+		wdev->quick_ch_change = QUICK_CH_SWICH_ENABLE_WO_DISCONNECTION;
 
 		MTWF_LOG(DBG_CAT_CLIENT, CATCLIENT_APCLI, DBG_LVL_ERROR,
 		("Channel Change due to csa\n"));
@@ -3528,7 +3536,7 @@ VOID ApCliPeerCsaAction(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, BCN_IE_LIST *i
 		rtmp_set_channel(pAd, wdev, ie_list->NewChannel);
 #if defined(WAPP_SUPPORT) && defined(CONFIG_MAP_SUPPORT)
 		if (pAd->bMAPQuickChChangeEn)
-		wdev->quick_ch_change = FALSE;
+		wdev->quick_ch_change = QUICK_CH_SWICH_DISABLE;
 		wapp_send_csa_event(pAd, RtmpOsGetNetIfIndex(wdev->if_dev), ie_list->NewChannel);
 #endif
 	}
@@ -4153,7 +4161,15 @@ VOID APCli_Init(RTMP_ADAPTER *pAd, RTMP_OS_NETDEV_OP_HOOK *pNetDevOps)
 			CFG80211_CB *p80211CB = pAd->pCfg80211_CB;
 			UINT32 DevType = RT_CMD_80211_IFTYPE_STATION;
 
-			pWdev = kzalloc(sizeof(*pWdev), GFP_KERNEL);
+			os_alloc_mem_suspend(NULL, (UCHAR **)&pWdev ,sizeof(*pWdev));		
+			if (!pWdev) {
+				MTWF_LOG(DBG_CAT_CLIENT, CATCLIENT_APCLI, DBG_LVL_ERROR,
+						 ("mem alloc failed for %s, free net device!\n",
+						  RTMP_OS_NETDEV_GET_DEVNAME(new_dev_p)));
+				RtmpOSNetDevFree(new_dev_p);
+				break;
+			}
+			os_zero_mem((PUCHAR)pWdev, sizeof(*pWdev));
 			new_dev_p->ieee80211_ptr = pWdev;
 			pWdev->wiphy = p80211CB->pCfg80211_Wdev->wiphy;
 			SET_NETDEV_DEV(new_dev_p, wiphy_dev(pWdev->wiphy));
@@ -4189,6 +4205,10 @@ VOID ApCli_Remove(RTMP_ADAPTER *pAd)
 			RtmpOSNetDevProtect(1);
 			RtmpOSNetDevDetach(wdev->if_dev);
 			RtmpOSNetDevProtect(0);
+#ifdef APCLI_CFG80211_SUPPORT				
+			os_free_mem(wdev->if_dev->ieee80211_ptr);				
+			wdev->if_dev->ieee80211_ptr = NULL;
+#endif /* APCLI_CFG80211_SUPPORT */
 			wdev_deinit(pAd, wdev);
 			RtmpOSNetDevFree(wdev->if_dev);
 			/* Clear it as NULL to prevent latter access error. */
@@ -4257,7 +4277,11 @@ INT apcli_inf_open(struct wifi_dev *wdev)
 	RTMPSetPhyMode(pAd, wdev, wdev->PhyMode);
 	RTMPUpdateRateInfo(wdev->PhyMode, &wdev->rate);
 
+#ifdef EXT_BUILD_CHANNEL_LIST
+	BuildChannelListEx(pAd, wdev);
+#else
 	BuildChannelList(pAd, wdev);
+#endif
 	RTMPSetPhyMode(pAd, wdev, wdev->PhyMode);
 	RTMPUpdateRateInfo(wdev->PhyMode, &wdev->rate);
 
@@ -4381,6 +4405,22 @@ INT apcli_inf_close(struct wifi_dev *wdev)
 
 
 #if defined(WPA_SUPPLICANT_SUPPORT) || defined(APCLI_CFG80211_SUPPORT)
+#ifdef APCLI_CFG80211_SUPPORT
+	if(pAd->cfg80211_ctrl.FlgCfg80211Scanning) {
+		RTMP_OS_INIT_COMPLETION(&apcli_entry->scan_complete);
+		apcli_entry->MarkToClose = TRUE;
+		RTMP_OS_WAIT_FOR_COMPLETION_TIMEOUT(&apcli_entry->scan_complete,500);
+		apcli_entry->MarkToClose = FALSE;
+		RT_CFG80211_SCAN_END(pAd,TRUE);
+	}
+	
+	if (apcli_entry->wpa_supplicant_info.pWpsProbeReqIe) {
+		os_free_mem(apcli_entry->wpa_supplicant_info.pWpsProbeReqIe);
+		apcli_entry->wpa_supplicant_info.pWpsProbeReqIe = NULL;
+		apcli_entry->wpa_supplicant_info.WpsProbeReqIeLen = 0;
+	}
+#endif
+
 	if (apcli_entry->wpa_supplicant_info.pWpaAssocIe) {
 		os_free_mem(apcli_entry->wpa_supplicant_info.pWpaAssocIe);
 		apcli_entry->wpa_supplicant_info.pWpaAssocIe = NULL;
@@ -4441,6 +4481,9 @@ INT apcli_inf_close(struct wifi_dev *wdev)
 				 ("(%s) ApCli interface[%d] startdown.\n", __func__, wdev->func_idx));
 	}
 
+#ifdef RT_CFG80211_SUPPORT
+	pAd->cfg80211_ctrl.FlgCfg80211Connecting = FALSE;
+#endif
 	if (wifi_sys_close(wdev) != TRUE) {
 		MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("%s() close fail!!!\n", __func__));
 		return FALSE;

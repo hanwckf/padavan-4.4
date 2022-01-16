@@ -60,8 +60,14 @@ VOID CFG80211_LostApInform(VOID *pAdOrg)
 	PNET_DEV pNetDev = pAd->ApCfg.ApCliTab[MAIN_MBSSID].wdev.if_dev;
 	ULONG *cur_state = &pAd->ApCfg.ApCliTab[MAIN_MBSSID].CtrlCurrState;
 
+	MTWF_LOG(DBG_CAT_P2P, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("%s() ==> state: %ld\n", __func__, *cur_state));
 	pAd->cfg80211_ctrl.FlgCfg80211Connecting = FALSE;
 	if (pNetDev) {
+		struct wifi_dev *pwifi_dev = NULL;
+		pwifi_dev = RTMP_OS_NETDEV_GET_WDEV(pNetDev);
+		if (pwifi_dev  &&  (pwifi_dev->open_state == FALSE))
+			return;
+
 		if (*cur_state >= APCLI_CTRL_CONNECTED) {
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 1, 52))
 			cfg80211_disconnected(pNetDev, 0, NULL, 0, FALSE, GFP_KERNEL);

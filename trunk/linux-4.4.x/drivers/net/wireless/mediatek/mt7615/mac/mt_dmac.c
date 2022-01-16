@@ -2834,7 +2834,7 @@ VOID dump_wtbl_info(RTMP_ADAPTER *pAd, UINT wtbl_idx)
 		wtbl_ent.wtbl_addr = pAd->mac_ctrl.wtbl_base_addr[0] + idx * pAd->mac_ctrl.wtbl_entry_size[0];
 
 		/* Read WTBL Entries */
-		for (wtbl_offset = 0; wtbl_offset <= wtbl_len; wtbl_offset += 4) {
+		for (wtbl_offset = 0; wtbl_offset < wtbl_len; wtbl_offset += 4) {
 			addr = wtbl_ent.wtbl_addr + wtbl_offset;
 			HW_IO_READ32(pAd, addr, (UINT32 *)(&wtbl_raw_dw[wtbl_offset]));
 		}
@@ -3204,9 +3204,11 @@ INT32 mtd_ate_hw_tx(RTMP_ADAPTER *pAd, TMAC_INFO *info, TX_BLK *tx_blk)
 #endif
 
 #ifdef MGMT_TXPWR_CTRL
+#define WTBL_SPE_IDX_MASK ((0x1f) << 16)
+#define WTBL_SPE_IDX(p) (((p) & 0x1f) << 16)
 INT wtbl_update_pwr_offset(RTMP_ADAPTER *pAd, struct wifi_dev *wdev)
 {
-	INT wcid, rate;
+	INT wcid;
 	UINT32 addr, cr_value, offset_addr, PwrOffset_MASK;
 
 	PwrOffset_MASK = 0x1f;
@@ -3231,6 +3233,20 @@ INT wtbl_update_pwr_offset(RTMP_ADAPTER *pAd, struct wifi_dev *wdev)
 		HW_IO_WRITE32(pAd, offset_addr, cr_value);
 		cr_value = wdev->bPwrCtrlEn ? 0x04B04B04:0x00;
 		offset_addr = addr + 4*8; /*  DW8 */
+		HW_IO_WRITE32(pAd, offset_addr, cr_value);
+	}
+
+	/* update SPE idx */
+	if (pAd->CommonCfg.bSeOff != TRUE) {
+		offset_addr = addr + 4*3;
+		HW_IO_READ32(pAd, offset_addr, &cr_value);
+		cr_value &= ~WTBL_SPE_IDX_MASK;
+		if (wdev->bPwrCtrlEn) {
+			if (HcGetBandByWdev(wdev) == BAND0)
+				cr_value |= WTBL_SPE_IDX(BAND0_SPE_IDX);
+			else if (HcGetBandByWdev(wdev) == BAND1)
+				cr_value |= WTBL_SPE_IDX(BAND1_SPE_IDX);
+		}
 		HW_IO_WRITE32(pAd, offset_addr, cr_value);
 	}
 

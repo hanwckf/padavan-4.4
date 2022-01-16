@@ -146,7 +146,11 @@ INT32 HcAcquireRadioForWdev(RTMP_ADAPTER *pAd, struct wifi_dev *wdev)
 		wdev->channel = RcGetChannel(rdev);
 	}
 
+#ifdef EXT_BUILD_CHANNEL_LIST
+	BuildChannelListEx(pAd);
+#else
 	BuildChannelList(pAd, wdev);
+#endif
 	/*temporal set, will be repaced by HcGetOmacIdx*/
 	wdev->OmacIdx = obj->OmacIdx;
 	/* Initialize the pDot11H of wdev */
@@ -284,6 +288,13 @@ BOOLEAN IsHcRadioCurStatOffByWdev(struct wifi_dev *wdev)
 	if (!hdev_obj_state_ready(obj)) {
 		MTWF_LOG(DBG_CAT_HW, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
 			("%s(): wdev_idx %d obj is not ready, return TRUE !!!\n",
+			__func__, wdev->wdev_idx));
+		return TRUE;
+	}
+
+	if (!obj->rdev) {
+		MTWF_LOG(DBG_CAT_HW, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
+			("%s(): no hdev parking on wdev_idx:%d!!!\n",
 			__func__, wdev->wdev_idx));
 		return TRUE;
 	}
@@ -539,6 +550,7 @@ INT32 HcUpdateCsaCntByChannel(RTMP_ADAPTER *pAd, UCHAR Channel)
 		} else
 #endif
 			if (pDot11h->RDMode != RD_SILENCE_MODE) {
+				pAd->CommonCfg.set_ch_async_flag = TRUE;
 				pDot11h->wdev_count++;
 				wdev->csa_count = pDot11h->CSPeriod;
 				UpdateBeaconHandler(pAd, wdev, BCN_UPDATE_IE_CHG);
@@ -1151,7 +1163,11 @@ UCHAR HcReleaseUcastWcid(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, UCHAR idx)
 	if (!hdev_obj_state_ready(obj)) {
 		MTWF_LOG(DBG_CAT_HW, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
 			("%s(): wdev=%d, hobj is not ready!\n", __func__, wdev->wdev_idx));
-		return INVAILD_WCID;
+		if (idx > 0) {
+		     MTWF_LOG(DBG_CAT_HW, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
+			("%s(): releasing wcid %d, hobj is not ready!\n", __func__, idx));
+		} else
+			return INVAILD_WCID;
 	}
 
 	return WtcReleaseUcastWcid(pAd->hdev_ctrl, obj, idx);

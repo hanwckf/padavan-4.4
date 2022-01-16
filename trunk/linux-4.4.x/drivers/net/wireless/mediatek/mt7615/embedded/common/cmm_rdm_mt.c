@@ -494,6 +494,125 @@ static VOID ZeroWaitDfsQueryNopOfChList(
 
 }
 
+static BOOLEAN dfs_check_ch_is_already_exist(
+	IN PDFS_REPORT_AVALABLE_CH_LIST pdfs_ch_avail_list,
+	IN UCHAR ch_num,
+	IN UCHAR ch)
+{
+	UCHAR ch_idx;
+
+	for (ch_idx = 0; ch_idx < ch_num; ch_idx++) {
+		if (pdfs_ch_avail_list[ch_idx].Channel == ch)
+			return TRUE;
+	}
+
+	return FALSE;
+}
+
+VOID ZeroWaitDfsQueryAvalChListNonDbdc(PRTMP_ADAPTER pAd, UCHAR *Bw80ChNum, UCHAR *Bw40ChNum, UCHAR *Bw20ChNum,
+			DFS_REPORT_AVALABLE_CH_LIST Bw80AvailableChList[DFS_AVAILABLE_LIST_CH_NUM],
+			DFS_REPORT_AVALABLE_CH_LIST Bw40AvailableChList[DFS_AVAILABLE_LIST_CH_NUM],
+			DFS_REPORT_AVALABLE_CH_LIST Bw20AvailableChList[DFS_AVAILABLE_LIST_CH_NUM])
+{
+	UCHAR band_idx = 0;
+	UCHAR Bw80TotalChNum = 0;
+	UCHAR Bw40TotalChNum = 0;
+	UCHAR Bw20TotalChNum = 0;
+	UINT_8 bw_idx, ch_idx, idx;
+	PDFS_PARAM pDfsParam = &pAd->CommonCfg.DfsParameter;
+	PCHANNEL_CTRL pChCtrl = NULL;
+
+	if (pAd->Dot11_H[band_idx].RDMode == RD_SWITCHING_MODE) {
+		MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_OFF,
+			("Channel list query fail during channel switch\n"));
+		return;
+	}
+
+	for (bw_idx = 0; bw_idx < DFS_AVAILABLE_LIST_BW_NUM; bw_idx++) {
+		for (ch_idx = 0; ch_idx < DFS_AVAILABLE_LIST_CH_NUM; ch_idx++) {
+			pDfsParam->AvailableBwChIdx[bw_idx][ch_idx] = 0xff;
+		}
+	}
+
+	DfsBwChQueryAllList(pAd, BW_80, pDfsParam, FALSE);
+	pChCtrl = hc_get_channel_ctrl(pAd->hdev_ctrl, band_idx);
+
+	for (ch_idx = 0; ch_idx < DFS_AVAILABLE_LIST_CH_NUM; ch_idx++) {
+		if (pDfsParam->AvailableBwChIdx[BW_20][ch_idx] != 0xff) {
+			idx = pDfsParam->AvailableBwChIdx[BW_20][ch_idx];
+			Bw20AvailableChList[ch_idx].Channel = pChCtrl->ChList[idx].Channel;
+			Bw20AvailableChList[ch_idx].RadarHitCnt = pDfsParam->DfsChannelList[idx].NOPClrCnt;
+		} else
+			break;
+	}
+	Bw20TotalChNum = ch_idx;
+
+	for (ch_idx = 0; ch_idx < DFS_AVAILABLE_LIST_CH_NUM; ch_idx++) {
+		if (pDfsParam->AvailableBwChIdx[BW_40][ch_idx] != 0xff) {
+			idx = pDfsParam->AvailableBwChIdx[BW_40][ch_idx];
+			Bw40AvailableChList[ch_idx].Channel = pChCtrl->ChList[idx].Channel;
+			Bw40AvailableChList[ch_idx].RadarHitCnt = pDfsParam->DfsChannelList[idx].NOPClrCnt;
+		} else
+			break;
+	}
+	Bw40TotalChNum = ch_idx;
+
+	for (ch_idx = 0; ch_idx < DFS_AVAILABLE_LIST_CH_NUM; ch_idx++) {
+		if (pDfsParam->AvailableBwChIdx[BW_80][ch_idx] != 0xff) {
+			idx = pDfsParam->AvailableBwChIdx[BW_80][ch_idx];
+			Bw80AvailableChList[ch_idx].Channel = pChCtrl->ChList[idx].Channel;
+			Bw80AvailableChList[ch_idx].RadarHitCnt = pDfsParam->DfsChannelList[idx].NOPClrCnt;
+		} else
+			break;
+	}
+	Bw80TotalChNum = ch_idx;
+
+	for (ch_idx = 0; ch_idx < DFS_AVAILABLE_LIST_CH_NUM; ch_idx++) {
+		if (pDfsParam->AvailableBwChIdx[BW_20][ch_idx] != 0xff) {
+			idx = pDfsParam->AvailableBwChIdx[BW_20][ch_idx];
+
+			/* Check ch is already in the available ch list */
+			if (dfs_check_ch_is_already_exist(&Bw20AvailableChList[0], Bw20TotalChNum, pChCtrl->ChList[idx].Channel) == TRUE)
+				continue;
+
+			Bw20AvailableChList[Bw20TotalChNum + ch_idx].Channel = pChCtrl->ChList[idx].Channel;
+			Bw20AvailableChList[Bw20TotalChNum + ch_idx].RadarHitCnt = pDfsParam->DfsChannelList[idx].NOPClrCnt;
+		} else
+			break;
+	}
+	*Bw20ChNum = Bw20TotalChNum + ch_idx;
+
+	for (ch_idx = 0; ch_idx < DFS_AVAILABLE_LIST_CH_NUM; ch_idx++) {
+		if (pDfsParam->AvailableBwChIdx[BW_40][ch_idx] != 0xff) {
+			idx = pDfsParam->AvailableBwChIdx[BW_40][ch_idx];
+
+			/* Check ch is already in the available ch list */
+			if (dfs_check_ch_is_already_exist(&Bw40AvailableChList[0], Bw40TotalChNum, pChCtrl->ChList[idx].Channel) == TRUE)
+				continue;
+
+				Bw40AvailableChList[Bw40TotalChNum + ch_idx].Channel = pChCtrl->ChList[idx].Channel;
+				Bw40AvailableChList[Bw40TotalChNum + ch_idx].RadarHitCnt = pDfsParam->DfsChannelList[idx].NOPClrCnt;
+			} else
+				break;
+	}
+	*Bw40ChNum = Bw40TotalChNum + ch_idx;
+
+	for (ch_idx = 0; ch_idx < DFS_AVAILABLE_LIST_CH_NUM; ch_idx++) {
+		if (pDfsParam->AvailableBwChIdx[BW_80][ch_idx] != 0xff) {
+			idx = pDfsParam->AvailableBwChIdx[BW_80][ch_idx];
+
+			/* Check ch is already in the available ch list */
+			if (dfs_check_ch_is_already_exist(&Bw80AvailableChList[0], Bw80TotalChNum, pChCtrl->ChList[idx].Channel) == TRUE)
+				continue;
+
+			Bw80AvailableChList[Bw80TotalChNum + ch_idx].Channel = pChCtrl->ChList[idx].Channel;
+			Bw80AvailableChList[Bw80TotalChNum + ch_idx].RadarHitCnt = pDfsParam->DfsChannelList[idx].NOPClrCnt;
+		} else
+			break;
+	}
+	*Bw80ChNum = Bw80TotalChNum + ch_idx;
+}
+
 static VOID ZeroWaitDfsQueryAvalChList(
     PRTMP_ADAPTER pAd,
     union dfs_zero_wait_msg *msg
@@ -510,50 +629,55 @@ static VOID ZeroWaitDfsQueryAvalChList(
 
 	PDFS_PARAM pDfsParam = &pAd->CommonCfg.DfsParameter;
 
-	for (i = 0; i < DFS_AVAILABLE_LIST_BW_NUM; i++) {
-		for (j = 0; j < DFS_AVAILABLE_LIST_CH_NUM; j++)
-			pDfsParam->AvailableBwChIdx[i][j] = 0xff;
-	}
+	if (pAd->CommonCfg.dbdc_mode == 0) {
+		ZeroWaitDfsQueryAvalChListNonDbdc(pAd, &Bw80TotalChNum, &Bw40TotalChNum, &Bw20TotalChNum,
+							Bw80AvailableChList, Bw40AvailableChList, Bw20AvailableChList);
+	} else {
 
-	for (i = 0; i < DBDC_BAND_NUM; i++) {
-		if (pAd->Dot11_H[i].RDMode == RD_SWITCHING_MODE) {
-			MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("Channel Lsit query fail during channel switch\n"));
-			return;
+		for (i = 0; i < DFS_AVAILABLE_LIST_BW_NUM; i++) {
+			for (j = 0; j < DFS_AVAILABLE_LIST_CH_NUM; j++)
+				pDfsParam->AvailableBwChIdx[i][j] = 0xff;
 		}
+
+		for (i = 0; i < DBDC_BAND_NUM; i++) {
+			if (pAd->Dot11_H[i].RDMode == RD_SWITCHING_MODE) {
+				MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("Channel Lsit query fail during channel switch\n"));
+				return;
+			}
+		}
+
+		DfsBwChQueryAllList(pAd, BW_80, pDfsParam, FALSE);
+
+		for (j = 0; j < DFS_AVAILABLE_LIST_CH_NUM; j++) {
+			if (pDfsParam->AvailableBwChIdx[BW_20][j] != 0xff) {
+				idx = pDfsParam->AvailableBwChIdx[BW_20][j];
+				Bw20AvailableChList[j].Channel = pDfsParam->DfsChannelList[idx].Channel;
+				Bw20AvailableChList[j].RadarHitCnt = pDfsParam->DfsChannelList[idx].NOPClrCnt;
+			} else
+				break;
+		}
+		Bw20TotalChNum = j;
+
+		for (j = 0; j < DFS_AVAILABLE_LIST_CH_NUM; j++) {
+			if (pDfsParam->AvailableBwChIdx[BW_40][j] != 0xff) {
+				idx = pDfsParam->AvailableBwChIdx[BW_40][j];
+				Bw40AvailableChList[j].Channel = pDfsParam->DfsChannelList[idx].Channel;
+				Bw40AvailableChList[j].RadarHitCnt = pDfsParam->DfsChannelList[idx].NOPClrCnt;
+			} else
+				break;
+		}
+		Bw40TotalChNum = j;
+
+		for (j = 0; j < DFS_AVAILABLE_LIST_CH_NUM; j++) {
+			if (pDfsParam->AvailableBwChIdx[BW_80][j] != 0xff) {
+				idx = pDfsParam->AvailableBwChIdx[BW_80][j];
+				Bw80AvailableChList[j].Channel = pDfsParam->DfsChannelList[idx].Channel;
+				Bw80AvailableChList[j].RadarHitCnt = pDfsParam->DfsChannelList[idx].NOPClrCnt;
+			} else
+				break;
+		}
+		Bw80TotalChNum = j;
 	}
-
-	DfsBwChQueryAllList(pAd, BW_80, pDfsParam, TRUE);
-
-	for (j = 0; j < DFS_AVAILABLE_LIST_CH_NUM; j++) {
-		if (pDfsParam->AvailableBwChIdx[BW_20][j] != 0xff) {
-			idx = pDfsParam->AvailableBwChIdx[BW_20][j];
-			Bw20AvailableChList[j].Channel = pDfsParam->DfsChannelList[idx].Channel;
-			Bw20AvailableChList[j].RadarHitCnt = pDfsParam->DfsChannelList[idx].NOPClrCnt;
-		} else
-			break;
-	}
-	Bw20TotalChNum = j;
-
-	for (j = 0; j < DFS_AVAILABLE_LIST_CH_NUM; j++) {
-		if (pDfsParam->AvailableBwChIdx[BW_40][j] != 0xff) {
-			idx = pDfsParam->AvailableBwChIdx[BW_40][j];
-			Bw40AvailableChList[j].Channel = pDfsParam->DfsChannelList[idx].Channel;
-			Bw40AvailableChList[j].RadarHitCnt = pDfsParam->DfsChannelList[idx].NOPClrCnt;
-		} else
-			break;
-	}
-	Bw40TotalChNum = j;
-
-	for (j = 0; j < DFS_AVAILABLE_LIST_CH_NUM; j++) {
-		if (pDfsParam->AvailableBwChIdx[BW_80][j] != 0xff) {
-			idx = pDfsParam->AvailableBwChIdx[BW_80][j];
-			Bw80AvailableChList[j].Channel = pDfsParam->DfsChannelList[idx].Channel;
-			Bw80AvailableChList[j].RadarHitCnt = pDfsParam->DfsChannelList[idx].NOPClrCnt;
-		} else
-			break;
-	}
-	Bw80TotalChNum = j;
-
 	msg->aval_channel_list_msg.Bw80TotalChNum = Bw80TotalChNum;
 	msg->aval_channel_list_msg.Bw40TotalChNum = Bw40TotalChNum;
 	msg->aval_channel_list_msg.Bw20TotalChNum = Bw20TotalChNum;
@@ -621,6 +745,7 @@ INT ZeroWaitDfsQueryCmdHandler(
 	union dfs_zero_wait_msg msg;
 	os_zero_mem(&msg, sizeof(union dfs_zero_wait_msg));
 #ifdef MAP_R2
+	if (IS_MAP_TURNKEY_ENABLE(pAd))
 		msg.aval_channel_list_msg.Action = QUERY_AVAL_CH_LIST;
 #endif
 	ZeroWaitDfsQueryMsgHandle(pAd, (CHAR *)&msg);
@@ -1714,6 +1839,9 @@ NTSTATUS DfsChannelSwitchTimeoutAction(
 	DedicatedZeroWaitStop(pAd, FALSE);
 #endif
 
+#if defined(WAPP_SUPPORT) && defined(CONFIG_MAP_SUPPORT)
+	wdev->quick_ch_change = QUICK_CH_SWICH_DISABLE;
+#endif
 	rtmp_set_channel(pAd, wdev, NextCh);
 
 	if (pAd->CommonCfg.dbdc_mode) {
@@ -1788,10 +1916,26 @@ VOID DfsCacNormalStart(
 	struct DOT11_H *pDot11h = NULL;
 	UCHAR bandIdx;
 	PDFS_PARAM pDfsParam = &pAd->CommonCfg.DfsParameter;
+#ifdef MAP_R2
+	int i;
+#endif
 
 
 	if (wdev == NULL)
 		return;
+	if (wdev->channel < 14)
+		return;
+
+	pDot11h = wdev->pDot11_H;
+	if (pDot11h == NULL)
+		return;
+#ifdef MAP_R2
+	for (i = 0; i < pAd->ApCfg.BssidNum; i++) {
+		if (pAd->ApCfg.MBSSID[i].wdev.channel == wdev->channel)
+			if (pAd->ApCfg.MBSSID[i].wdev.cac_not_required == TRUE)
+				return;
+	}
+#endif
 
 	bandIdx = HcGetBandByWdev(wdev);
 
@@ -2280,8 +2424,12 @@ VOID WrapDfsRddReportHandle(/*handle the event of EXT_EVENT_ID_RDD_REPORT*/
 	BOOLEAN RadarBandId[DBDC_BAND_NUM];
 	UINT_8 i = 0;
 	struct wifi_dev *wdev = NULL;
-#ifdef OFFCHANNEL_SCAN_FEATURE
+#if defined(OFFCHANNEL_SCAN_FEATURE)
 	OFFCHANNEL_SCAN_MSG Rsp;
+#endif
+#ifdef CONFIG_MAP_SUPPORT
+	struct wifi_dev *sta_wdev = NULL;
+	int j;
 #endif
 
 #if defined(ONDEMAND_DFS) || defined(DFS_VENDOR10_CUSTOM_FEATURE)
@@ -2480,6 +2628,12 @@ VOID WrapDfsRddReportHandle(/*handle the event of EXT_EVENT_ID_RDD_REPORT*/
 		SetChInfo = 0;
 		pMbss = &pAd->ApCfg.MBSSID[BssIdx];
 		wdev = &pMbss->wdev;
+#ifdef CONFIG_MAP_SUPPORT
+#ifdef DFS_CAC_R2
+		if (IS_MAP_TURNKEY_ENABLE(pAd))
+			wdev->quick_ch_change = QUICK_CH_SWICH_DISABLE;
+#endif
+#endif
 		if (wdev->pHObj == NULL)
 			continue;
 		if (HcGetBandByWdev(wdev) != bandIdx)
@@ -2493,9 +2647,27 @@ VOID WrapDfsRddReportHandle(/*handle the event of EXT_EVENT_ID_RDD_REPORT*/
 				 __func__,
 				 BssIdx));
 #ifdef WAPP_SUPPORT
-		if (first_wdev) {
+		if (first_wdev && IS_MAP_TURNKEY_ENABLE(pAd)) {
 			wapp_send_radar_detect_notif(pAd, wdev, wdev->channel, 0);
 			first_wdev = FALSE;
+		}
+#endif
+#ifdef CONFIG_MAP_SUPPORT
+/*On radar detect let AP stop start happen without apcli disconnect at AP stop*/
+/*Link down only after sending the radar detect notification*/
+		if (IS_MAP_ENABLE(pAd)) {
+			wdev->map_radar_detect = 1;
+			wdev->map_radar_channel = wdev->channel;
+			for (j = 0; j < MAX_APCLI_NUM; j++) {
+				sta_wdev = &pAd->ApCfg.ApCliTab[j].wdev;
+#ifdef DFS_CAC_R2
+				if (IS_MAP_TURNKEY_ENABLE(pAd))
+					sta_wdev->quick_ch_change = QUICK_CH_SWICH_DISABLE;
+#endif
+				if (sta_wdev->channel == wdev->channel) {
+					pAd->ApCfg.ApCliTab[j].Enable = FALSE;
+				}
+			}
 		}
 #endif
 		/*Adjust Bw*/
@@ -2543,6 +2715,11 @@ VOID WrapDfsRddReportHandle(/*handle the event of EXT_EVENT_ID_RDD_REPORT*/
 			SetChInfo |= NextCh;
 			SetChInfo |= (BssIdx << 8);
 			SetChInfo |= (bandIdx << 16);
+#ifdef CONFIG_MAP_SUPPORT
+			if (IS_MAP_TURNKEY_ENABLE(pAd)) {
+				wapp_send_cac_stop(pAd, RtmpOsGetNetIfIndex(wdev->if_dev), wdev->channel, TRUE);
+			}
+#endif
 			RTEnqueueInternalCmd(pAd, CMDTHRED_DFS_CAC_TIMEOUT, &SetChInfo, sizeof(UINT_32));
 			RTMP_MLME_HANDLER(pAd);
 		}
@@ -2861,12 +3038,13 @@ UCHAR DfsRandomSelectChannel(/*Select new channel using random selection*/
 #ifdef DFS_VENDOR10_CUSTOM_FEATURE
 UINT_8 DFS_V10_W52_LIST[V10_W52_SIZE] = {36, 40, 44, 48};
 UINT_8 DFS_V10_W53_LIST[V10_W53_SIZE] = {52, 56, 60, 64};
-UINT_8 DFS_V10_W56_VHT80_LIST[V10_W56_VHT80_A_SIZE + V10_W56_VHT80_B_SIZE] = {100, 104, 108, 112,\
-	116, 120, 124, 128};
-UINT_8 DFS_V10_W56_LIST[V10_W56_VHT80_A_SIZE + V10_W56_VHT80_B_SIZE + V10_W56_VHT20_SIZE] = {100, 104, 108, 112,\
-	116, 120, 124, 128, 132, 136, 140};
+UINT_8 DFS_V10_W56_VHT80_LIST[V10_W56_VHT80_A_SIZE + V10_W56_VHT80_B_SIZE + V10_W56_VHT80_C_SIZE] = {100, 104, 108, 112,\
+	116, 120, 124, 128, 132, 136, 140, 144};
+UINT_8 DFS_V10_W56_LIST[V10_W56_VHT80_A_SIZE + V10_W56_VHT80_B_SIZE + V10_W56_VHT80_C_SIZE] = {100, 104, 108, 112,\
+	116, 120, 124, 128, 132, 136, 140, 144};
 UINT_8 DFS_V10_W56_VHT80_LISTA[V10_W56_VHT80_A_SIZE] = {100, 104, 108, 112};
 UINT_8 DFS_V10_W56_VHT80_LISTB[V10_W56_VHT80_B_SIZE] = {116, 120, 124, 128};
+UINT_8 DFS_V10_W56_VHT80_LISTC[V10_W56_VHT80_C_SIZE] = {132, 136, 140, 144};
 UINT_8 DFS_V10_W56_VHT20_LIST[V10_W56_VHT20_SIZE] = {132, 136, 140};
 
 UINT_8 DfsV10FindNonNopChannel(
@@ -2897,9 +3075,15 @@ UINT_8 DfsV10W56FindMaxNopDuration(
 	UCHAR ChIdx = 0;
 	USHORT channelNopTime = 0;
 	PDFS_PARAM pDfsParam = &pAd->CommonCfg.DfsParameter;
+	UCHAR upperBoundCh = 0;
+
+	if (pAd->CommonCfg.bCh144Enabled)
+		upperBoundCh = 144;
+	else
+		upperBoundCh = 140;
 
 	for (ChIdx = 0; ChIdx < pDfsParam->ChannelListNum; ChIdx++) {
-		if (pDfsParam->DfsChannelList[ChIdx].Channel >= 100 && pDfsParam->DfsChannelList[ChIdx].Channel <= 140) {
+		if (pDfsParam->DfsChannelList[ChIdx].Channel >= 100 && pDfsParam->DfsChannelList[ChIdx].Channel <= upperBoundCh) {
 			if (channelNopTime < pDfsParam->DfsChannelList[ChIdx].NonOccupancy)
 				channelNopTime = pDfsParam->DfsChannelList[ChIdx].NonOccupancy;
 		}
@@ -2932,7 +3116,8 @@ BOOLEAN DfsV10CheckGrpChnlLeft(
 				((chGrp == W53) ? (DFS_V10_W53_LIST[ChIdx]) :
 				((wlan_config_get_vht_bw(wdev) == VHT_BW_80) ?
 					(DFS_V10_W56_VHT80_LIST[ChIdx]) : ((chGrp == W56) ?
-					(DFS_V10_W56_LIST[ChIdx]) : (DFS_V10_W56_VHT20_LIST[ChIdx])))))) {
+					(DFS_V10_W56_LIST[ChIdx]) : ((pAd->CommonCfg.bCh144Enabled == FALSE) ?
+					DFS_V10_W56_VHT20_LIST[ChIdx] : 0)))))) {
 				ChCnt++;
 			}
 		}
@@ -3008,10 +3193,12 @@ BOOLEAN DfsV10CheckChnlGrpW56UB(
 }
 
 BOOLEAN DfsV10CheckChnlGrpW56UC(
+	IN PRTMP_ADAPTER pAd,
 	IN UCHAR Channel)
 {
 	UCHAR i = 0;
-
+	if(pAd->CommonCfg.bCh144Enabled == FALSE)
+	{
 	while (i < V10_W56_VHT20_SIZE && Channel != DFS_V10_W56_VHT20_LIST[i]) {
 		i++;
 	}
@@ -3020,9 +3207,21 @@ BOOLEAN DfsV10CheckChnlGrpW56UC(
 		return TRUE;
 	else
 		return FALSE;
-}
+	}
+	else 
+	{
+		while (i < V10_W56_VHT80_C_SIZE && Channel != DFS_V10_W56_VHT80_LISTC[i]) {
+			i++;
+		}
+		if (i < V10_W56_VHT80_C_SIZE)
+			return TRUE;
+		else
+			return FALSE;
+	}
 
+}
 BOOLEAN DfsV10CheckW56Grp(
+	IN PRTMP_ADAPTER pAd,
 	IN UCHAR channel)
 {
 	BOOLEAN isW56 = FALSE;
@@ -3031,7 +3230,7 @@ BOOLEAN DfsV10CheckW56Grp(
 		isW56 = TRUE;
 	else if (DfsV10CheckChnlGrpW56UB(channel))
 		isW56 = TRUE;
-	else if (DfsV10CheckChnlGrpW56UC(channel))
+	else if (DfsV10CheckChnlGrpW56UC(pAd, channel))
 		isW56 = TRUE;
 	else
 		isW56 = FALSE;
@@ -3040,6 +3239,7 @@ BOOLEAN DfsV10CheckW56Grp(
 }
 
 UCHAR DfsV10CheckChnlGrp(
+	IN PRTMP_ADAPTER pAd,
 	IN UCHAR Channel)
 {
 	if (DfsV10CheckChnlGrpW52(Channel))
@@ -3050,7 +3250,7 @@ UCHAR DfsV10CheckChnlGrp(
 		return W56_UA;
 	else if (DfsV10CheckChnlGrpW56UB(Channel))
 		return W56_UB;
-	else if (DfsV10CheckChnlGrpW56UC(Channel))
+	else if (DfsV10CheckChnlGrpW56UC(pAd, Channel))
 		return W56_UC;
 	else
 		return NA_GRP;
@@ -3136,7 +3336,7 @@ VOID DfsV10AddWeighingFactor(
 		MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("Channel %3d : Busy Time = %6u\n",
 				 pAutoChCtrl->AutoChSelCtrl.AutoChSelChList[channelIdx].Channel, pAutoChCtrl->pChannelInfo->chanbusytime[channelIdx]));
 
-	chnlGrp = DfsV10CheckChnlGrp(pAutoChCtrl->AutoChSelCtrl.AutoChSelChList[channelIdx].Channel);
+	chnlGrp = DfsV10CheckChnlGrp(pAd, pAutoChCtrl->AutoChSelCtrl.AutoChSelChList[channelIdx].Channel);
 
 	if (chnlGrp == W52) {
 		if (pAutoChCtrl->pChannelInfo->chanbusytime[channelIdx])
@@ -3242,6 +3442,7 @@ VOID DfsV10APBcnUpdate(
 	UCHAR BssIdx;
 	UINT_32 SetChInfo = 0;
 	BSS_STRUCT *pMbss = NULL;
+	UCHAR GrpSize;
 
 	if (pObj->ioctl_if == INT_MBSSID)
 		wdev = &pAd->ApCfg.MBSSID[ifIndex].wdev;
@@ -3259,9 +3460,14 @@ VOID DfsV10APBcnUpdate(
 		SET_V10_AP_BCN_UPDATE_ENBL(pAd, FALSE);
 
 	ApAutoChannelSkipListBuild(pAd, wdev);
-	if (DfsV10CheckW56Grp(wdev->channel)) {
+	if (DfsV10CheckW56Grp(pAd, wdev->channel)) {
 		if (wlan_config_get_vht_bw(wdev) == VHT_BW_2040) {
-			if ((DfsV10CheckGrpChnlLeft(pAd, W56, V10_W56_SIZE) == FALSE)
+			if (pAd->CommonCfg.bCh144Enabled)
+				GrpSize = V10_W56_SIZE;
+			else
+				GrpSize = V10_W56_SIZE -1;
+			
+			if ((DfsV10CheckGrpChnlLeft(pAd, W56, GrpSize) == FALSE)
 				|| (IS_V10_W56_VHT80_SWITCHED(pAd) && DfsV10CheckGrpChnlLeft(pAd, W56_UC, V10_W56_VHT20_SIZE) == FALSE)) {
 				if (IS_V10_W56_VHT80_SWITCHED(pAd)) {
 					/* VHT 20 -> VHT 80 */
@@ -3289,8 +3495,20 @@ VOID DfsV10APBcnUpdate(
 				else
 					ASSERT(BwChannel);
 			}
-		} else if ((wlan_config_get_vht_bw(wdev) == VHT_BW_80)
-			&& (DfsV10CheckGrpChnlLeft(pAd, W56_UAB, V10_W56_VHT80_SIZE) == FALSE)) {
+		} else if (wlan_config_get_vht_bw(wdev) == VHT_BW_80) {
+			if (pAd->CommonCfg.bCh144Enabled)
+				GrpSize = V10_W56_VHT80_SIZE;
+			else
+				GrpSize = V10_W56_VHT80_SIZE - V10_W56_VHT80_C_SIZE;
+			
+			if ((DfsV10CheckGrpChnlLeft(pAd, W56_UAB, GrpSize) == FALSE))
+			{
+
+				if(pAd->CommonCfg.bCh144Enabled) {
+					if (DfsV10W56APDownStart(pAd, pAutoChCtrl, V10_W56_APDOWN_TIME))
+						goto W56APDOWN;
+				}
+				else {
 			/* VHT80 -> VHT20 */
 			wlan_config_set_ht_bw(wdev, HT_BW_20);
 			wlan_config_set_vht_bw(wdev, VHT_BW_2040);
@@ -3306,6 +3524,8 @@ VOID DfsV10APBcnUpdate(
 
 			SET_V10_W56_VHT80_SWITCH(pAd, TRUE);
 			ApAutoChannelSkipListBuild(pAd, wdev);
+				}
+			}
 		}
 	}
 

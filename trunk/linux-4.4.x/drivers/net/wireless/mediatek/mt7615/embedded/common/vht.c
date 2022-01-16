@@ -1253,14 +1253,20 @@ BOOLEAN vht80_channel_group(RTMP_ADAPTER *pAd, UCHAR channel)
 	while (vht_ch_80M[idx].ch_up_bnd != 0) {
 		if (channel >= vht_ch_80M[idx].ch_low_bnd &&
 			channel <= vht_ch_80M[idx].ch_up_bnd) {
+			
 			if (
-				((pAd->CommonCfg.RDDurRegion == JAP ||
+				(((pAd->CommonCfg.RDDurRegion == JAP ||
 				  pAd->CommonCfg.RDDurRegion == JAP_W53 ||
 				  pAd->CommonCfg.RDDurRegion == JAP_W56) &&
 				 vht_ch_80M[idx].cent_freq_idx == 138)
 				||
 				((region == JAP || region == CE) &&
-				 vht_ch_80M[idx].cent_freq_idx == 138)
+				 vht_ch_80M[idx].cent_freq_idx == 138))
+#ifdef DFS_VENDOR10_CUSTOM_FEATURE
+				&& (!pAd->CommonCfg.bCh144Enabled)
+#endif
+
+				 
 			) {
 				/* prevent using 132~144 while Region is JAP or CE */
 				idx++;

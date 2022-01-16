@@ -258,6 +258,12 @@ INT GetMuraMonitorStateProc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 		P_EVENT_SHOW_ALGORITHM_STATE pstat_result = NULL;
 
 		os_alloc_mem(NULL, (UCHAR **)&pstat_result, sizeof(EVENT_SHOW_ALGORITHM_STATE));
+		if (!pstat_result) {
+			MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
+				("%s(): mem alloc failed\n", __func__));
+			Ret = 0;
+			goto error;
+		}
 		os_zero_mem(pstat_result, sizeof(EVENT_SHOW_ALGORITHM_STATE));
 		msg = AndesAllocCmdMsg(pAd, sizeof(cmd) + sizeof(EVENT_SHOW_ALGORITHM_STATE));
 
@@ -287,6 +293,12 @@ INT GetMuraMonitorStateProc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 		P_EVENT_SHOW_ALGORITHM_GROUP_STATE pgroup_stat_result = NULL;
 
 		os_alloc_mem(NULL, (UCHAR **)&pgroup_stat_result, sizeof(EVENT_SHOW_ALGORITHM_GROUP_STATE));
+		if (!pgroup_stat_result) {
+			MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
+				("%s(): mem alloc failed\n", __func__));
+			Ret = 0;
+			goto error;
+		}
 		os_zero_mem(pgroup_stat_result, sizeof(EVENT_SHOW_ALGORITHM_GROUP_STATE));
 
 		cmd = MURA_ALGORITHM_GROUP_STAT;
@@ -345,6 +357,12 @@ INT GetMuraMonitorStateProc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 		P_EVENT_SHOW_ALGORITHM_HWFB_STATE phwfb_stat_result = NULL;
 
 		os_alloc_mem(NULL, (UCHAR **)&phwfb_stat_result, sizeof(EVENT_SHOW_ALGORITHM_HWFB_STATE));
+		if (!phwfb_stat_result) {
+			MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
+				("%s(): mem alloc failed\n", __func__));
+			Ret = 0;
+			goto error;
+		}
 		os_zero_mem(phwfb_stat_result, sizeof(EVENT_SHOW_ALGORITHM_HWFB_STATE));
 
 		cmd = MURA_ALGORITHM_HWFB_STAT;

@@ -69,6 +69,9 @@ EC_GROUP_INFO_BI *get_ecc_group_info_bi(
 		SAE_BN_BIN2BI((UINT8 *)ec_group->b,
 						  ec_group->b_len,
 						  &ec_group_bi->b);
+		SAE_BN_BIN2BI((UINT8 *)ec_group->z,
+						  ec_group->z_len,
+						  &ec_group_bi->z);
 
 		if (group == 19) {
 			gx = ec_group19_gx;
@@ -144,6 +147,7 @@ VOID group_info_bi_deinit(
 			SAE_BN_FREE(&ec_group_bi->b);
 			SAE_BN_FREE(&ec_group_bi->gx);
 			SAE_BN_FREE(&ec_group_bi->gy);
+			SAE_BN_FREE(&ec_group_bi->z);
 			ec_group_bi->cofactor = NULL;
 
 			if (ec_group_bi->mont != NULL) {

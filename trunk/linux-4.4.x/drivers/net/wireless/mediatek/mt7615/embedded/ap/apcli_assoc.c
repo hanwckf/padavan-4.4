@@ -881,6 +881,7 @@ static VOID ApCliMlmeAssocReqAction(
 			So we can use the mactable entry sec_config instead of	Apcli wdev.sec_config*/
 
 /* OWE use intialize group and add owe dh key ie to assoc request */
+			owe->last_try_group = *curr_group;
 			if (init_owe_group(owe, *curr_group) == 0) {
 				MTWF_LOG(DBG_CAT_SEC, CATSEC_OWE, DBG_LVL_ERROR,
 					("==> %s(), init_owe_group failed. shall not happen!\n", __func__));

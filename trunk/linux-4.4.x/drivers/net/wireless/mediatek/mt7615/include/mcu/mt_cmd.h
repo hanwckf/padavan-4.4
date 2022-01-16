@@ -34,6 +34,8 @@
 #include "icap.h"
 #endif /* defined(INTERNAL_CAPTURE_SUPPORT) || defined(WIFI_SPECTRUM_SUPPORT) */
 
+typedef UINT32 WLAN_STATUS, *P_WLAN_STATUS;
+
 struct cmd_msg;
 struct _MT_SWITCH_CHANNEL_CFG;
 struct _MT_RTS_THRESHOLD_T;
@@ -735,6 +737,9 @@ enum EXT_CMD_TYPE {
 	EXT_CMD_ID_FD_FRAME_OFFLOAD = 0xA6,
 #endif /* OCE_SUPPORT */
 	EXT_CMD_ID_SEND_NULL_FRAME_SUPPORT = 0xA7,
+	EXT_CMD_ID_SET_VHT_RATE_IN_2G = 0xA8,
+	EXT_CMD_ID_RA_OPTION_FREQ_DUP = 0xA9,
+	EXT_CMD_ID_IGMP_FLOODING_CMD = 0xBD,
 };
 
 
@@ -2788,6 +2793,59 @@ typedef struct GNU_PACKED _EXT_CMD_FW_LOG_2_HOST_CTRL_T {
 	UINT8 ucFwLog2HostCtrl;
 	UINT8 ucReserve[3];
 } EXT_CMD_FW_LOG_2_HOST_CTRL_T;
+
+#ifdef CONFIG_MAP_SUPPORT
+
+#define EXT_CMD_GET_ALL_STA_STATS_NUM_PER_EVENT		75
+#define TXRX_MAX_STA_NUM_PER_EVENT			30
+#define MAX_TX_RX_ADM_NUM				4
+
+typedef enum _STA_STAT_EVENT_TYPE {
+    EVENT_PHY_ALL_TX_RX_RATE = 0x1,
+    EVENT_PHY_TX_STAT_PER_WCID = 0x2,
+    EVENT_PHY_RX_STAT = 0x03,
+    EVENT_PHY_ALL_TX_RX_ADM_STAT = 0x04,
+    EVENT_PHY_TXRX_AIR_TIME = 0x05
+} STA_STAT_EVENT_TYPE, *P_STA_STAT_EVENT_TYPE;
+
+typedef struct _EXT_CMD_GET_ALL_STA_STAT_T {
+	UINT8 ucEventType /*Sub-event to FW*/;
+	UINT8 aucReserved[3];
+} EXT_CMD_GET_ALL_STA_STAT_T, *P_EXT_CMD_GET_ALL_STA_STAT_T;
+
+typedef struct _TX_RX_PHY_CFG_T {
+    UINT8  MODE;
+    UINT8  FLAGS;
+    UINT8  STBC;
+    UINT8  ShortGI;
+    UINT8  BW;
+    UINT8  ldpc;
+    UINT8  MCS;
+    UINT8  VhtNss;
+    UINT8  u1RxRate;
+    UINT8  u1RxMode;
+    UINT8  u1RxNsts;
+    UINT8  u1RxGi;
+    UINT8  u1RxCoding;
+    UINT8  u1RxStbc;
+    UINT8  u1RxBW;
+    UINT8  u1Reserved;
+} TX_RX_PHY_CFG_T, *P_TX_RX_PHY_CFG_T;
+
+typedef struct _EXT_EVENT_TXRX_AIRTIME_T {
+	UINT16 u2WlanId;
+	UINT32 u4WtblTxTime[MAX_TX_RX_ADM_NUM];
+	UINT32 u4WtblRxTime[MAX_TX_RX_ADM_NUM];
+} EXT_EVENT_TXRX_AIRTIME_T, *P_EXT_EVENT_TXRX_AIRTIME_T;
+
+typedef struct _EXT_EVENT_TXRX_AIRTIME_INFO_T {
+	UINT8 u1PhyEventId;
+	UINT8 u1FlagMoreEvent;
+	UINT16 u2StaNum;
+	EXT_EVENT_TXRX_AIRTIME_T rTxRxAirTimeStat[TXRX_MAX_STA_NUM_PER_EVENT];
+} EXT_EVENT_TXRX_AIRTIME_INFO_T, *P_EXT_EVENT_TXRX_AIRTIME_INFO_T;
+
+#endif
 
 #if defined(CUSTOMER_RSG_FEATURE) || defined (CUSTOMER_DCC_FEATURE)
 /* u4Field and ucWlanIdx is included for DCC to get per bss packet count */
@@ -5063,6 +5121,9 @@ typedef struct GNU_PACKED _EXT_CMD_ID_MULTICAST_ENTRY_DELETE {
 	UINT8 ucReserve;
 } EXT_CMD_ID_MULTICAST_ENTRY_DELETE_T, *P_EXT_CMD_ID_MULTICAST_ENTRY_DELETE_T;
 
+INT BitCount (IN UINT32 vMask);
+BOOLEAN isIgmpMldFloodingPkt(IN struct _RTMP_ADAPTER *pAd, IN PUCHAR pGroupIpAddr, IN UINT16 ProtoType);
+
 #ifdef IGMP_TVM_SUPPORT
 typedef enum {
 	IGMP_MCAST_SET_AGEOUT_TIME = 0x01,
@@ -5080,6 +5141,12 @@ typedef struct GNU_PACKED _EXT_CMD_ID_MULTICAST_SET_GET {
 } EXT_CMD_ID_IGMP_MULTICAST_SET_GET_T, *P_EXT_CMD_ID_IGMP_MULTICAST_SET_GET_T;
 #endif /* IGMP_TVM_SUPPORT */
 
+typedef struct GNU_PACKED _EXT_CMD_ID_IGMP_FLOODING_CMD {
+	UINT8 bInsert;
+	UINT8 uEntryIPType;
+	UINT8 auMacData[6];
+	UINT32 auPrefixMask[4];
+} EXT_CMD_ID_IGMP_FLOODING_CMD_T, *P_EXT_CMD_ID_IGMP_FLOODING_CMD_T;
 
 /* Manually setting Tx power */
 typedef struct _CMD_All_POWER_MANUAL_CTRL_T {
@@ -5424,6 +5491,7 @@ typedef struct _EXT_EVENT_TXPOWER_INFO_T {
 	INT8	cTxPwrBFBackoffValue[BF_BACKOFF_MODE][BF_BACKOFF_CASE];
 	UINT32	u4BackoffCRValue[6];	/* (BBP) Band0: 0x8207067C~82070690, Band1: 0x8207087C~82070890 */
 	UINT32	u4PowerBoundCRValue;	/* (TMAC) 0x820F4080 */
+	INT8	cEpaGain[2];
 } EXT_EVENT_TXPOWER_INFO_T, *P_EXT_EVENT_TXPOWER_INFO_T;
 
 typedef struct _EXT_EVENT_TXPOWER_BACKUP_T {
@@ -6285,6 +6353,7 @@ INT32 MtCmdSetRdg(struct _RTMP_ADAPTER *pAd, struct _EXT_CMD_RDG_CTRL_T *param);
 INT32 MtCmdSetSnifferMode(struct _RTMP_ADAPTER *pAd, struct _EXT_CMD_SNIFFER_MODE_T *param);
 
 VOID MtCmdMemDump(struct _RTMP_ADAPTER *pAd, UINT32 Addr, PUINT8 pData);
+INT SetRaOptionFrequecyDup_Proc(struct _RTMP_ADAPTER *pAd, RTMP_STRING *arg);
 
 
 #ifdef CONFIG_ATE
@@ -6316,6 +6385,7 @@ INT32 mt_cmd_get_sta_tx_statistic(struct _RTMP_ADAPTER *ad, UINT8 wcid, UINT8 db
 #ifdef RACTRL_LIMIT_MAX_PHY_RATE
 INT32 MtCmdSetMaxPhyRate(struct _RTMP_ADAPTER *pAd, UINT16 u2MaxPhyRate);
 #endif /* RACTRL_LIMIT_MAX_PHY_RATE */
+INT32 MtCmdSetVhtRateIn2G(struct _RTMP_ADAPTER *pAd, BOOLEAN fgEnVhtForHtIn2G);
 #ifdef MIN_PHY_RATE_SUPPORT
 INT32 MtCmdSetMinPhyRate(struct _RTMP_ADAPTER *pAd, struct wifi_dev *wdev);
 #endif /* MIN_PHY_RATE_SUPPORT */

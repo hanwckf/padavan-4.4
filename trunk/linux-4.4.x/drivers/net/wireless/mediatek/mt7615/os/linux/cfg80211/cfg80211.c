@@ -2056,11 +2056,21 @@ static int CFG80211_OpsStartAp(
 
 	if (settings->beacon.head_len > 0) {
 		os_alloc_mem(NULL, &beacon_head_buf, settings->beacon.head_len);
+		if (beacon_head_buf == NULL) {
+			MTWF_LOG(DBG_CAT_MLME, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("%s::Alloc memory fail\n", __func__));
+			return 0;
+		}
 		NdisCopyMemory(beacon_head_buf, settings->beacon.head, settings->beacon.head_len);
 	}
 
 	if (settings->beacon.tail_len > 0) {
 		os_alloc_mem(NULL, &beacon_tail_buf, settings->beacon.tail_len);
+		if (beacon_tail_buf == NULL) {
+			MTWF_LOG(DBG_CAT_MLME, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("%s::Alloc memory fail\n", __func__));
+			if (beacon_head_buf)
+				os_free_mem(beacon_head_buf);
+			return 0;
+		}
 		NdisCopyMemory(beacon_tail_buf, settings->beacon.tail, settings->beacon.tail_len);
 	}
 
@@ -2194,7 +2204,7 @@ static int CFG80211_OpsChangeBeacon(
 {
 	VOID *pAd;
 	CMD_RTPRIV_IOCTL_80211_BEACON bcn;
-	UCHAR *beacon_head_buf, *beacon_tail_buf;
+	UCHAR *beacon_head_buf = NULL, *beacon_tail_buf = NULL;
 	const UCHAR *ssid_ie = NULL;
 	memset(&bcn, 0, sizeof(CMD_RTPRIV_IOCTL_80211_BEACON));
 
@@ -2203,11 +2213,21 @@ static int CFG80211_OpsChangeBeacon(
 
 	if (info->head_len > 0) {
 		os_alloc_mem(NULL, &beacon_head_buf, info->head_len);
+		if (beacon_head_buf == NULL) {
+			MTWF_LOG(DBG_CAT_MLME, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("%s::Alloc memory fail\n", __func__));
+			return 0;
+		}
 		NdisCopyMemory(beacon_head_buf, info->head, info->head_len);
 	}
 
 	if (info->tail_len > 0) {
 		os_alloc_mem(NULL, &beacon_tail_buf, info->tail_len);
+		if (beacon_tail_buf == NULL) {
+			MTWF_LOG(DBG_CAT_MLME, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("%s::Alloc memory fail\n", __func__));
+			if (beacon_head_buf)
+				os_free_mem(beacon_head_buf);
+			return 0;
+		}
 		NdisCopyMemory(beacon_tail_buf, info->tail, info->tail_len);
 	}
 
@@ -2674,12 +2694,13 @@ static struct wireless_dev *CFG80211_WdevAlloc(
 	 * | pAd pointer			|
 	 * +------------------------+
 	 */
-	pWdev = kzalloc(sizeof(struct wireless_dev), GFP_KERNEL);
+	os_alloc_mem_suspend(NULL, (UCHAR **)&pWdev ,sizeof(*pWdev));
 
 	if (pWdev == NULL) {
 		MTWF_LOG(DBG_CAT_INIT, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("80211> Wireless device allocation fail!\n"));
 		return NULL;
 	} /* End of if */
+	os_zero_mem((PUCHAR)pWdev, sizeof(*pWdev));
 	
 #if defined(PLATFORM_M_STB)	
 #if (KERNEL_VERSION(3, 0, 0) <= LINUX_VERSION_CODE)

@@ -137,6 +137,13 @@ RTMP_STRING *rtstrstruncasecmp(RTMP_STRING *s1, RTMP_STRING *s2)
 RTMP_STRING *rtstrstr(const RTMP_STRING *s1, const RTMP_STRING *s2)
 {
 	INT l1, l2;
+
+	if (!s1 || !s2) {
+		MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("Error in %s s1 is %s s2 is %s\n",
+			__func__, s1, s2));
+		return NULL;
+	}
+
 	l2 = strlen(s2);
 
 	if (!l2)
@@ -442,7 +449,7 @@ static VOID RTMPOldChannelCfg(RTMP_ADAPTER *pAd, RTMP_STRING *Buffer)
 			BackupChannel = os_str_tol(macptr, 0, 10);
 
 			/* Disallow Zero or Invalid Values */
-			if ((!BackupChannel) || (DfsV10CheckChnlGrp(BackupChannel) == NA_GRP)) {
+			if ((!BackupChannel) || (DfsV10CheckChnlGrp(pAd, BackupChannel) == NA_GRP)) {
 				MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("[%s] Backup Channel=%d\n",
 					__func__, BackupChannel));
 				continue;
@@ -2559,15 +2566,18 @@ static VOID read_vht_param_from_file(struct _RTMP_ADAPTER *pAd,
 				struct wifi_dev *mbss_wdev = &pAd->ApCfg.MBSSID[mbss_idx].wdev;
 
 				wlan_config_set_vht_bw(mbss_wdev, vht_bw);
+#ifdef DFS_VENDOR10_CUSTOM_FEATURE				
+				if (IS_SUPPORT_V10_DFS(pAd) && vht_bw == VHT_BW_2040) {
+				/* Boot Time HT BW Update when VHT BW if VHT2040 */
+				wlan_config_set_ht_bw(mbss_wdev, HT_BW_20);
+				}
+#endif				
 				MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 						("mbss[%d] VHT: Channel Width = %s MHz\n", mbss_idx,
 						 VhtBw2Str(vht_bw)));
 			}
 #endif
-#ifdef DFS_VENDOR10_CUSTOM_FEATURE
-			if (IS_SUPPORT_V10_DFS(pAd) && vht_bw == VHT_BW_2040) {
-				/* Boot Time HT BW Update when VHT BW if VHT2040 */
-				wlan_config_set_ht_bw(wdev, HT_BW_20);
+
 #ifdef MCAST_RATE_SPECIFIC
 				pAd->CommonCfg.MCastPhyMode.field.BW = HT_BW_20;
 				pAd->CommonCfg.MCastPhyMode_5G.field.BW = HT_BW_20;
@@ -2576,8 +2586,6 @@ static VOID read_vht_param_from_file(struct _RTMP_ADAPTER *pAd,
 				pAd->CommonCfg.BCastPhyMode_5G.field.BW = pAd->CommonCfg.MCastPhyMode_5G.field.BW;
 #endif /* MCAST_BCAST_RATE_SET_SUPPORT */
 #endif /* MCAST_RATE_SPECIFIC */
-			}
-#endif
 		}
 	}
 
@@ -3565,6 +3573,88 @@ set_default:
 
 #endif /* ANTENNA_CONTROL_SUPPORT */
 
+#ifdef MLME_MULTI_QUEUE_SUPPORT
+void rtmp_read_mlme_multiqueue_parms_from_file(
+		IN RTMP_ADAPTER *pAd,
+		IN RTMP_STRING *tmpbuf,
+		IN RTMP_STRING *pBuffer)
+{
+	RTMP_STRING *macptr = NULL;
+	UCHAR idx = 0;
+	UCHAR ration_val = RATION_OF_MLME_LP_QUEUE;
+	pAd->Mlme.MultiQEnable = FALSE;
+	pAd->Mlme.HPQueue.Ration = RATION_OF_MLME_HP_QUEUE;
+	pAd->Mlme.Queue.Ration = RATION_OF_MLME_QUEUE;
+	pAd->Mlme.LPQueue.Ration = RATION_OF_MLME_LP_QUEUE;
+
+	if (RTMPGetKeyParameter("MlmeMultiQEnable", tmpbuf, 128, pBuffer, TRUE)) {
+		if ((UCHAR) simple_strtol(tmpbuf, 0, 10) != 0)
+			pAd->Mlme.MultiQEnable = TRUE;
+		MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s(): Mlme.MultiQEnable=%d\n", __func__, pAd->Mlme.MultiQEnable));
+	}
+
+	if (RTMPGetKeyParameter("MlmeMultiQCtrl", tmpbuf, 128, pBuffer, TRUE)) {
+		for (idx = 0, macptr = rstrtok(tmpbuf, "-"); macptr; macptr = rstrtok(NULL, "-"), idx++) {
+			ration_val = (UINT16)os_str_tol(macptr, 0, 10);
+			switch (idx) {
+			case 0:
+				pAd->Mlme.HPQueue.Ration = ration_val;
+				break;
+			case 1:
+				pAd->Mlme.Queue.Ration = ration_val;
+				break;
+			case 2:
+				pAd->Mlme.LPQueue.Ration = ration_val;
+				break;
+			default:
+				break;
+			}
+		}
+		MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s(): [hp_q_ration]-[np_q_ration]-[lp_q_ration] = %d-%d-%d\n",
+			__func__, pAd->Mlme.HPQueue.Ration, pAd->Mlme.Queue.Ration, pAd->Mlme.LPQueue.Ration));
+	}
+}
+#endif
+
+void rtmp_read_quick_channel_switch_parms_from_file(
+		IN RTMP_ADAPTER *pAd,
+		IN RTMP_STRING *tmpbuf,
+		IN RTMP_STRING *pBuffer)
+{
+	RTMP_STRING *macptr = NULL;
+	UINT16 tmp_value = 0;
+	INT i = 0;
+	struct wifi_dev *wdev = NULL;
+
+	if (RTMPGetKeyParameter("QuickChannelSwitch", tmpbuf, 256, pBuffer, FALSE)) {
+#ifdef CONFIG_AP_SUPPORT
+			IF_DEV_CONFIG_OPMODE_ON_AP(pAd) {
+				for (i = 0, macptr = rstrtok(tmpbuf, ";"); (macptr && i < pAd->ApCfg.BssidNum); macptr = rstrtok(NULL, ";"), i++) {
+					wdev = &pAd->ApCfg.MBSSID[PF_TO_BSS_IDX(pAd, i)].wdev;
+
+					if (macptr)
+						tmp_value = (UINT16)os_str_tol(macptr, 0, 10);
+
+					if (tmp_value > QUICK_CH_SWICH_ENABLE_WO_DISCONNECTION)
+						tmp_value = QUICK_CH_SWICH_ENABLE_W_DISCONNECTION;
+
+					wdev->quick_ch_change = tmp_value;
+				}
+			}
+#endif /* CONFIG_AP_SUPPORT */
+	} else {
+#ifdef CONFIG_AP_SUPPORT
+			IF_DEV_CONFIG_OPMODE_ON_AP(pAd) {
+				for (i = 0; i < pAd->ApCfg.BssidNum; i++) {
+					wdev = &pAd->ApCfg.MBSSID[PF_TO_BSS_IDX(pAd, i)].wdev;
+
+					wdev->quick_ch_change = QUICK_CH_SWICH_DISABLE;
+				}
+			}
+#endif /* CONFIG_AP_SUPPORT */
+	}
+}
+
 #ifdef MGMT_TXPWR_CTRL
 void rtmp_read_mgmt_pwr_parms_from_file(
 		IN RTMP_ADAPTER *pAd,
@@ -3573,7 +3663,7 @@ void rtmp_read_mgmt_pwr_parms_from_file(
 {
 	UINT32 i4Recv, value0, value1;
 	UINT8 i;
-	RTMP_STRING *tmp, *macptr;
+	RTMP_STRING *macptr;
 
 	if (RTMPGetKeyParameter("MgmtTxPwr", tmpbuf, 32, pBuffer, TRUE)) {
 		for (i = 0, macptr = rstrtok(tmpbuf, ";"); macptr; macptr = rstrtok(NULL, ";"), i++) {
@@ -3587,6 +3677,7 @@ void rtmp_read_mgmt_pwr_parms_from_file(
 				value0++;
 
 			pAd->ApCfg.MBSSID[i].wdev.MgmtTxPwr = value0;
+			pAd->ApCfg.MBSSID[i].wdev.MgmtTxPwrBak = value0;
 			MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("I/F(ra%d) MgmtTxPwr=%d\n", i, value0));
 		}
 	}
@@ -5982,6 +6073,13 @@ NDIS_STATUS	RTMPSetProfileParameters(
 			RTMPOldBWCfg(pAd, tmpbuf, TRUE);
 		if (RTMPGetKeyParameter("OldVHTBW_Dev2", tmpbuf, 25, pBuffer, TRUE))
 			RTMPOldBWCfg(pAd, tmpbuf, TRUE);
+		if (RTMPGetKeyParameter("Ch144Support", tmpbuf, 10, pBuffer, TRUE)) {	
+			if (os_str_tol(tmpbuf, 0, 10) == 1)
+						pAd->CommonCfg.bCh144Enabled = TRUE;
+					else
+						pAd->CommonCfg.bCh144Enabled = FALSE;
+		}
+
 #endif
 
 #ifdef CONFIG_AP_SUPPORT
@@ -6917,6 +7015,10 @@ NDIS_STATUS	RTMPSetProfileParameters(
 #ifdef ANTENNA_CONTROL_SUPPORT
 		rtmp_read_ant_ctrl_parms_from_file(pAd, tmpbuf, pBuffer);
 #endif /* ANTENNA_CONTROL_SUPPORT */
+#ifdef MLME_MULTI_QUEUE_SUPPORT
+		rtmp_read_mlme_multiqueue_parms_from_file(pAd, tmpbuf, pBuffer);
+#endif
+		rtmp_read_quick_channel_switch_parms_from_file(pAd, tmpbuf, pBuffer);
 	} while (0);
 
 	os_free_mem(tmpbuf);

@@ -421,6 +421,14 @@ static VOID BssCipherParse(BSS_ENTRY *pBss)
 			pBss->RsnCapability = (pTmp[1] << 8) + pTmp[0];
 			pTmp += sizeof(USHORT);
 			break;
+		case IE_RSNXE:
+#ifdef DOT11_SAE_SUPPORT
+			if (pEid->Octet[0] & (1 << IE_RSNXE_CAPAB_SAE_H2E))
+				pBss->use_h2e_connect = TRUE;
+			pBss->rsnxe_len = pEid->Len + 2;
+			NdisMoveMemory(pBss->rsnxe_content, (UCHAR *)pEid, pBss->rsnxe_len);
+#endif
+			break;
 
 		default:
 			break;

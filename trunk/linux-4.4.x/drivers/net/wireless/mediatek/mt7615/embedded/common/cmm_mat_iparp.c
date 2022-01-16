@@ -152,7 +152,7 @@ static NDIS_STATUS IPMacTableUpdate(
 {
 	UINT				hashIdx;
 	IPMacMappingTable *pIPMacTable;
-	IPMacMappingEntry	*pEntry = NULL, *pPrev = NULL, *pNewEntry  = NULL;
+	IPMacMappingEntry	*pEntry = NULL, *pPrev = NULL, *pNewEntry  = NULL, *pTempEntry = NULL;
 	ULONG			now;
 	pIPMacTable = (IPMacMappingTable *)pMatCfg->MatTableSet.IPMacTable;
 
@@ -189,8 +189,9 @@ static NDIS_STATUS IPMacTableUpdate(
 				} else
 					pPrev->pNext = pEntry->pNext;
 
-				MATDBEntryFree(pMatCfg, (PUCHAR)pEntry);
+				pTempEntry = pEntry;
 				pEntry = (pPrev == NULL ? NULL :  pPrev->pNext);
+				MATDBEntryFree(pMatCfg, (PUCHAR)pTempEntry);
 				pMatCfg->nodeCount--;
 			} else {
 				pPrev = pEntry;

@@ -191,7 +191,8 @@ static VOID QBSS_LoadAlarm(
 					MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("qbss> Alarm! Deauth the station %02x:%02x:%02x:%02x:%02x:%02x\n",
 							 PRINT_MAC(pEntry->Addr)));
 #ifdef MAP_R2
-					wapp_handle_sta_disassoc(pAd, pEntry->wcid, REASON_DEAUTH_STA_LEAVING);
+					if (IS_MAP_ENABLE(pAd) && IS_MAP_R2_ENABLE(pAd))
+						wapp_handle_sta_disassoc(pAd, pEntry->wcid, REASON_DEAUTH_STA_LEAVING);
 #endif
 					mac_entry_delete(pAd, pEntry);
 					continue;

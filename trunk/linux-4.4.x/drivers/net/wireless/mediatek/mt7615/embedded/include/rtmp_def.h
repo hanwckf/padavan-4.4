@@ -165,8 +165,10 @@
 #ifdef IGMP_SNOOP_SUPPORT
 #ifdef MEMORY_OPTIMIZATION
 #define MAX_LEN_OF_MULTICAST_FILTER_TABLE 16
+#define MULTICAST_WHITE_LIST_SIZE_MAX	20
 #else
 #define MAX_LEN_OF_MULTICAST_FILTER_TABLE 64
+#define MULTICAST_WHITE_LIST_SIZE_MAX	20
 #endif
 #ifdef IGMP_TVM_SUPPORT
 #define MULTICAST_BLACK_LIST_STATIC_SIZE 3
@@ -178,6 +180,10 @@
 #define FREE_MEMBER_POOL_SIZE 64
 #endif /* IGMP_SNOOP_SUPPORT */
 #endif /* CONFIG_AP_SUPPORT */
+
+#ifndef IPV4_ADDR_LEN
+#define IPV4_ADDR_LEN 4
+#endif
 
 #define MAX_AGG_3SS_BALIMIT		31
 
@@ -497,6 +503,7 @@ enum WIFI_MODE {
 #endif /* MBSS_SUPPORT */
 
 #define HW_BEACON_MAX_NUM			16
+#define MAX_BEACON_NUM 			32
 
 enum {
 	EXTEND_MBSS_MAC_0_1 = 0,
@@ -669,7 +676,7 @@ enum {
 #define MAX_LEN_OF_BA_ORI_TABLE          ((NUM_OF_TID * MAX_LEN_OF_MAC_TABLE)/2)	/*   (NUM_OF_TID*MAX_AID_BA + 32)   // Block ACK originator */
 
 #ifdef MEMORY_OPTIMIZATION
-#define MAX_LEN_OF_BSS_TABLE             1
+#define MAX_LEN_OF_BSS_TABLE             128
 #define MAX_REORDERING_MPDU_NUM			 256
 #else
 #define MAX_LEN_OF_BSS_TABLE             256 /* 64 */
@@ -833,6 +840,9 @@ enum nl_msg_id {
 #define MLME_FINITE_CYCLIC_GROUP_NOT_SUPPORTED 77
 
 
+#define MLME_UNKNOWN_PASSWORD_IDENTIFIER 123
+#define MLME_SAE_HASH_TO_ELEMENT         126
+
 /* IE code */
 #define IE_SSID                         0
 #define IE_SUPP_RATES                   1
@@ -899,10 +909,30 @@ enum nl_msg_id {
 #define IE_VENDOR_SPECIFIC              221	/* Wifi WMM (WME) */
 #define	IE_WFA_WSC							221
 #define	IE_FILS_INDICATION				240
+#define	IE_RSNXE                        244
 
 #define IE_WLAN_EXTENSION	255
 #define IE_EXTENSION_ID_ECDH	32
 #define IE_EXTENSION_ID_ESP     11
+#define IE_WLAN_EXTENSION 255
+
+/* Extended RSN Capabilities */
+/* bits 0-3: Field length (n-1) */
+#define IE_RSNXE_CAPAB_PROTECTED_TWT 4
+#define IE_RSNXE_CAPAB_SAE_H2E 5
+
+#define BSS_MEMBERSHIP_SELECTOR_HT_PHY 127
+#define BSS_MEMBERSHIP_SELECTOR_VHT_PHY 126
+#define BSS_MEMBERSHIP_SELECTOR_SAE_H2E_ONLY 123
+#define BSS_MEMBERSHIP_SELECTOR_HE_PHY 122
+
+#define BSS_MEMBERSHIP_SELECTOR_VALID 0x80
+
+typedef struct GNU_PACKED _EID_STRUCT {
+	UCHAR   Eid;
+	UCHAR   Len;
+	UCHAR   Octet[1];
+} EID_STRUCT, *PEID_STRUCT, BEACON_EID_STRUCT, *PBEACON_EID_STRUCT;
 
 #define OUI_P2P					0x09
 #define OUI_HS2_INDICATION		0x10

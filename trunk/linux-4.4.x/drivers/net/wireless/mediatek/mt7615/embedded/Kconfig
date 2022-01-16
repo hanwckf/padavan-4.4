@@ -362,7 +362,7 @@ endmenu
 
 menu "WiFi Operation Modes"
     if WIFI_MODE_AP || WIFI_MODE_BOTH
-		source "drivers/net/wireless/mediatek/mt7615_ap/Kconfig"
+        source "drivers/net/wireless/mediatek/mt7615_ap/Kconfig"
     endif
 endmenu	
 

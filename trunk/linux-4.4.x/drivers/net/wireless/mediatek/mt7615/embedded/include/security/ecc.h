@@ -12,6 +12,7 @@ typedef struct __EC_GROUP_INFO_BI {
 	SAE_BN *b;
 	SAE_BN *gx;
 	SAE_BN *gy;
+	SAE_BN *z; /* sswu curve parameter */
 	SAE_BN *cofactor;
 	MONT_STRUC *mont;
 	UCHAR is_minus_3;
@@ -28,6 +29,8 @@ typedef struct __EC_GROUP_INFO {
 	UINT32 a_len;
 	const UCHAR *b;
 	UINT32 b_len;
+	const UCHAR *z; /* sswu curve parameter */
+	UINT32 z_len;
 	const UCHAR *X;
 	UINT32 X_len;
 	const UCHAR *R;

@@ -456,9 +456,11 @@ VOID ProbeResponseHandler(
 				if (IS_RRM_ENABLE(wdev)) {
 					UCHAR reg_class = get_regulatory_class(pAd, mbss->wdev.channel,
 								mbss->wdev.PhyMode, &mbss->wdev);
-					TmpLen2 = 0;
-					NdisZeroMemory(TmpFrame, sizeof(TmpFrame));
-					RguClass_BuildBcnChList(pAd, TmpFrame, &TmpLen2, wdev->PhyMode, reg_class);
+					if (reg_class != 0) {
+						TmpLen2 = 0;
+						NdisZeroMemory(TmpFrame, sizeof(TmpFrame));
+						RguClass_BuildBcnChList(pAd, TmpFrame, &TmpLen2, wdev, reg_class);
+					}
 				}
 #endif /* DOT11K_RRM_SUPPORT */
 
@@ -521,8 +523,8 @@ VOID ProbeResponseHandler(
 			ULONG TmpLen2 = 0;
 			UCHAR TmpFrame[256] = { 0 };
 			UCHAR CountryIe = IE_COUNTRY;
+#ifndef EXT_BUILD_CHANNEL_LIST
 			PCH_DESC pChDesc = NULL;
-
 			if (WMODE_CAP_2G(wdev->PhyMode)) {
 				if (pAd->CommonCfg.pChDesc2G != NULL)
 					pChDesc = (PCH_DESC)pAd->CommonCfg.pChDesc2G;
@@ -536,7 +538,7 @@ VOID ProbeResponseHandler(
 					MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
 							 ("%s: pChDesc5G is NULL !!!\n", __func__));
 			}
-
+#endif
 			/*
 				Only APs that comply with 802.11h or 802.11k are required to include
 				the Power Constraint element (IE=32) and
@@ -607,10 +609,11 @@ VOID ProbeResponseHandler(
 
 			if (IS_RRM_ENABLE(wdev)) {
 				UCHAR reg_class = get_regulatory_class(pAd, mbss->wdev.channel, mbss->wdev.PhyMode, &mbss->wdev);
-
-				TmpLen2 = 0;
-				NdisZeroMemory(TmpFrame, sizeof(TmpFrame));
-				RguClass_BuildBcnChList(pAd, TmpFrame, &TmpLen2, wdev->PhyMode, reg_class);
+				if (reg_class != 0) {
+					TmpLen2 = 0;
+					NdisZeroMemory(TmpFrame, sizeof(TmpFrame));
+					RguClass_BuildBcnChList(pAd, TmpFrame, &TmpLen2, wdev, reg_class);
+				}
 			}
 
 #endif /* DOT11K_RRM_SUPPORT */
@@ -833,6 +836,7 @@ VOID CFG80211_SyncPacketWpsIe(RTMP_ADAPTER *pAd, VOID *pData, ULONG dataLen, UIN
 	PEER_PROBE_REQ_PARAM ProbeReqParam;
 
 	ssid_ie = cfg80211_find_ie(WLAN_EID_SSID, pData, dataLen);
+	ProbeReqParam.SsidLen = 0;
 	if (ssid_ie != NULL) {
 		eid = (EID_STRUCT *)ssid_ie;
 		ProbeReqParam.SsidLen = eid->Len;
@@ -1200,16 +1204,6 @@ VOID CFG80211_AssocRespHandler(RTMP_ADAPTER *pAd, VOID *pData, ULONG Data)
 	addht = wlan_operate_get_addht(wdev);
 	FlgIs11bSta = 1;
 
-#ifdef DOT11R_FT_SUPPORT
-	os_alloc_mem(NULL, (UCHAR **)&pFtInfoBuf, sizeof(FT_INFO));
-	if (pFtInfoBuf == NULL) {
-		MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
-					("%s(): pFtInfoBuf mem alloc failed\n", __func__));
-		return;
-	}
-	NdisZeroMemory(pFtInfoBuf, sizeof(FT_INFO));
-#endif /* DOT11R_FT_SUPPORT */
-
 	pEntry = MacTableLookup(pAd, mgmt->da);
 
 	if (!pEntry) {
@@ -1221,6 +1215,15 @@ VOID CFG80211_AssocRespHandler(RTMP_ADAPTER *pAd, VOID *pData, ULONG Data)
 
 	ie_list = pEntry->ie_list;
 
+#ifdef DOT11R_FT_SUPPORT
+	os_alloc_mem(NULL, (UCHAR **)&pFtInfoBuf, sizeof(FT_INFO));
+	if (pFtInfoBuf == NULL) {
+		MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
+			("%s(): pFtInfoBuf mem alloc failed\n", __func__));
+		goto LabelOK;
+	}
+	NdisZeroMemory(pFtInfoBuf, sizeof(FT_INFO));
+#endif /* DOT11R_FT_SUPPORT */
 
 	for (i = 0; i < ie_list->SupportedRatesLen; i++) {
 		if (((ie_list->SupportedRates[i] & 0x7F) != 2) &&
@@ -1481,6 +1484,7 @@ VOID CFG80211_AssocRespHandler(RTMP_ADAPTER *pAd, VOID *pData, ULONG Data)
 		ie_info.frame_buf = (UCHAR *)(pOutBuffer + FrameLen);
 		FrameLen += build_wmm_cap_ie(pAd, &ie_info);
 	}
+	ie_info.frame_subtype = SUBTYPE_ASSOC_RSP;
 	ie_info.channel = wdev->channel;
 	ie_info.phy_mode = PhyMode;
 	ie_info.wdev = wdev;
@@ -2193,14 +2197,17 @@ VOID CFG80211_AssocRespHandler(RTMP_ADAPTER *pAd, VOID *pData, ULONG Data)
 #endif
 
 LabelOK:
+	if (ie_list != NULL) {
+		os_free_mem(ie_list);
+		if (pEntry)
+			pEntry->ie_list = NULL;
+	}
 #ifdef RT_CFG80211_SUPPORT
 
 	if (StatusCode != MLME_SUCCESS)
 		CFG80211_ApStaDelSendEvent(pAd, pEntry->Addr, pEntry->wdev->if_dev);
 
 #endif /* RT_CFG80211_SUPPORT */
-	if (ie_list != NULL)
-		os_free_mem(ie_list);
 
 #ifdef DOT11R_FT_SUPPORT
 	if (pFtInfoBuf != NULL)

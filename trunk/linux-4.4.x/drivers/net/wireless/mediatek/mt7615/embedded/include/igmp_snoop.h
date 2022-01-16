@@ -28,6 +28,10 @@
 #define __RTMP_IGMP_SNOOP_H__
 
 #include "common/link_list.h"
+#include "ipv6.h"
+
+#define IPV4_ADDR_LEN 4
+#define MULTICAST_WHITE_LIST_SIZE_MAX	20
 
 #define IGMP_PROTOCOL_DESCRIPTOR	0x02
 #define IGMP_MEMBERSHIP_QUERY		0x11	/*same for IGMP v1, v2 & v3*/
@@ -195,6 +199,14 @@ VOID IgmpGroupDelMembers(
 	IN PUCHAR pMemberAddr,
 	IN struct wifi_dev *wdev,
 	UINT8 Wcid);
+
+VOID MulticastWLTableInit(IN PRTMP_ADAPTER pAd,	IN PMULTICAST_WHITE_LIST_FILTER_TABLE *ppMulticastWLTable);
+
+VOID MultiCastWLTableReset(PRTMP_ADAPTER pAd, IN PMULTICAST_WHITE_LIST_FILTER_TABLE *ppMulticastWLTable);
+
+INT Set_Igmp_Flooding_CIDR_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg);
+
+INT Set_Igmp_Show_Flooding_CIDR_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg);
 
 INT Set_IgmpSn_Enable_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg);
 

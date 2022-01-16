@@ -190,7 +190,7 @@ static NDIS_STATUS IPv6MacTableUpdate(
 {
 	UINT				hashIdx;
 	IPv6MacMappingTable	*pIPv6MacTable;
-	IPv6MacMappingEntry	*pEntry = NULL, *pPrev = NULL, *pNewEntry = NULL;
+	IPv6MacMappingEntry	*pEntry = NULL, *pPrev = NULL, *pNewEntry = NULL, *pTempEntry = NULL;
 	ULONG				now;
 
 	pIPv6MacTable = (IPv6MacMappingTable *)pMatCfg->MatTableSet.IPv6MacTable;
@@ -220,8 +220,9 @@ static NDIS_STATUS IPv6MacTableUpdate(
 				} else
 					pPrev->pNext = pEntry->pNext;
 
-				MATDBEntryFree(pMatCfg, (PUCHAR)pEntry);
+				pTempEntry = pEntry;
 				pEntry = (pPrev == NULL ? NULL : pPrev->pNext);
+				MATDBEntryFree(pMatCfg, (PUCHAR)pTempEntry);
 				pMatCfg->nodeCount--;
 			} else {
 				pPrev = pEntry;

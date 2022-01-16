@@ -1723,14 +1723,14 @@ int RtmpOSNetDevAttach(
 #if WIRELESS_EXT >= 12
 
 		if (OpMode == OPMODE_AP)
-			pDevOpHook->iw_handler = &rt28xx_ap_iw_handler_def;
+			pDevOpHook->iw_handler = (void *)&rt28xx_ap_iw_handler_def;
 
 #endif /*WIRELESS_EXT >= 12 */
 #endif /* CONFIG_APSTA_MIXED_SUPPORT */
 #ifdef CONFIG_WIRELESS_EXT
 
 		if (pDevOpHook->iw_handler)
-			pNetDev->wireless_handlers = pDevOpHook->iw_handler;
+			pNetDev->wireless_handlers = (void *)pDevOpHook->iw_handler;
 
 #endif /* CONFIG_WIRELESS_EXT */
 		/* copy the net device mac address to the net_device structure. */
@@ -2594,7 +2594,7 @@ void OS_LOAD_CODE_FROM_BIN(unsigned char **image, char *bin_name, void *inf_dev,
 		return;
 	}
 
-	*image = kmalloc(fw_entry->size, GFP_KERNEL);
+	os_alloc_mem_suspend(NULL, image, fw_entry->size);
 	memcpy(*image, fw_entry->data, fw_entry->size);
 	*code_len = fw_entry->size;
 	release_firmware(fw_entry);
@@ -4498,7 +4498,7 @@ BOOLEAN RtmpOsPktOffsetInit(VOID)
 
 	if ((RTPktOffsetData == 0) && (RTPktOffsetLen == 0)
 		&& (RTPktOffsetCB == 0)) {
-		pPkt = kmalloc(sizeof(struct sk_buff), GFP_ATOMIC);
+		os_alloc_mem(NULL, (UCHAR **)&pPkt, sizeof(struct sk_buff));
 
 		if (pPkt == NULL)
 			return FALSE;
@@ -4506,7 +4506,7 @@ BOOLEAN RtmpOsPktOffsetInit(VOID)
 		RTPktOffsetData = (ULONG) (&(pPkt->data)) - (ULONG) pPkt;
 		RTPktOffsetLen = (ULONG) (&(pPkt->len)) - (ULONG) pPkt;
 		RTPktOffsetCB = (ULONG) (pPkt->cb) - (ULONG) pPkt;
-		kfree(pPkt);
+		os_free_mem(pPkt);
 		MTWF_LOG(DBG_CAT_INIT, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 				 ("packet> data offset = %lu\n", RTPktOffsetData));
 		MTWF_LOG(DBG_CAT_INIT, DBG_SUBCAT_ALL, DBG_LVL_TRACE,

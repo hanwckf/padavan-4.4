@@ -1941,9 +1941,6 @@ int BuildMessageM8(
 	UCHAR *IV_EncrData = NULL; /*IV len 16 ,EncrData len */
 	UCHAR *Plain = NULL;
 	INT CerLen = 0, PlainLen = 0, EncrLen;
-#ifdef CONFIG_MAP_SUPPORT
-	WSC_CREDENTIAL bh_cred;
-#endif
 	PWSC_CREDENTIAL pCredential = NULL;
 	USHORT AuthType = 0;
 	USHORT EncrType = 0;
@@ -1994,20 +1991,28 @@ int BuildMessageM8(
 
 	if (CurOpMode == AP_MODE) {
 #ifdef CONFIG_MAP_SUPPORT
-		if ((!(IS_MAP_TURNKEY_ENABLE(pAdapter)))
-			&& pReg->PeerInfo.map_DevPeerRole & BIT(MAP_ROLE_BACKHAUL_STA)) {
+		if (pReg->PeerInfo.map_DevPeerRole & BIT(MAP_ROLE_BACKHAUL_STA)) {
+			if (!IS_MAP_TURNKEY_ENABLE(pAdapter)) {
+				PWSC_CTRL		pBhWscControl = NULL;
+				UCHAR			apidx = (pWscControl->EntryIfIdx & 0x0F);
+				UCHAR			band_idx = HcGetBandByWdev(&pAdapter->ApCfg.MBSSID[apidx].wdev);
+				struct wifi_dev		*bh_wdev = NULL;
 
-			if (pWscControl->WscBhProfiles.ProfileCnt != 0) {
-				NdisCopyMemory(&bh_cred, &pWscControl->WscBhProfiles.Profile[0], sizeof(WSC_CREDENTIAL));
-				pCredential = &bh_cred;
-				pCredential->KeyIndex = 1;
-#ifdef WSC_V2_SUPPORT
-				if (pWscControl->WscV2Info.bEnableWpsV2)
-					NdisMoveMemory(pCredential->MacAddr, pWscControl->EntryAddr, 6);
-#endif /* WSC_V2_SUPPORT */
-				hex_dump_with_lvl("WSCCred", (unsigned char *)pCredential, sizeof(WSC_CREDENTIAL), DBG_LVL_TRACE);
-			} else
+				bh_wdev = pAdapter->bh_bss_wdev[band_idx];
+				if (bh_wdev) {
+					pBhWscControl = &bh_wdev->WscControl;
+					MTWF_LOG(DBG_CAT_PROTO, CATPROTO_RRM, DBG_LVL_TRACE,
+							("band_idx %d  bh_bss_wdev [%s]\n", band_idx, bh_wdev->if_dev->name));
+					pBhWscControl->WscConfStatus = WSC_SCSTATE_CONFIGURED;
+					COPY_MAC_ADDR(pBhWscControl->EntryAddr, pWscControl->EntryAddr);
+					WscCreateProfileFromCfg(pAdapter,
+											REGISTRAR_ACTION | AP_MODE,
+											pBhWscControl,
+											&pBhWscControl->WscProfile);
+					pCredential = &pBhWscControl->WscProfile.Profile[0];
+				} else
 					goto LabelErr;
+			}
 		} else
 #endif /* CONFIG_MAP_SUPPORT */
 		{

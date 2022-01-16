@@ -696,5 +696,9 @@ VOID WPAHandshakeMsgRetryExec(
 	IN PVOID SystemSpecific2,
 	IN PVOID SystemSpecific3);
 
+INT set_wpa3_test(
+	IN struct _RTMP_ADAPTER *ad,
+	IN RTMP_STRING *arg);
+
 #endif
 

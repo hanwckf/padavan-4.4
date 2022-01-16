@@ -422,7 +422,7 @@ VOID RTMP_CFG80211_VirtualIF_Init(
 	INT32 Value;
 	UCHAR MacByte = 0;
 #endif /* MT_MAC */
-	CHAR tr_tb_idx = MAX_LEN_OF_MAC_TABLE + apidx;
+	UCHAR tr_tb_idx = wdev_main->tr_tb_idx;
 	CHAR preIfName[12];
 	UINT devNameLen = strlen(pDevName);
 	UINT preIfIndex = pDevName[devNameLen - 1] - 48;
@@ -595,7 +595,8 @@ VOID RTMP_CFG80211_VirtualIF_Init(
 		(DevType == RT_CMD_80211_IFTYPE_P2P_GO))
 		COPY_MAC_ADDR(pAd->cfg80211_ctrl.P2PCurrentAddress, pNetDevOps->devAddr);
 
-	pWdev = kzalloc(sizeof(*pWdev), GFP_KERNEL);
+	os_alloc_mem_suspend(NULL, (UCHAR **)&pWdev ,sizeof(*pWdev));
+	os_zero_mem((PUCHAR)pWdev, sizeof(*pWdev));
 	new_dev_p->ieee80211_ptr = pWdev;
 	pWdev->wiphy = p80211CB->pCfg80211_Wdev->wiphy;
 	SET_NETDEV_DEV(new_dev_p, wiphy_dev(pWdev->wiphy));
@@ -664,7 +665,7 @@ VOID RTMP_CFG80211_VirtualIF_Remove(
 			} else /* Never Opened When New Netdevice on */
 				RtmpOSNetDevDetach(dev_p);
 
-		kfree(dev_p->ieee80211_ptr);
+		os_free_mem(dev_p->ieee80211_ptr);
 		dev_p->ieee80211_ptr = NULL;
 	}
 }

@@ -33,14 +33,19 @@
 
 VOID CFG80211_Announce802_3Packet(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk, UCHAR FromWhichBSSID)
 {
+	struct wifi_dev *wdev = wdev_search_by_idx(pAd, FromWhichBSSID);
+
+	if (wdev == NULL)
+		return;
+
 #ifdef CONFIG_AP_SUPPORT
 
 	if (RX_BLK_TEST_FLAG(pRxBlk, fRX_STA))
-		announce_or_forward_802_3_pkt(pAd, pRxBlk->pRxPacket, wdev_search_by_idx(pAd, FromWhichBSSID), OPMODE_AP);
+		announce_or_forward_802_3_pkt(pAd, pRxBlk->pRxPacket, wdev, OPMODE_AP);
 	else
 #endif /* CONFIG_AP_SUPPORT */
 	{
-		announce_or_forward_802_3_pkt(pAd, pRxBlk->pRxPacket, wdev_search_by_idx(pAd, FromWhichBSSID), OPMODE_STA);
+		announce_or_forward_802_3_pkt(pAd, pRxBlk->pRxPacket, wdev, OPMODE_STA);
 	}
 }
 
@@ -276,7 +281,7 @@ VOID CFG80211_AuthReqHandler(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk, AUTH_FRAME_INFO 
 		ULONG MsgType = APMT2_PEER_AUTH_REQ;
 		struct raw_rssi_info rssi_info;
 
-		NdisMoveMemory((rssi_info.raw_rssi), pRxBlk->rx_signal.raw_rssi, sizeof(struct raw_rssi_info));
+		NdisMoveMemory((rssi_info.raw_rssi), pRxBlk->rx_signal.raw_rssi, sizeof(rssi_info.raw_rssi));
 		bBndStrgCheck = BndStrg_CheckConnectionReq(pAd, wdev, auth_info->addr2, &rssi_info, MsgType, NULL);
 
 		if (bBndStrgCheck == FALSE) {
@@ -487,6 +492,8 @@ VOID CFG80211_AssocReqHandler(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk)
 
 #ifdef MBO_SUPPORT
 	if (!MBO_AP_ALLOW_ASSOC(wdev)) {
+		MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_OFF,
+			("%s():MBO not allowed assoc\n", __func__));
 		StatusCode = MLME_ASSOC_REJ_UNABLE_HANDLE_STA;
 		bMboReject = TRUE;
 #ifdef WAPP_SUPPORT
@@ -608,11 +615,16 @@ VOID CFG80211_AssocReqHandler(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk)
 
 LabelOK:
 #ifdef RT_CFG80211_SUPPORT
-	if (StatusCode != MLME_SUCCESS)
+	if (StatusCode != MLME_SUCCESS) {
+		MTWF_LOG(DBG_CAT_RX, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s StaDel event\n", __func__));
 		CFG80211_ApStaDelSendEvent(pAd, pEntry->Addr, pEntry->wdev->if_dev);
+	}
 #endif /* RT_CFG80211_SUPPORT */
-	if (ie_list != NULL)
+	if (ie_list != NULL) {
 		os_free_mem(ie_list);
+		if (pEntry)
+			pEntry->ie_list = NULL;
+	}
 
 	return;
 }
@@ -714,7 +726,7 @@ BOOLEAN CFG80211_HandleP2pMgmtFrame(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk, UCHAR OpM
 			ULONG MsgType = APMT2_PEER_PROBE_REQ;
 			struct raw_rssi_info rssi_info;
 
-			NdisMoveMemory((rssi_info.raw_rssi), pRxBlk->rx_signal.raw_rssi, sizeof(struct raw_rssi_info));
+			NdisMoveMemory((rssi_info.raw_rssi), pRxBlk->rx_signal.raw_rssi, sizeof(rssi_info.raw_rssi));
 			bBndStrgCheck = BndStrg_CheckConnectionReq(pAd, wdev, ProbeReqParam.Addr2, &rssi_info, MsgType, &ProbeReqParam);
 
 			if (bBndStrgCheck == FALSE)
@@ -734,7 +746,7 @@ BOOLEAN CFG80211_HandleP2pMgmtFrame(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk, UCHAR OpM
 			ULONG MsgType = APMT2_PEER_PROBE_REQ;
 			struct raw_rssi_info rssi_info;
 
-			NdisMoveMemory((rssi_info.raw_rssi), pRxBlk->rx_signal.raw_rssi, sizeof(struct raw_rssi_info));
+			NdisMoveMemory((rssi_info.raw_rssi), pRxBlk->rx_signal.raw_rssi, sizeof(rssi_info.raw_rssi));
 			bBndStrgCheck = BndStrg_CheckConnectionReq(pAd, pWdev, ProbeReqParam.Addr2, &rssi_info, MsgType, &ProbeReqParam);
 
 			if (bBndStrgCheck == FALSE)
@@ -779,7 +791,7 @@ BOOLEAN CFG80211_HandleP2pMgmtFrame(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk, UCHAR OpM
 			pEntry = MacTableLookup(pAd, pHeader->Addr2);
 			if (pEntry && pWdev && IS_AKM_OWE(pWdev->SecConfig.AKMMap)) {
 				MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
-						("pEntry Found for assoc- %02x:%02x:%02x:%02x:%02x:%02x\n",
+						("OWE Assoc for - %02x:%02x:%02x:%02x:%02x:%02x\n",
 						PRINT_MAC(pHeader->Addr2)));
 
 				CFG80211_AssocReqHandler(pAd, pRxBlk);
@@ -790,8 +802,10 @@ BOOLEAN CFG80211_HandleP2pMgmtFrame(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk, UCHAR OpM
 				} else {
 					MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 						("ASSOC Req OWE ie not found. Handle in Driver \n"));
-					if (pEntry->ie_list != NULL)
+					if (pEntry->ie_list != NULL) {
 						os_free_mem(pEntry->ie_list);
+						pEntry->ie_list = NULL;
+					}
 					return FALSE;
 				}
 			} else {
@@ -803,10 +817,12 @@ BOOLEAN CFG80211_HandleP2pMgmtFrame(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk, UCHAR OpM
 		MAC_TABLE_ENTRY *pEntry = NULL;
 
 		pEntry = MacTableLookup(pAd, pHeader->Addr2);
-		if (pEntry) {
 			MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
-						("pEntry Found for reassoc- %02x:%02x:%02x:%02x:%02x:%02x\n",
+				("Reassoc for - %02x:%02x:%02x:%02x:%02x:%02x\n",
 						PRINT_MAC(pHeader->Addr2)));
+		if (pEntry && pWdev &&
+			(IS_AKM_OWE(pWdev->SecConfig.AKMMap)
+			|| IS_AKM_FT_WPA2PSK(pWdev->SecConfig.AKMMap) || IS_AKM_FT_WPA2(pWdev->SecConfig.AKMMap))) {
 
 			CFG80211_AssocReqHandler(pAd, pRxBlk);
 #ifdef HOSTAPD_11R_SUPPORT
@@ -823,21 +839,25 @@ BOOLEAN CFG80211_HandleP2pMgmtFrame(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk, UCHAR OpM
 			} else
 #endif
 			{
-				MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("%s: not FT reassoc , handle in normal driver\n", __func__));
-				if (pEntry->ie_list != NULL)
+				MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("%s:no FT or OWE ie\n", __func__));
+				if (pEntry->ie_list != NULL) {
 					os_free_mem(pEntry->ie_list);
+					pEntry->ie_list = NULL;
+				}
 				return FALSE;
 			}
 		} else {
-			MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("%s: pEntry not found , handle in normal driver\n", __func__));
+			MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("%s: No OWE or FT entry\n", __func__));
 			return FALSE;
 		}
 #endif
-	} else
+	} else {
 		CFG80211OS_RxMgmt(pNetDev, freq, pRxBlk->pData, MPDUtotalByteCnt);
-		if (OpMode == OPMODE_AP)
+}
+		if (OpMode == OPMODE_AP) {
 			return TRUE;
 		}
+	}
 	}
 
 	return FALSE;

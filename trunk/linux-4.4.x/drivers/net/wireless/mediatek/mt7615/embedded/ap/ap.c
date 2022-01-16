@@ -128,6 +128,7 @@ BOOLEAN ApAutoChannelSkipListBuild(RTMP_ADAPTER *pAd, struct wifi_dev *wdev)
 	UCHAR chGrp = 0;
 	BOOLEAN status = FALSE;
 	UCHAR BandIdx = HcGetBandByWdev(wdev);
+	UCHAR size = 0;
 
 	SET_V10_OFF_CHNL_TIME(pAd, V10_NORMAL_SCAN_TIME);
 
@@ -141,10 +142,15 @@ BOOLEAN ApAutoChannelSkipListBuild(RTMP_ADAPTER *pAd, struct wifi_dev *wdev)
 		} else {
 			AutoChannelSkipListClear(pAd);
 			if (wlan_config_get_vht_bw(wdev) == VHT_BW_80) {
-				AutoChannelSkipChannels(pAd, V10_W56_VHT20_SIZE, GROUP5_LOWER);
+				if (pAd->CommonCfg.bCh144Enabled == FALSE) {
+					AutoChannelSkipChannels(pAd, V10_W56_VHT20_SIZE, GROUP5_LOWER);
+					AutoChannelSkipChannels(pAd, 1, 144);
+				}
 				AutoChannelSkipChannels(pAd, V10_LAST_SIZE, GROUP6_LOWER);
 				status = TRUE;
 			} else if (wlan_config_get_vht_bw(wdev) == VHT_BW_2040) {
+				if (pAd->CommonCfg.bCh144Enabled == FALSE)
+					AutoChannelSkipChannels(pAd, 1, 144);
 				AutoChannelSkipChannels(pAd, V10_LAST_SIZE, GROUP6_LOWER);
 				status = TRUE;
 			} else
@@ -163,10 +169,10 @@ BOOLEAN ApAutoChannelSkipListBuild(RTMP_ADAPTER *pAd, struct wifi_dev *wdev)
 
 			if (IS_V10_W56_GRP_VALID(pAd))
 				chGrp = W56_UA;
-			else if (IS_V10_W56_VHT80_SWITCHED(pAd))
+			else if (IS_V10_W56_VHT80_SWITCHED(pAd) && (pAd->CommonCfg.bCh144Enabled == FALSE))
 				chGrp = W56_UC;
 			else
-				chGrp = DfsV10CheckChnlGrp(wdev->channel);
+				chGrp = DfsV10CheckChnlGrp(pAd, wdev->channel);
 
 			MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF,
 				("[%s] CHgrp %d Channel %d\n", __func__, chGrp, wdev->channel));
@@ -202,15 +208,22 @@ BOOLEAN ApAutoChannelSkipListBuild(RTMP_ADAPTER *pAd, struct wifi_dev *wdev)
 				SET_V10_W56_GRP_VALID(pAd, FALSE);
 
 				if (wlan_config_get_vht_bw(wdev) == VHT_BW_2040) {
+					if (pAd->CommonCfg.bCh144Enabled)
+						size = V10_W56_VHT80_SIZE;
+					else
+						size = V10_W56_VHT80_SIZE - V10_W56_VHT80_C_SIZE;
+					
 					if (IS_V10_W56_VHT80_SWITCHED(pAd) && chGrp == W56_UC)
-						AutoChannelSkipChannels(pAd, V10_W56_VHT80_SIZE, GROUP3_LOWER);
+						AutoChannelSkipChannels(pAd, size, GROUP3_LOWER);
 
 					AutoChannelSkipChannels(pAd, V10_W52_SIZE, GROUP1_LOWER);
 					AutoChannelSkipChannels(pAd, V10_W53_SIZE, GROUP2_LOWER);
+					if (pAd->CommonCfg.bCh144Enabled == FALSE)
+						AutoChannelSkipChannels(pAd, 1, 144);
 					AutoChannelSkipChannels(pAd, V10_LAST_SIZE, GROUP6_LOWER);
 					status = TRUE;
 				} else if (wlan_config_get_vht_bw(wdev) == VHT_BW_80) {
-					if (chGrp == W56_UC) {
+					if (chGrp == W56_UC && (pAd->CommonCfg.bCh144Enabled == FALSE)) {
 						MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
 							("[%s]Incorrect Channel W56 C\n", __func__));
 						return status;
@@ -220,7 +233,10 @@ BOOLEAN ApAutoChannelSkipListBuild(RTMP_ADAPTER *pAd, struct wifi_dev *wdev)
 						("[%s] W56_80\n", __func__));
 					AutoChannelSkipChannels(pAd, V10_W52_SIZE, GROUP1_LOWER);
 					AutoChannelSkipChannels(pAd, V10_W53_SIZE, GROUP2_LOWER);
+					if (pAd->CommonCfg.bCh144Enabled == FALSE) {
 					AutoChannelSkipChannels(pAd, V10_W56_VHT20_SIZE, GROUP5_LOWER);
+						AutoChannelSkipChannels(pAd, 1, 144);
+					}
 					AutoChannelSkipChannels(pAd, V10_LAST_SIZE, GROUP6_LOWER);
 					status = TRUE;
 				}
@@ -531,6 +547,7 @@ NDIS_STATUS APOneShotSettingInitialize(RTMP_ADAPTER *pAd)
 #endif /* IDS_SUPPORT */
 #ifdef IGMP_SNOOP_SUPPORT
 	MulticastFilterTableInit(pAd, &pAd->pMulticastFilterTable);
+	MulticastWLTableInit(pAd, &pAd->pMcastWLTable);
 #endif /* IGMP_SNOOP_SUPPORT */
 #ifdef DOT11K_RRM_SUPPORT
 	RRM_CfgInit(pAd);
@@ -895,7 +912,11 @@ VOID APStartUpForMbss(RTMP_ADAPTER *pAd, BSS_STRUCT *pMbss)
 	}
 
 #ifdef DOT11_N_SUPPORT
+#ifdef EXT_BUILD_CHANNEL_LIST
+	BuildChannelListEx(pAd, wdev);
+#else
 	BuildChannelList(pAd, wdev);
+#endif
 	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("[APStartUpForMbss] BuildChannelList, #711\n"));
 	RTMPSetPhyMode(pAd, wdev, wdev->PhyMode);
 	/*update rate info for wdev*/
@@ -904,24 +925,6 @@ VOID APStartUpForMbss(RTMP_ADAPTER *pAd, BSS_STRUCT *pMbss)
 	if (!WMODE_CAP_N(wdev->PhyMode))
 		wlan_config_set_ht_bw(wdev, HT_BW_20);
 
-#ifdef RT_CFG80211_SUPPORT
-#ifdef CONFIG_INIT_RADIO_ONOFF
-	if (pAd->ApCfg.bRadioOn) {
-#endif
-    if (pAd->CommonCfg.bForty_Mhz_Intolerant == TRUE) {
-		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
-				 ("Disable 20/40 BSSCoex Channel Scan(BssCoex=%d, 40MHzIntolerant=%d)\n",
-				  pAd->CommonCfg.bBssCoexEnable,
-				  pAd->CommonCfg.bForty_Mhz_Intolerant));
-	} else if (pAd->CommonCfg.bBssCoexEnable == TRUE) {
-		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("Enable 20/40 BSSCoex Channel Scan(BssCoex=%d)\n",
-				 pAd->CommonCfg.bBssCoexEnable));
-		APOverlappingBSSScan(pAd, wdev);
-	}
-#ifdef CONFIG_INIT_RADIO_ONOFF
-	}
-#endif
-#endif /*RT_CFG80211_SUPPORT*/
 #endif /*DOT11_N_SUPPORT*/
 	MlmeUpdateTxRates(pAd, FALSE, wdev->func_idx);
 #ifdef DOT11_N_SUPPORT
@@ -1117,7 +1120,19 @@ VOID APStartUpForMbss(RTMP_ADAPTER *pAd, BSS_STRUCT *pMbss)
 	Antenna_Control_Init(pAd, wdev);
 #endif /* ANTENNA_CONTROL_SUPPORT */
 #ifdef MGMT_TXPWR_CTRL
-	update_mgmt_frame_power(pAd, wdev);
+	/*clear old data for iwpriv set channel*/
+	wdev->bPwrCtrlEn = FALSE;
+	wdev->TxPwrDelta = 0;
+	/* Get EPA info by Tx Power info cmd*/
+	pAd->ApCfg.fEpaReq = TRUE;
+	TxPowerShowInfo(pAd, 0, ucBandIdx);
+
+	/* Update beacon/probe TxPwr wrt profile param */
+	if (wdev->MgmtTxPwr) {
+		/* wait until TX Pwr event rx*/
+		RtmpusecDelay(50);
+		update_mgmt_frame_power(pAd, wdev);
+	}
 #endif
 }
 
@@ -1230,7 +1245,13 @@ VOID APStartUpByBss(RTMP_ADAPTER *pAd, BSS_STRUCT *pMbss)
 
 	pAd->CommonCfg.channelSwitch.CHSWMode = NORMAL_MODE;
 	pAd->Dot11_H[bandIdx].CSPeriod = pAd->CommonCfg.channelSwitch.Dot11_H_CSPeriod;
-	pAd->CommonCfg.NewExtChanOffset.NewExtChanOffset = HcGetExtCha(pAd, wdev->channel);
+	pAd->CommonCfg.NewExtChanOffset.NewExtChanOffset = wlan_config_get_ext_cha(wdev);
+	if (pMbss->wdev.bAllowBeaconing)
+		UpdateBeaconHandler(pAd, &pMbss->wdev, BCN_UPDATE_ENABLE_TX);
+	AsicSetSyncModeAndEnable(pAd, pAd->CommonCfg.BeaconPeriod, HW_BSSID_0, OPMODE_AP);
+	RTMP_IRQ_ENABLE(pAd);
+	RTMPEnableRxTx(pAd);
+	RTMP_MLME_HANDLER(pAd);
 #endif
 
 #if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT)
@@ -1341,30 +1362,21 @@ VOID APStartUp(RTMP_ADAPTER *pAd, BSS_STRUCT *pMbss, ENUM_AP_BSS_OPER oper)
 			/* check MBSS status is up */
 			if (!pCurMbss->wdev.if_up_down_state)
 				continue;
+			if (pCurMbss->wdev.open_state == FALSE) {
+				MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s(), wdev idx (%d) skip ApStart as device is not open\n", __func__, pCurMbss->wdev.wdev_idx));
+				continue;
+			}
 
 			/* check MBSS work on the same RF(channel) */
 			if (pCurMbss->wdev.channel != ch)
 				continue;
 
+			pCurMbss->wdev.start_stop_running = TRUE;
 			APStartUpByBss(pAd, pCurMbss);
-		}
-		for (idx = 0; idx < pAd->ApCfg.BssidNum; idx++) {
-
-			/* No need for obss scan if RF up is on 5Ghz */
-			if (ch > 13)
-				break;
-			pCurMbss = &pAd->ApCfg.MBSSID[idx];
-
-			/* check MBSS status is up */
-			if (!pCurMbss->wdev.if_up_down_state)
-				continue;
-
-			/* check MBSS work on the same RF(channel) */
-			if ((pCurMbss->wdev.channel != ch) && (pCurMbss->wdev.channel > 13))
-				continue;
-
-			ap_over_lapping_scan(pAd, pCurMbss);
-			break;
+			if (pCurMbss->wdev.open_state == FALSE) {
+				RTMP_OS_COMPLETE(&pCurMbss->wdev.start_stop_complete);
+			}
+			pCurMbss->wdev.start_stop_running = FALSE;
 		}
 		break;
 
@@ -1378,17 +1390,22 @@ VOID APStartUp(RTMP_ADAPTER *pAd, BSS_STRUCT *pMbss, ENUM_AP_BSS_OPER oper)
 
 	RTMP_SET_FLAG(pAd, fRTMP_ADAPTER_SYSEM_READY);
 #ifdef CONFIG_MAP_SUPPORT
-/*Code to handle CAC*/
+/*If this AP stop start is due to radar detect then send the radar notify event to MAP*/
 	if (IS_MAP_TURNKEY_ENABLE(pAd)) {
 		for (i = 0; i < pAd->ApCfg.BssidNum; i++) {
 			wdev_temp = &pAd->ApCfg.MBSSID[i].wdev;
+			if (wdev_temp == NULL) {
+				continue;
+			}
 			pDot11h = wdev_temp->pDot11_H;
-			/*If CAC is Ongoing*/
+			if (pDot11h == NULL) {
+				continue;
+			}
 			if (pDot11h->RDMode == RD_SILENCE_MODE) {
 				if (wdev_temp->cac_not_required == TRUE)
-					wapp_send_cac_period_event(pAd, RtmpOsGetNetIfIndex(wdev_temp->if_dev), wdev_temp->channel, 2);
+					wapp_send_cac_period_event(pAd, RtmpOsGetNetIfIndex(wdev_temp->if_dev), wdev_temp->channel, 2, 0);
 				else
-					wapp_send_cac_period_event(pAd, RtmpOsGetNetIfIndex(wdev_temp->if_dev), wdev_temp->channel, 1);
+					wapp_send_cac_period_event(pAd, RtmpOsGetNetIfIndex(wdev_temp->if_dev), wdev_temp->channel, 1, pDot11h->ChMovingTime);
 				/*Disable Apcli on the CAC running apcli interface, reconnection will be handled by MAP*/
 				for (j = 0; j < MAX_APCLI_NUM; j++) {
 					sta_wdev = &pAd->ApCfg.ApCliTab[j].wdev;
@@ -1396,6 +1413,11 @@ VOID APStartUp(RTMP_ADAPTER *pAd, BSS_STRUCT *pMbss, ENUM_AP_BSS_OPER oper)
 						pAd->ApCfg.ApCliTab[j].Enable = FALSE;
 					}
 				}
+			}
+			if (wdev_temp->map_radar_detect) {
+				wapp_send_radar_detect_notif(pAd, wdev_temp, wdev_temp->map_radar_channel, 0);
+				wdev_temp->map_radar_detect = 0;
+				wdev_temp->map_radar_channel = 0;
 			}
 		}
 	}
@@ -1534,7 +1556,7 @@ VOID APStopByBss(RTMP_ADAPTER *pAd, BSS_STRUCT *pMbss)
 	BOOLEAN Cancelled;
 	struct wifi_dev *wdev_bss;
 #if defined(MESH_SUPPORT) || defined(APCLI_SUPPORT) || defined(BAND_STEERING)
-	INT idx;
+	INT idx = 0;
 	struct wifi_dev *wdev;
 #ifdef WSC_AP_SUPPORT
 	PWSC_CTRL pWscControl;
@@ -1646,6 +1668,9 @@ VOID APStopByBss(RTMP_ADAPTER *pAd, BSS_STRUCT *pMbss)
 	/* clear protection to default */
 	wdev_bss->protection = 0;
 
+	/* clear csa cnt */
+	wdev_bss->csa_count = 0;
+
 #ifdef CONFIG_RCSA_SUPPORT
 	/* When RCSA is send, ALTX is en and BF suspended, restore state*/
 	RcsaRecovery(pAd, wdev_bss);
@@ -1746,12 +1771,21 @@ VOID APStop(RTMP_ADAPTER *pAd, BSS_STRUCT *pMbss, ENUM_AP_BSS_OPER oper)
 			/* check MBSS status is up */
 			if (!pCurMbss->wdev.if_up_down_state && !pCurMbss->wdev.bcn_buf.bBcnSntReq)
 				continue;
+			if (pCurMbss->wdev.open_state == FALSE) {
+				MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s(), wdev idx (%d) skip ApStart as device is not open\n", __func__, pCurMbss->wdev.wdev_idx));
+				continue;
+			}
 
 			/* check MBSS work on the same RF(channel) */
 			if (pCurMbss->wdev.channel != ch)
 				continue;
 
+			pCurMbss->wdev.start_stop_running = TRUE;
 			APStopByBss(pAd, pCurMbss);
+			if (pCurMbss->wdev.open_state == FALSE) {
+				RTMP_OS_COMPLETE(&pCurMbss->wdev.start_stop_complete);
+			}
+			pCurMbss->wdev.start_stop_running = FALSE;
 		}
 		break;
 
@@ -2035,6 +2069,10 @@ static VOID tx_offload_counter_update(struct _RTMP_ADAPTER *ad, struct _MAC_TABL
 				entry->TxBytesMAP += entry->OneSecTxBytes;
 #endif
 			entry->TxPackets.QuadPart += entry->one_sec_tx_pkts;
+#ifdef MAP_R2
+			if (IS_MAP_ENABLE(ad) && IS_MAP_R2_ENABLE(ad))
+				entry->pMbss->ucBytesTx += entry->OneSecTxBytes;
+#endif
 		}
 #endif /*CONFIG_AP_SUPPORT*/
 
@@ -3585,7 +3623,8 @@ VOID ApUpdateAccessControlList(RTMP_ADAPTER *pAd, UCHAR Apidx)
 				DiagConnError(pAd, pEntry->func_tb_idx, pEntry->Addr, DIAG_CONN_ACL_BLK, 0);
 #endif
 #ifdef MAP_R2
-			wapp_handle_sta_disassoc(pAd, pEntry->wcid, Reason);
+			if (IS_ENTRY_CLIENT(pEntry) && IS_MAP_ENABLE(pAd) && IS_MAP_R2_ENABLE(pAd))
+				wapp_handle_sta_disassoc(pAd, pEntry->wcid, Reason);
 #endif
 			mac_entry_delete(pAd, pEntry);
 		}
@@ -3793,6 +3832,9 @@ VOID APOverlappingBSSScan(RTMP_ADAPTER *pAd, struct wifi_dev *wdev)
 	CHANNEL_CTRL *pChCtrl = hc_get_channel_ctrl(pAd->hdev_ctrl, BandIdx);
 
 	if (!WMODE_CAP_2G(PhyMode))
+		return;
+
+	if (!RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_SYSEM_READY))
 		return;
 
 	/* We just care BSS who operating in 40MHz N Mode. */
@@ -4373,6 +4415,7 @@ VOID rtmp_ap_exit(RTMP_ADAPTER *pAd)
 	ChannelInfoDestroy(pAd);
 #ifdef IGMP_SNOOP_SUPPORT
 	MultiCastFilterTableReset(pAd, &pAd->pMulticastFilterTable);
+	MultiCastWLTableReset(pAd, &pAd->pMcastWLTable);
 #endif /* IGMP_SNOOP_SUPPORT */
 }
 
@@ -4419,6 +4462,7 @@ INT ap_link_up(struct wifi_dev *wdev, struct _MAC_TABLE_ENTRY *entry)
 INT ap_link_down(struct wifi_dev *wdev)
 {
 	APStopRekeyTimer(wdev->sys_handle, wdev);
+	ap_sec_deinit(wdev);
 
 	if (WDEV_BSS_STATE(wdev) >= BSS_INITED) {
 		/* kick out all stas behind the Bss */
@@ -4614,9 +4658,6 @@ INT ap_inf_close(struct wifi_dev *wdev)
 
 	/* Move orig RTMPInfClose here */
 	IF_DEV_CONFIG_OPMODE_ON_AP(pAd) {
-#ifdef APCLI_CFG80211_SUPPORT
-		int j;
-#endif /* APCLI_CFG80211_SUPPORT */
 		wdev->bAllowBeaconing = FALSE;
 
 		if (wdev_do_linkdown(wdev) != TRUE)
@@ -4626,24 +4667,6 @@ INT ap_inf_close(struct wifi_dev *wdev)
 			MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("%s() close fail!!!\n", __func__));
 			return FALSE;
 		}
-#ifdef APCLI_CFG80211_SUPPORT
-		for (j = 0; j < MAX_APCLI_NUM; j++) {
-			APCLI_STRUCT *apcli_entry = &pAd->ApCfg.ApCliTab[j];
-
-			if (apcli_entry->wpa_supplicant_info.pWpsProbeReqIe) {
-				os_free_mem(apcli_entry->wpa_supplicant_info.pWpsProbeReqIe);
-				apcli_entry->wpa_supplicant_info.pWpsProbeReqIe = NULL;
-				apcli_entry->wpa_supplicant_info.WpsProbeReqIeLen = 0;
-			}
-
-			if (apcli_entry->wpa_supplicant_info.pWpaAssocIe) {
-				os_free_mem(apcli_entry->wpa_supplicant_info.pWpaAssocIe);
-				apcli_entry->wpa_supplicant_info.pWpaAssocIe = NULL;
-				apcli_entry->wpa_supplicant_info.WpaAssocIeLen = 0;
-			}
-		}
-#endif /* APCLI_CFG80211_SUPPORT */
-
 #ifdef BAND_STEERING
 		if (pAd->ApCfg.BandSteering) {
 			PBND_STRG_CLI_TABLE table;

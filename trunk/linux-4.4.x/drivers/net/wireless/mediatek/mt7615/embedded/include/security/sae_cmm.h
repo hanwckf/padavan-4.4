@@ -108,9 +108,12 @@
 #define SAE_ECC_SET_Z_TO_1(_inout)
 
 #endif
-
+#define EID_EXT_PASSWORD_IDENTIFIER 33
+#define EID_EXT_REJECTED_GROUP 92
+#define SAE_MAX_PWD_ID 40 /* this parameter is not defined in spec */
 #define SAE_TOKEN_KEY_LEN 6  /* this parameter is not defined in spec */
 
+#define MAX_SAE_KCK_LEN 64 /*SHA512_DIGEST_SIZE */
 #define SAE_KCK_LEN 32
 #define SAE_PMKID_LEN 16
 #define SAE_KEYSEED_KEY_LEN 32
@@ -129,7 +132,7 @@
 #define SAE_SILENTLY_DISCARDED 65535
 #define SAE_MAX_SEND_CONFIRM 65535
 
-
+#define MAX_SAE_GROUP 32
 #define SAE_DEFAULT_GROUP SAE_DEFAULT_GROUP_ECC
 #define SAE_DEFAULT_GROUP_ECC 19
 #define SAE_DEFAULT_GROUP_FFC 5
@@ -182,6 +185,12 @@ typedef enum {
 	SAE_ACCEPTED
 } SAE_STATE_TYPE, *PSAE_STATE_TYPE;
 
+struct pwd_id_list {
+	DL_LIST list;
+	UCHAR pwd[LEN_PSK + 1];
+	UCHAR pwd_id[SAE_MAX_PWD_ID + 1];
+};
+
 typedef struct __SAE_GROUP_OP SAE_GROUP_OP;
 
 typedef struct __SAE_INSTANCE SAE_INSTANCE;
@@ -200,13 +209,15 @@ struct __SAE_GROUP_OP {
 		OUT UCHAR * confirm);
 	USHORT(*sae_parse_commit_element) (
 		IN SAE_INSTANCE * pSaeIns,
-		IN UCHAR * pos,
+		IN UCHAR **pos,
 		IN UCHAR * end);
 	UCHAR(*sae_derive_commit_element) (
 		IN SAE_INSTANCE * pSaeIns,
 		IN SAE_BN *mask);
 	USHORT(*sae_derive_pwe) (
 		IN SAE_INSTANCE * pSaeIns);
+	USHORT(*sae_derive_pwe_pt) (
+		IN SAE_INSTANCE *pSaeIns);
 	UCHAR(*sae_derive_k) (
 		IN SAE_INSTANCE * pSaeIns,
 		OUT UCHAR * k);
@@ -224,6 +235,25 @@ typedef struct __SAE_TIME_INTERVAL {
 	ULONG derive_k_time;
 	ULONG derive_pmk_time;
 } SAE_TIME_INTERVAL, *PSAE_TIME_INTERVAL;
+struct sae_pt {
+	struct sae_pt *next;
+	USHORT group;
+	VOID *pt;
+};
+
+enum {
+	PWE_MIXED = 0,
+	PWE_LOOPING_ONLY, /* hunting-and-pecking only */
+	PWE_HASH_ONLY, /* hash-to-element only */
+	MAX_PWE_METHOD,
+};
+
+struct sae_capability {
+	UCHAR gen_pwe_method; /* 0: mixed, 1: hunting-and-pecking only, 2: hash-to-element only */
+#ifdef DOT11_SAE_PWD_ID_SUPPORT
+	UCHAR pwd_id_only;
+#endif
+};
 
 
 struct __SAE_INSTANCE {
@@ -235,14 +265,15 @@ struct __SAE_INSTANCE {
 	USHORT group;
 	INT8 sync;
 	UINT8 support_group_idx;
-	UCHAR kck[SAE_KCK_LEN];
+	UCHAR kck[MAX_SAE_KCK_LEN];
+	UCHAR kck_len;
 	SAE_BN *own_commit_scalar;
 	VOID *own_commit_element;
 	VOID *peer_commit_element;
 	VOID *pwe;
 	SAE_BN *sae_rand;
-	UINT32 prime_len; /* ellis */
-	UINT32 order_len; /* ellis */
+	UINT32 prime_len;
+	UINT32 order_len;
 	VOID *group_info;
 	VOID *group_info_bi;
 	SAE_BN *prime;
@@ -251,9 +282,22 @@ struct __SAE_INSTANCE {
 	UINT32 anti_clogging_token_len;
 	USHORT peer_send_confirm;
 	UCHAR need_recalculate_key;
+	struct pwd_id_list *pwd_id_ptr;
+	UCHAR is_pwd_id_only;
+	/* peer_pwd_id is temp pointer only for BadId case,
+	  * it is not expected to use this for successful case due to this pointer is pointed to packet buffer which might be freed */
+	UCHAR *peer_pwd_id;
+	UINT32 peer_pwd_id_len;
 	const SAE_GROUP_OP *group_op;
 	SAE_TIME_INTERVAL sae_cost_time;
 
+	VOID *pt;
+	UCHAR peer_rejected_group[12];
+	UINT32 peer_rejected_group_len;
+	/************************************************/
+	/* if the parameter is assigned before sae_group_allowed*/
+	/* the parameter ahead of "valid" will be clear **********/
+	/************************************************/
 	UCHAR valid;
 	UCHAR removable;
 	RALINK_TIMER_STRUCT sae_retry_timer;
@@ -262,9 +306,12 @@ struct __SAE_INSTANCE {
 	UCHAR peer_mac[MAC_ADDR_LEN];
 	UCHAR bssid[MAC_ADDR_LEN];
 	UCHAR *psk;
+	struct pwd_id_list *pwd_id_list_head;
 	SAE_INSTANCE *same_mac_ins;
 	SAE_CFG *pParentSaeCfg;
 	UINT16 last_rcv_auth_seq;
+	UCHAR h2e_connect;
+	UINT32 rejected_group; /* bitwise */
 };
 
 
@@ -289,24 +336,18 @@ typedef struct __BIG_INTEGER_EC_POINT {
 	UCHAR z_is_one;
 } BIG_INTEGER_EC_POINT, *PBIG_INTEGER_EC_POINT;
 
-#ifdef group_related
+
 /*
  =====================================
 	group related
  =====================================
 */
-#endif
 
-
-
-
-#ifdef FFC_group_related
 /*
  =====================================
 	FFC group related
  =====================================
 */
-#endif
 /* RFC 3526, 4. Group 15 - 3072 Bit MODP
  * Generator: 2
  * Prime: 2^3072 - 2^3008 - 1 + 2^64 * { [2^2942 pi] + 1690314 }
@@ -446,14 +487,11 @@ typedef struct __DH_GROUP_INFO_BI {
 	{ .group_id = id, .safe_prime = safe, .is_init = FALSE}
 
 
-
-#ifdef ECC_group_related
 /*
  =====================================
 	ECC group related
  =====================================
 */
-#endif
 
 /*
  * RFC 5114, 2.6.
@@ -498,6 +536,15 @@ static const UCHAR ec_group19_gy[] = {
 	0x2b, 0xce, 0x33, 0x57, 0x6b, 0x31, 0x5e, 0xce,
 	0xcb, 0xb6, 0x40, 0x68, 0x37, 0xbf, 0x51, 0xf5
 };
+
+static const UCHAR ec_group19_z[] = {
+	0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x01,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF,
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xF5
+
+};
+
 
 #define EC_GROUP19_BITS_OF_R 257
 
@@ -579,6 +626,16 @@ static const UCHAR ec_group20_gy[] = {
 	0x0a, 0x60, 0xb1, 0xce, 0x1d, 0x7e, 0x81, 0x9d,
 	0x7a, 0x43, 0x1d, 0x7c, 0x90, 0xea, 0x0e, 0x5f
 };
+
+static const UCHAR ec_group20_z[] = {
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE,
+	0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xF3,
+};
+
 
 #define EC_GROUP20_BITS_OF_R 385
 
@@ -681,6 +738,20 @@ static const UCHAR ec_group21_gy[] = {
 	0x66, 0x50
 };
 
+static const UCHAR ec_group21_z[] = {
+	0x00, 0x00, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+	0xFF, 0xFF, 0xFF, 0xFB
+};
+
+
+
 #define EC_GROUP21_BITS_OF_R 522
 
 static const UCHAR ec_group21_X[] = {
@@ -708,6 +779,7 @@ static const UCHAR ec_group21_PInverse[] = {
 		ec_group ## id ## _order, sizeof(ec_group ## id ## _order), \
 		ec_group ## id ## _a, sizeof(ec_group ## id ## _a), \
 		ec_group ## id ## _b, sizeof(ec_group ## id ## _b), \
+		ec_group ## id ## _z, sizeof(ec_group ## id ## _z), \
 		ec_group ## id ## _X, sizeof(ec_group ## id ## _X), \
 		ec_group ## id ## _R, sizeof(ec_group ## id ## _R), \
 		ec_group ## id ## _PInverse, sizeof(ec_group ## id ## _PInverse), \

@@ -638,7 +638,7 @@ VOID AndesCtrlInit(RTMP_ADAPTER *pAd)
 
 
 
-#ifdef RTMP_PCI_SUPPORT
+#if defined(RTMP_PCI_SUPPORT) || defined(RTMP_RBUS_SUPPORT)
 static VOID AndesCtrlPciExit(RTMP_ADAPTER *ad)
 {
 	struct MCU_CTRL *ctl = &ad->MCUCtrl;
@@ -678,8 +678,7 @@ VOID AndesCtrlExit(RTMP_ADAPTER *pAd)
 #ifdef DBG_STARVATION
 		unregister_starv_block(&ctl->block);
 #endif /*DBG_STARVATION*/
-#ifdef RTMP_PCI_SUPPORT
-
+#if defined(RTMP_PCI_SUPPORT) || defined(RTMP_RBUS_SUPPORT)
 		if (IS_PCI_INF(pAd) || IS_RBUS_INF(pAd))
 			AndesCtrlPciExit(pAd);
 

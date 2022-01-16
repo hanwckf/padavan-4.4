@@ -489,9 +489,11 @@ VOID APPeerProbeReqAction(
 				if (IS_RRM_ENABLE(wdev)) {
 					UCHAR reg_class = get_regulatory_class(pAd, mbss->wdev.channel,
 								mbss->wdev.PhyMode, &mbss->wdev);
-					TmpLen2 = 0;
-					NdisZeroMemory(TmpFrame, sizeof(TmpFrame));
-					RguClass_BuildBcnChList(pAd, TmpFrame, &TmpLen2, wdev->PhyMode, reg_class);
+					if (reg_class != 0) {
+						TmpLen2 = 0;
+						NdisZeroMemory(TmpFrame, sizeof(TmpFrame));
+						RguClass_BuildBcnChList(pAd, TmpFrame, &TmpLen2, wdev, reg_class);
+					}
 				}
 #endif /* DOT11K_RRM_SUPPORT */
 
@@ -559,6 +561,7 @@ VOID APPeerProbeReqAction(
 			ULONG TmpLen2 = 0;
 			UCHAR TmpFrame[256] = { 0 };
 			UCHAR CountryIe = IE_COUNTRY;
+#ifndef EXT_BUILD_CHANNEL_LIST
 			PCH_DESC pChDesc = NULL;
 
 			if (WMODE_CAP_2G(wdev->PhyMode)) {
@@ -574,6 +577,7 @@ VOID APPeerProbeReqAction(
 					MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
 							 ("%s: pChDesc5G is NULL !!!\n", __func__));
 			}
+#endif
 
 			/*
 				Only APs that comply with 802.11h or 802.11k are required to include
@@ -646,10 +650,11 @@ VOID APPeerProbeReqAction(
 
 			if (IS_RRM_ENABLE(wdev)) {
 				UCHAR reg_class = get_regulatory_class(pAd, mbss->wdev.channel, mbss->wdev.PhyMode, &mbss->wdev);
-
-				TmpLen2 = 0;
-				NdisZeroMemory(TmpFrame, sizeof(TmpFrame));
-				RguClass_BuildBcnChList(pAd, TmpFrame, &TmpLen2, wdev->PhyMode, reg_class);
+				if (reg_class != 0) {
+					TmpLen2 = 0;
+					NdisZeroMemory(TmpFrame, sizeof(TmpFrame));
+					RguClass_BuildBcnChList(pAd, TmpFrame, &TmpLen2, wdev, reg_class);
+				}
 			}
 
 #endif /* DOT11K_RRM_SUPPORT */
@@ -844,8 +849,12 @@ VOID APPeerProbeReqAction(
 		{
 			struct _RTMP_CHIP_CAP *cap = hc_get_chip_cap(pAd->hdev_ctrl);
 			UINT8 idx = 0;
+			UINT8 num = cap->ProbeRspTimes;
 
-			for (idx = 0; idx < cap->ProbeRspTimes; idx++)
+			/* solve the problem of STA connection slow under multiple BSS conditions */
+			/* 8 is experience value, you can modify it */
+			num = (pAd->ApCfg.BssidNum >= 8) ? 1 : num;
+			for (idx = 0; idx < num; idx++)
 				MiniportMMRequest(pAd, 0, pOutBuffer, FrameLen);
 		}
 		MlmeFreeMemory(pOutBuffer);
@@ -876,14 +885,16 @@ struct {
 #ifdef CUSTOMER_DCC_FEATURE
 VOID APChannelSwitch(
 	IN PRTMP_ADAPTER pAd,
-	IN PMLME_QUEUE_ELEM Elem)
+	IN PCmdQElmt CMDQelmt)
 {
 	UCHAR apIdx;
 	BSS_STRUCT *pMbss = &pAd->ApCfg.MBSSID[MAIN_MBSSID];
 	UCHAR apOper = AP_BSS_OPER_ALL;
 	struct DOT11_H *pDot11h = NULL;
+	UCHAR op_ht_bw;
+	UCHAR ext_ch;
 
-	apIdx = *(UCHAR *)(Elem->Msg);
+	NdisMoveMemory(&apIdx, CMDQelmt->buffer, sizeof(UCHAR));
 
 	/* check apidx valid */
 	if (apIdx != 0xff) {
@@ -909,6 +920,12 @@ VOID APChannelSwitch(
 	}
 #endif
 		pDot11h->RDMode = RD_SILENCE_MODE;
+		op_ht_bw = wlan_config_get_ht_bw(&pMbss->wdev);
+		ext_ch = wlan_config_get_ext_cha(&pMbss->wdev);
+		wlan_config_set_ht_bw(&pMbss->wdev, op_ht_bw);
+		wlan_operate_set_ht_bw(&pMbss->wdev, op_ht_bw, ext_ch);
+		wlan_operate_set_prim_ch(&pMbss->wdev, pMbss->wdev.channel);
+		SetCommonHtVht(pAd, &pMbss->wdev);
 		APStop(pAd, pMbss, apOper);
 #ifdef MT_DFS_SUPPORT
 	if (pMbss->wdev.channel >= 36)
@@ -1662,9 +1679,13 @@ UINT32	CrValue;
 				/* This value to be used by application to calculate  channel busy percentage */
 				Rsp.data.channel_data.actual_measured_time = pAd->ScanCtrl.ScanTimeActualDiff;
 #ifdef MAP_R2
-				/* EDCCA time */
-				RTMP_IO_READ32(pAd, MIB_M0SDR18, &CrValue);
-				Rsp.data.channel_data.edcca = CrValue;
+				if (IS_MAP_ENABLE(pAd) && IS_MAP_R2_ENABLE(pAd)) {
+					Update_Mib_Bucket_500Ms(pAd);
+					Update_Mib_Bucket_for_map(pAd);
+					/* EDCCA time */
+					RTMP_IO_READ32(pAd, MIB_M0SDR18, &CrValue);
+					Rsp.data.channel_data.edcca = CrValue;
+				}
 #endif
 				RtmpOSWrielessEventSend(
 					pAd->net_dev,
@@ -2711,9 +2732,6 @@ VOID APSyncStateMachineInit(
 	StateMachineInit(Sm, (STATE_MACHINE_FUNC *)Trans, AP_MAX_SYNC_STATE, AP_MAX_SYNC_MSG, (STATE_MACHINE_FUNC)Drop, AP_SYNC_IDLE, AP_SYNC_MACHINE_BASE);
 	StateMachineSetAction(Sm, AP_SYNC_IDLE, APMT2_PEER_PROBE_REQ, (STATE_MACHINE_FUNC)APPeerProbeReqAction);
 	StateMachineSetAction(Sm, AP_SYNC_IDLE, APMT2_PEER_BEACON, (STATE_MACHINE_FUNC)APPeerBeaconAction);
-#ifdef CUSTOMER_DCC_FEATURE
-	StateMachineSetAction(Sm, AP_SYNC_IDLE, APMT2_CHANNEL_SWITCH, (STATE_MACHINE_FUNC)APChannelSwitch);
-#endif
 #if defined(P2P_SUPPORT) || defined(RT_CFG80211_P2P_SUPPORT) || defined(CFG80211_MULTI_STA)
 	StateMachineSetAction(Sm, AP_SYNC_IDLE, APMT2_PEER_PROBE_RSP, (STATE_MACHINE_FUNC)APPeerBeaconAtScanAction);
 #endif /* P2P_SUPPORT || RT_CFG80211_P2P_SUPPORT || CFG80211_MULTI_STA */

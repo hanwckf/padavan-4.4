@@ -502,7 +502,8 @@ VOID ReceiveGASInitReq(
 	Event->u.PEER_GAS_REQ_DATA.QueryReqLen = le2cpu16(Event->u.PEER_GAS_REQ_DATA.QueryReqLen);
 	Len += 2;
 	Pos += 2;
-	if (Event->u.PEER_GAS_REQ_DATA.AdvertisementProID == ACCESS_NETWORK_QUERY_PROTOCOL) {
+	if (Event->u.PEER_GAS_REQ_DATA.AdvertisementProID == ACCESS_NETWORK_QUERY_PROTOCOL &&
+		!pGASCtrl->ExternalANQPServerTest) {
 		/* Send anqp request indication to daemon */
 		SendAnqpReqEvent(NetDev,
 				Event->PeerMACAddr,

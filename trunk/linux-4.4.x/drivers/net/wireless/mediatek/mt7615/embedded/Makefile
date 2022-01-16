@@ -408,7 +408,11 @@ endif
 
 build_sku_tables:
 	$(MAKE) -C $(RT28xx_DIR)/txpwr
-	$(RT28xx_DIR)/txpwr/dat2h
+	$(RT28xx_DIR)/txpwr/data2h
+
+build_power_limit_tables:
+	$(MAKE) -C $(RT28xx_DIR)/txpwr
+	$(RT28xx_DIR)/txpwr/data2h
 
 build_tools:
 	$(MAKE) -C tools

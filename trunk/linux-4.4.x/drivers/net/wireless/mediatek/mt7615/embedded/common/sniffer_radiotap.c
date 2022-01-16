@@ -1059,7 +1059,7 @@ void send_radiotap_monitor_packets(
 
 #endif /* DOT11_VHT_AC */
 	pOSPkt->dev = pOSPkt->dev;
-	pOSPkt->mac_header = pOSPkt->data;
+	skb_reset_mac_header(pOSPkt);
 	pOSPkt->pkt_type = PACKET_OTHERHOST;
 	pOSPkt->protocol = __constant_htons(ETH_P_80211_RAW);
 	pOSPkt->ip_summed = CHECKSUM_NONE;
@@ -1115,7 +1115,7 @@ VOID Monitor_Init(RTMP_ADAPTER *pAd, RTMP_OS_NETDEV_OP_HOOK *pNetDevOps)
 	}
 
 		MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF,
-					 ("-->%s(): Create net_device for %s\n", __func__, wdev->if_dev));
+					 ("-->%s(): Create net_device for %s\n", __func__, wdev->if_dev->name));
 	/* init MAC address of virtual network interface */
 	COPY_MAC_ADDR(wdev->if_addr, pAd->CurrentAddress);
 	pNetDevOps->priv_flags = INT_MONITOR; /* we are virtual interface */
@@ -1140,7 +1140,7 @@ INT idx;
 	struct wifi_dev *wdev;
 		wdev = &pAd->monitor_ctrl[idx].wdev;
 		MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF,
-							 ("-->%s(): Remove net_device for %s\n", __func__, wdev->if_dev));
+							 ("-->%s(): Remove net_device for %s\n", __func__, wdev->if_dev->name));
 
 	if (wdev->if_dev) {
 		RtmpOSNetDevProtect(1);
@@ -1161,7 +1161,7 @@ INT idx;
 		if (pAd->monitor_ctrl[idx].wdev.if_dev == dev_p) {
 			RTMP_OS_NETDEV_SET_TYPE(pAd->monitor_ctrl[idx].wdev.if_dev, ARPHRD_IEEE80211_RADIOTAP);
 		MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF,
-							 ("-->%s(): Open net_device for %s\n", __func__, dev_p));
+							 ("-->%s(): Open net_device for %s\n", __func__, dev_p->name));
 		}
 	}
 	return TRUE;
@@ -1179,7 +1179,7 @@ INT idx;
 
 		if (pAd->monitor_ctrl[idx].wdev.if_dev == dev_p) {
 			MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF,
-							 ("-->%s(): Close net_device for %s\n", __func__, dev_p));
+							 ("-->%s(): Close net_device for %s\n", __func__, dev_p->name));
 		/* RTMP_OS_NETDEV_STOP_QUEUE(dev_p); */
 		/* resume normal settings */
 			pAd->monitor_ctrl[idx].bMonitorOn = FALSE;

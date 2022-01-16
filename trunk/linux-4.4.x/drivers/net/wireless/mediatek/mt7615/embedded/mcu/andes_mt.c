@@ -3233,6 +3233,27 @@ VOID EventTxPowerShowInfo(RTMP_ADAPTER *pAd, UINT8 *Data, UINT32 Length)
 	/* Thermal Compensation Info */
 	fgThermalCompEnable = prEventTxPowerInfo->fgThermalCompEnable;
 	cThermalCompValue = prEventTxPowerInfo->cThermalCompValue;
+
+#ifdef MGMT_TXPWR_CTRL
+	/* Updated Tx base power */
+	/* 2G band*/
+	if (fg2GEPA != pAd->ApCfg.fgEPA[BAND0]) {
+		pAd->ApCfg.fgEPA[BAND0] = TRUE;
+		pAd->ApCfg.EpaGain[BAND0] = prEventTxPowerInfo->cEpaGain[BAND0];
+	}
+
+	/* 5G band*/
+	if (fg5GEPA != pAd->ApCfg.fgEPA[BAND1]) {
+		pAd->ApCfg.fgEPA[BAND1] = TRUE;
+		pAd->ApCfg.EpaGain[BAND1] = prEventTxPowerInfo->cEpaGain[BAND1];
+	}
+
+	if (pAd->ApCfg.fEpaReq == TRUE) {
+		pAd->ApCfg.fEpaReq = FALSE;
+		return;
+	}
+#endif
+
 	/* Show Info in Debug Log */
 	MTWF_LOG(DBG_CAT_FW, DBG_SUBCAT_ALL, DBG_LVL_OFF,
 			 ("============================================================================= \n"));
@@ -3242,6 +3263,10 @@ VOID EventTxPowerShowInfo(RTMP_ADAPTER *pAd, UINT8 *Data, UINT32 Length)
 			 ("============================================================================= \n"));
 	MTWF_LOG(DBG_CAT_FW, DBG_SUBCAT_ALL, DBG_LVL_OFF,
 			("  EPA_%s = %d                                                                 \n", (ucChannelBandIdx == 1) ? "5G" : "2G", (ucChannelBandIdx == 1) ? fg5GEPA : fg2GEPA));
+#ifdef MGMT_TXPWR_CTRL
+	MTWF_LOG(DBG_CAT_FW, DBG_SUBCAT_ALL, DBG_LVL_OFF,
+			("	ePA Gain = %d \n", (ucChannelBandIdx == 1) ? pAd->ApCfg.EpaGain[BAND1]:pAd->ApCfg.EpaGain[BAND0]));
+#endif
 	MTWF_LOG(DBG_CAT_FW, DBG_SUBCAT_ALL, DBG_LVL_OFF,
 			 ("============================================================================= \n"));
 	MTWF_LOG(DBG_CAT_FW, DBG_SUBCAT_ALL, DBG_LVL_OFF,

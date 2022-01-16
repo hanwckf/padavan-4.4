@@ -95,7 +95,8 @@ PCH_REGION GetChRegion(
 
 #ifdef EXT_BUILD_CHANNEL_LIST
 VOID BuildChannelListEx(
-	IN PRTMP_ADAPTER pAd);
+	IN PRTMP_ADAPTER pAd,
+	IN struct wifi_dev *wdev);
 
 VOID BuildBeaconChList(
 	IN PRTMP_ADAPTER pAd,

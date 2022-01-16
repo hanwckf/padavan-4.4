@@ -121,6 +121,10 @@ INT apcli_virtual_if_open(PNET_DEV pDev)
 	RT_MOD_INC_USE_COUNT();
 	RT_MOD_HNAT_REG(pDev);
 	RTMP_OS_NETDEV_START_QUEUE(pDev);
+
+#ifdef MTFWD
+	RTMP_OS_NETDEV_CARRIER_OFF(pDev);
+#endif
 	return 0;
 }
 
