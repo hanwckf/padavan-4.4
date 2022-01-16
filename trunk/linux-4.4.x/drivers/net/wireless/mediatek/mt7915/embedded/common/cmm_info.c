@@ -5045,7 +5045,7 @@ typedef struct _RT_802_11_MAC_TABLE_PDV {
 } RT_802_11_MAC_TABLE_PDV, *PRT_802_11_MAC_TABLE_PDV;
 
 static VOID
-copy_mac_table_entry(RT_802_11_MAC_ENTRY_PDV *pDst, MAC_TABLE_ENTRY *pEntry)
+copy_mac_table_entry(PRTMP_ADAPTER pAd, RT_802_11_MAC_ENTRY_PDV *pDst, MAC_TABLE_ENTRY *pEntry)
 {
 	pDst->ApIdx = (UCHAR)pEntry->func_tb_idx;
 	COPY_MAC_ADDR(pDst->Addr, &pEntry->Addr);
@@ -5064,7 +5064,7 @@ copy_mac_table_entry(RT_802_11_MAC_ENTRY_PDV *pDst, MAC_TABLE_ENTRY *pEntry)
 	/* the connected time per entry*/
 	pDst->ConnectedTime = pEntry->StaConnectTime;
 
-	pDst->TxRate.word = pEntry->HTPhyMode.word;
+	pDst->TxRate.word = RTMPGetLastTxRate(pAd, pEntry);
 	pDst->LastRxRate = pEntry->LastRxRate;
 }
 
@@ -5103,7 +5103,7 @@ VOID RTMPIoctlGetMacTableStaInfo(
 			RT_802_11_MAC_ENTRY_PDV MacEntry;
 			
 			pDst = &MacEntry;
-			copy_mac_table_entry(pDst, pEntry);
+			copy_mac_table_entry(pAd, pDst, pEntry);
 			
 			wrq->u.data.length = sizeof(RT_802_11_MAC_ENTRY_PDV);
 			copy_to_user(wrq->u.data.pointer, pDst, wrq->u.data.length);
