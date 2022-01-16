@@ -4979,7 +4979,7 @@ max_len += WPS_LINE_LEN;
 #endif
 max_len += BCNREP_LINE_LEN;
 
-#ifdef APCLI_OWE_SUPPORT
+#if 0
 max_len += OWETRANSIE_LINE_LEN;
 
 #endif
@@ -5048,7 +5048,7 @@ max_len += OWETRANSIE_LINE_LEN;
 	sprintf(msg + strlen(msg) - 1, "%-4s%-5s\n", " WPS", " DPID");
 #endif /* WSC_INCLUDED */
 	//sprintf(msg + strlen(msg) - 1, "%-8s\n", " BcnRept");
-#ifdef APCLI_OWE_SUPPORT
+#if 0
 		sprintf(msg + strlen(msg) - 1, "%-10s\n", " OWETranIe");
 #endif /* APCLI_OWE_SUPPORT */
 
@@ -5096,7 +5096,7 @@ max_len += OWETRANSIE_LINE_LEN;
 #endif /* WSC_INCLUDED */
 		//sprintf(msg + strlen(msg), "%-8s", pBss->FromBcnReport ? " YES" : " NO");
 
-#ifdef APCLI_OWE_SUPPORT
+#if 0
 	if (pBss->bhas_owe_trans_ie)
 		sprintf(msg + strlen(msg), "%-10s\n", " YES");
 	else
