@@ -1604,6 +1604,8 @@ gen_ralink_config(int is_soc_ap, int is_aband, int disable_autoscan)
 	fprintf(fp, "ApCliMuOfdmaUlEnable=%d\n", 0);
 	fprintf(fp, "ApCliMuOfdmaDlEnable=%d\n", 0);
 
+	fprintf(fp, "ApCliWirelessMode=%d\n", i_phy_mode);
+
 	//RadioOn
 	fprintf(fp, "RadioOn=%d\n", 1);
 
