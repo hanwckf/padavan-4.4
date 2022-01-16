@@ -8929,6 +8929,7 @@ void wifi_dump_info(void)
 
 	MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s--------------------\n", __func__));
 
+#ifdef MULTI_INF_SUPPORT
 	for (idx = 0; idx < MAX_NUM_OF_INF; idx++) {
 		if (adapt_list[idx]) {
 			pAd = adapt_list[idx];
@@ -8949,6 +8950,7 @@ void wifi_dump_info(void)
 #endif
 		}
 	}
+#endif
 }
 
 INT show_tpinfo_proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
