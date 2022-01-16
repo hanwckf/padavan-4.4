@@ -257,7 +257,7 @@ BOOLEAN PeerAddBARspActionSanity(
 
 	/* SPEC define the buffer size of add ba resp should be at least 1 */
 	if (pAddFrame->BaParm.BufSize == 0) {
-		MTWF_LOG(DBG_CAT_PROTO, CATPROTO_BA, DBG_LVL_ERROR, ("illegal BA buffer size = %d\n", pAddFrame->BaParm.BufSize));
+		MTWF_LOG(DBG_CAT_PROTO, CATPROTO_BA, DBG_LVL_INFO, ("illegal BA buffer size = %d\n", pAddFrame->BaParm.BufSize));
 		return FALSE;
 	}
 
