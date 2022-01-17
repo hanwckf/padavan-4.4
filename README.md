@@ -60,14 +60,16 @@ This project is based on original rt-n56u with latest mtk 4.4.198 kernel, which 
     ```sh
     cd padavan-4.4/toolchain-mipsel
 
-    # (Recommend) Download prebuilt toolchain for x86_64 host
-    sh dl_toolchain.sh
+    # (Recommend) Download prebuilt toolchain for x86_64 or aarch64 host
+    ./dl_toolchain.sh
 
     # or build toolchain with crosstool-ng
     # ./build_toolchain
     ```
   - Modify template file and start compiling
     ```sh
+    cd padavan-4.4
+
     # (Optional) Modify template file
     # nano configs/templates/K2P.config
 
