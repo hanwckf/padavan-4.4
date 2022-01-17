@@ -147,6 +147,7 @@ static int mtk_pwm_config(struct pwm_chip *chip, struct pwm_device *pwm,
 	    reg_thres = PWMTHRES;
 	u64 resolution;
 	int ret;
+	int clksel = 0;
 	u32 value;
 
 	ret = mtk_pwm_clk_enable(chip, pwm);
@@ -163,16 +164,25 @@ static int mtk_pwm_config(struct pwm_chip *chip, struct pwm_device *pwm,
 		clkdiv++;
 		cnt_period = DIV_ROUND_CLOSEST_ULL((u64)period_ns * 1000,
 						   resolution);
+		if ((clkdiv > PWM_CLK_DIV_MAX) && (clksel == 0)) {
+			clksel = 1;
+			clkdiv = 0;
+			resolution = (u64)NSEC_PER_SEC * 1000 * 1625;
+			do_div(resolution, clk_get_rate(clk));
+			cnt_period = DIV_ROUND_CLOSEST_ULL(
+					(u64)period_ns * 1000, resolution);
+		}
 	}
 
-	if (clkdiv > PWM_CLK_DIV_MAX) {
+	if ((clkdiv > PWM_CLK_DIV_MAX) && (clksel == 1)) {
 		mtk_pwm_clk_disable(chip, pwm);
 		dev_err(chip->dev, "period %d not supported\n", period_ns);
 		return -EINVAL;
 	}
 
 	value = mtk_pwm_readl(pc, pwm->hwpwm, PWMCON);
-	value = value | BIT(15) | clkdiv;
+	value &= ~PWM_CLK_DIV_MAX;
+	value = value | BIT(15) | (clksel << 3) | clkdiv;
 
 	if (pc->soc->pwm45_fixup && pwm->hwpwm > 2) {
 		/*
