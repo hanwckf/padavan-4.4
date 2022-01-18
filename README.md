@@ -68,7 +68,7 @@ This project is based on original rt-n56u with latest mtk 4.4.198 kernel, which 
     ```
   - Modify template file and start compiling
     ```sh
-    cd padavan-4.4
+    cd padavan-4.4/trunk
 
     # (Optional) Modify template file
     # nano configs/templates/K2P.config
