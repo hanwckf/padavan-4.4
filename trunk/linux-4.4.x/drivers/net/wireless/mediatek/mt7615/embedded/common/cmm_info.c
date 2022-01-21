@@ -4947,7 +4947,7 @@ USHORT RTMPGetLastTxRate(PRTMP_ADAPTER pAd, MAC_TABLE_ENTRY *pEntry)
 }
 
 static VOID
-copy_mac_table_entry(PRTMP_ADAPTER pAd, MAC_TABLE_ENTRY *pEntry)
+copy_mac_table_entry(PRTMP_ADAPTER pAd, RT_802_11_MAC_ENTRY *pDst, MAC_TABLE_ENTRY *pEntry)
 {
 	pDst->ApIdx = (UCHAR)pEntry->func_tb_idx;
 	COPY_MAC_ADDR(pDst->Addr, &pEntry->Addr);
