@@ -121,7 +121,7 @@ start_rules() {
 	elif [ "$server" != "${server#*:[0-9a-fA-F]}" ]; then
 		server=${server}
 	else
-		server=$(ping ${server} -s 1 -c 1 | grep PING | cut -d'(' -f 2 | cut -d')' -f1)
+		server=$(resolveip -4 -t 3 $server | awk 'NR==1{print}')
 		if echo $server | grep -E "^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$" >/dev/null; then
 			echo $server >/etc/storage/ssr_ip
 		else

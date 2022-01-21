@@ -1521,7 +1521,7 @@ setTimeout('document.getElementById("btn_ctime").style.display="none";',1000);
 										一个兼容Shadowsocks、ShadowsocksR 、Vmess、Vless、Trojan、Sock5协议的游戏加速工具。
 										<div><span style="color:#E53333;">注意:</span></div>
 													<div><span
-															style="color:#E53333;">若被编辑的节点正在运行使用中，完成后需点击“应用设置”或“重连”更新节点信息。(重启路由器不可代替此操作)</span>
+															style="color:#E53333;">若被编辑的节点正在运行使用，请完成后点击“重连”或自行重启节点更新信息</span>
 													</div>
 												</div>
 												<table width="100%" cellpadding="4" cellspacing="0" class="table">
