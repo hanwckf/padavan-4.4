@@ -268,10 +268,6 @@ struct apcfg_parameters {
 	UCHAR ext_channel;
 };
 
-INT Set_Quick_Channel_Switch_En_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg);
-#ifdef CONFIG_AP_SUPPORT
-void ap_phy_rrm_init_byRf(RTMP_ADAPTER *pAd, struct wifi_dev *wdev);
-#endif
 #ifdef CONFIG_MAP_SUPPORT
 INT Set_Bh_Bss_Proc(
 	PRTMP_ADAPTER pAd,
@@ -282,58 +278,21 @@ INT Set_Fh_Bss_Proc(
 INT Set_Map_Proc(
 	PRTMP_ADAPTER pAd,
 	char *arg);
+INT Set_Map_Turnkey_Proc(
+	PRTMP_ADAPTER pAd,
+	char *arg);
 INT Set_Map_Channel_Proc(
 	PRTMP_ADAPTER pAd,
 	char *arg);
 INT Set_Map_Channel_En_Proc(
 	RTMP_ADAPTER *pAd,
 	RTMP_STRING *arg);
-VOID MacTableResetNonMapWdev(RTMP_ADAPTER *pAd, struct wifi_dev *wdev);
 
-#ifdef MAP_R2
-INT Set_Map_Bh_Primary_Vid_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg);
-INT Set_Map_Bh_Primary_Pcp_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg);
-INT Set_Map_Bh_Vid_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg);
-INT Set_Map_Fh_Vid_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg);
-INT Set_Map_Transparent_Vid_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg);
-INT Set_MapR2_Proc(PRTMP_ADAPTER pAd, char *arg);
-INT Show_MapR2_Policy_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg);
-#endif
-#ifdef MAP_TS_TRAFFIC_SUPPORT
-INT Set_MapTS_Proc(
-	PRTMP_ADAPTER pAd,
-	char *arg);
-#endif
-#ifdef MAP_BL_SUPPORT
-INT Set_BlackList_Add(
-	PRTMP_ADAPTER pAd,
-	char *arg);
-INT Set_BlackList_Del(
-	PRTMP_ADAPTER pAd,
-	char *arg);
-INT Set_BlackList_Show(
-	PRTMP_ADAPTER pAd,
-	char *arg);
-#endif /*  MAP_BL_SUPPORT */
+void update_ch_by_wdev(RTMP_ADAPTER *pAd, struct wifi_dev *wdev);
+
+
+
 #endif /* CONFIG_MAP_SUPPORT */
-
-#ifdef CONFIG_RA_PHY_RATE_SUPPORT
-INT Set_BcnPhyMode(
-	PRTMP_ADAPTER pAd,
-	RTMP_STRING *arg);
-INT Set_BcnMcs(
-	PRTMP_ADAPTER pAd,
-	RTMP_STRING *arg);
-INT Show_BcnRate(
-	PRTMP_ADAPTER pAd,
-	RTMP_STRING *arg);
-#endif /* CONFIG_RA_PHY_RATE_SUPPORT */
-
-#ifdef DPP_SUPPORT
-INT Set_Enable_Dpp_Proc(
-	PRTMP_ADAPTER pAd,
-	char *arg);
-#endif /* DPP_SUPPORT */
 
 #ifdef APCLI_SUPPORT
 #endif /* APCLI_SUPPORT */
@@ -341,44 +300,12 @@ INT Set_Enable_Dpp_Proc(
 INT set_qiscdump_proc(struct _RTMP_ADAPTER *ad, RTMP_STRING *arg);
 
 #ifdef CHANNEL_SWITCH_MONITOR_CONFIG
-INT set_ch_switch_monitor_cfg(IN PRTMP_ADAPTER pAd, struct wifi_dev *wdev,
-	UCHAR BandIdx, struct ch_switch_cfg *ch_sw_cfg);
+INT set_ch_switch_monitor_cfg(IN PRTMP_ADAPTER pAd, struct ch_switch_cfg *ch_sw_cfg);
 VOID ch_switch_monitor_state_machine_init(struct _RTMP_ADAPTER *pAd);
 VOID ch_switch_monitor_del(struct _RTMP_ADAPTER *pAd);
 VOID ch_switch_monitor_timeout(IN PVOID system_specific1, IN PVOID function_context,
 			IN PVOID system_specific2, IN PVOID system_specific3);
 extern INT scan_ch_restore(RTMP_ADAPTER *pAd, UCHAR OpMode, struct wifi_dev *pwdev);
 #endif
-#ifdef OCE_FILS_SUPPORT
-VOID RTMPIoctlStaMlmeEvent(
-	IN      PRTMP_ADAPTER   pAd,
-	IN      RTMP_IOCTL_INPUT_STRUCT *wrq);
-
-VOID RTMPIoctlRsneSyncEvent(
-	IN      PRTMP_ADAPTER   pAd,
-	IN      RTMP_IOCTL_INPUT_STRUCT *wrq);
-
-VOID RTMPIoctlKeyEvent(
-	IN      PRTMP_ADAPTER   pAd,
-	IN      RTMP_IOCTL_INPUT_STRUCT *wrq);
-
-VOID RTMPIoctlPmkCacheEvent(
-	IN      PRTMP_ADAPTER   pAd,
-	IN      RTMP_IOCTL_INPUT_STRUCT *wrq);
-
-#endif /* OCE_FILS_SUPPORT */
-
-INT Set_Sta_Idle_Check(PRTMP_ADAPTER pAd, RTMP_STRING *arg);
-INT Set_Sta_Fast_Idle_Check_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg);
-#ifdef DPP_SUPPORT
-INT wext_send_dpp_cached_frame(struct wifi_dev *wdev, UINT32 frm_id,
-				RTMP_IOCTL_INPUT_STRUCT *wrq);
-INT mtk_cancel_roc(PRTMP_ADAPTER pAd, struct wifi_dev *wdev);
-INT mtk_start_roc(PRTMP_ADAPTER pAd, struct wifi_dev *wdev, struct roc_req *roc);
-INT mtk_set_pmk(PRTMP_ADAPTER pAd, struct wifi_dev *wdev, struct pmk_req *pmk_data);
-INT ch_switch_monitor_cancel(PRTMP_ADAPTER pAd, struct ch_switch_cfg *ch_sw_cfg);
-INT mtk_send_offchannel_action_frame(PRTMP_ADAPTER pAd, struct wifi_dev *wdev, struct action_frm_data *frm);
-#endif /*DPP_SUPPORT*/
-
 #endif /* __AP_CFG_H__ */
 

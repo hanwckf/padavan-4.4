@@ -1,0 +1,16 @@
+language: c
+os:
+    - linux
+    - osx
+compiler:
+    - gcc
+    - clang
+
+script:
+    - make test=y
+    - ./dogcom -m dhcp -c sample-d.conf
+    - ./dogcom -m pppoe -c sample-p.conf
+
+branches:
+    only:
+        - master

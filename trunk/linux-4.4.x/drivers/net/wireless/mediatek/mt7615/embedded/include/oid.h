@@ -29,9 +29,7 @@
 #define _OID_H_
 
 /*#include <linux/wireless.h> */
-#ifdef WAPP_SUPPORT
-#include "wapp_cmm_type.h"
-#endif
+
 
 
 /* new types for Media Specific Indications */
@@ -228,12 +226,6 @@
 #define OID_802_DOT1X_QUERY_STA_DATA                 0x0550
 #endif /*RADIUS_ACCOUNTING_SUPPORT*/
 #define OID_802_DOT1X_QUERY_STA_RSN                 0x0551
-#ifdef OCE_FILS_SUPPORT
-#define OID_802_DOT1X_MLME_EVENT                	0x0552
-#define OID_802_DOT1X_KEY_EVENT	                	0x0553
-#define OID_802_DOT1X_RSNE_SYNC               	   	0x0554
-#define OID_802_DOT1X_PMK_CACHE_EVENT 				0x0555
-#endif /* OCE_FILS_SUPPORT */
 #endif /* DOT1X_SUPPORT */
 
 #define	RT_OID_DEVICE_NAME							0x0607
@@ -681,7 +673,6 @@ typedef struct GNU_PACKED _DOT1X_IDLE_TIMEOUT {
 typedef struct GNU_PACKED _DOT1X_QUERY_STA_AID {
 	UCHAR StaAddr[MAC_ADDR_LEN];
 	UINT aid;
-	UINT wcid;
 } DOT1X_QUERY_STA_AID, *PDOT1X_QUERY_STA_AID;
 
 struct GNU_PACKED DOT1X_QUERY_STA_RSN {
@@ -754,13 +745,13 @@ typedef struct GNU_PACKED _NDIS80211PSK {
 	UINT    WPAKeyLen;
 	UCHAR   WPAKey[64];
 } NDIS80211PSK;
-#ifndef WAPP_SUPPORT
+
 typedef struct GNU_PACKED _NDIS_802_11_SSID {
 	UINT SsidLength;	/* length of SSID field below, in bytes; */
 	/* this can be zero. */
 	UCHAR Ssid[NDIS_802_11_LENGTH_SSID];	/* SSID information field */
 } NDIS_802_11_SSID, *PNDIS_802_11_SSID;
-#endif
+
 typedef struct GNU_PACKED _NDIS_WLAN_BSSID {
 	ULONG Length;		/* Length of this structure */
 	NDIS_802_11_MAC_ADDRESS MacAddress;	/* BSSID */
@@ -1097,31 +1088,6 @@ typedef struct _NDIS_802_11_CAPABILITY {
 /* New for MeetingHouse Api support */
 #define OID_MH_802_1X_SUPPORTED               0xFFEDC100
 
-typedef union _HETRANSMIT_SETTING {
-#ifdef RT_BIG_ENDIAN
-	struct {
-		USHORT MODE:3;
-		USHORT eTxBF:1;
-		USHORT STBC:1;
-		USHORT ShortGI:1;
-		USHORT BW:2;
-		USHORT ldpc:1;
-		USHORT MCS:7;
-	} field;
-#else
-	struct {
-		USHORT MCS:7;
-		USHORT ldpc:1;
-		USHORT BW:2;
-		USHORT ShortGI:1;
-		USHORT STBC:1;
-		USHORT eTxBF:1;
-		USHORT MODE:3;
-	} field;
-#endif
-	USHORT word;
-} HETRANSMIT_SETTING, *PHETRANSMIT_SETTING;
-
 /* MIMO Tx parameter, ShortGI, MCS, STBC, etc.  these are fields in TXWI. Don't change this definition!!! */
 typedef union _HTTRANSMIT_SETTING {
 #ifdef RT_BIG_ENDIAN
@@ -1184,7 +1150,7 @@ enum ASYNC_OFFCHANNEL_COMMAND_RSP {
 };
 
 
-typedef struct GNU_PACKED operating_info {
+typedef struct operating_info {
 	UINT8 channel;
 	UCHAR cfg_ht_bw;
 	UCHAR cfg_vht_bw;
@@ -1194,7 +1160,7 @@ typedef struct GNU_PACKED operating_info {
 	UCHAR vht_cent_ch2;
 } OPERATING_INFO, *POPERATING_INFO;
 
-typedef struct GNU_PACKED _channel_info {
+typedef struct _channel_info {
 	UINT8	channel;
 	UINT8	channel_idx;
 	INT32	NF;
@@ -1204,24 +1170,20 @@ typedef struct GNU_PACKED _channel_info {
 	UINT32	channel_busy_time;
 	UINT8	dfs_req;
 	UCHAR 	actual_measured_time;
-#ifdef MAP_R2
-	UINT32	edcca;
-#endif
 } CHANNEL_INFO, *PCHANNEL_INFO;
 
 
 struct msg_channel_list {
 	CHANNEL_INFO CHANNELLIST[60];
 };
-typedef struct GNU_PACKED offchannel_param {
+typedef struct offchannel_param {
 	UCHAR channel[MAX_AWAY_CHANNEL];
 	UCHAR scan_type[MAX_AWAY_CHANNEL];
 	UCHAR scan_time[MAX_AWAY_CHANNEL];
-	UCHAR bw;
 	UINT32 Num_of_Away_Channel;
 } OFFCHANNEL_SCAN_PARAM, *POFFCHANNEL_SCAN_PARAM;
 
-typedef struct GNU_PACKED sorted_list_info {
+typedef struct sorted_list_info {
 	UINT8 size;
 	UINT8 SortedMaxChannelBusyTimeList[MAX_NUM_OF_CHANNELS+1];
 	UINT8 SortedMinChannelBusyTimeList[MAX_NUM_OF_CHANNELS+1];
@@ -1229,10 +1191,9 @@ typedef struct GNU_PACKED sorted_list_info {
 } SORTED_CHANNEL_LIST, *PSORTED_CHANNEL_LIST;
 
 
-typedef struct GNU_PACKED _OFFCHANNEL_SCAN_MSG {
+typedef struct _OFFCHANNEL_SCAN_MSG {
 UINT8   Action;
 UCHAR ifrn_name[32];
-UINT32 ifIndex;
 union {
 				CHANNEL_INFO channel_data;
 				OFFCHANNEL_SCAN_PARAM offchannel_param;
@@ -1448,86 +1409,6 @@ typedef struct GNU_PACKED _RT_802_11_ACL {
 	RT_802_11_ACL_ENTRY Entry[MAX_NUMBER_OF_ACL];
 } RT_802_11_ACL, *PRT_802_11_ACL;
 
-#ifdef OCE_FILS_SUPPORT
-#define MAX_OPT_IE 1024
-#define WPA_KEK_MAX_LEN 64
-#define WPA_NONCE_LEN 32
-#define FILS_NONCE_LEN 16
-
-typedef struct GNU_PACKED  _RT_802_11_STA_MLME_EVENT {
-	UCHAR addr[MAC_ADDR_LEN];
-	INT16 seq;
-	INT16 status;
-	UCHAR ie[MAX_OPT_IE];
-	UINT len;
-	UCHAR mgmt_subtype;
-	INT16 auth_algo;
-	UCHAR fils_anonce[WPA_NONCE_LEN];
-	UCHAR fils_snonce[WPA_NONCE_LEN];
-	UCHAR fils_kek[WPA_KEK_MAX_LEN];
-	UINT fils_kek_len;
-} RT_802_11_STA_MLME_EVENT, *PRT_802_11_STA_MLME_EVENT;
-
-typedef struct GNU_PACKED _RT_802_11_SEC_INFO_SYNC_EVENT {
-	UCHAR apidx;
-	UCHAR wpa;
-	UINT32 wpa_key_mgmt;
-	UINT32 wpa_group;
-	UINT32 wpa_pairwise;
-	UINT32 rsn_pairwise;
-	UCHAR rsne[MAX_OPT_IE];
-	UINT rsne_len;
-	UINT16 CapabilityInfo;
-	UCHAR GN;
-	UCHAR GTK[LEN_MAX_GTK];
-	UCHAR GTK_len;
-	UCHAR IGN;
-	UCHAR IGTK[LEN_MAX_GTK];
-	UCHAR IGTK_len;
-	UINT16 FilsCacheId;
-	UINT32 FilsDhcpServerIp;
-} RT_802_11_SEC_INFO_SYNC_EVENT, *PRT_802_11_SEC_INFO_SYNC_EVENT;
-
-typedef struct GNU_PACKED _NDIS_FILS_802_11_KEY {
-	UCHAR addr[MAC_ADDR_LEN];
-	UINT KeyIndex;
-	UINT KeyLength;		/* length of key in bytes */
-	UCHAR KeyMaterial[64];	/* variable length depending on above field */
-} NDIS_FILS_802_11_KEY, *PNDIS_FILS_802_11_KEY;
-
-typedef struct _RT_802_11_KEY_EVENT {
-	UCHAR action;
-	NDIS_FILS_802_11_KEY keyInfo;
-	UINT keyrsc;
-	UINT keytsc;
-} __attribute__ ((packed)) RT_802_11_KEY_EVENT;
-
-enum FILS_KEY_ACTION {
-	FILS_KEY_INSTALL_PTK = 0,
-	FILS_KEY_GET_RSC,
-	FILS_KEY_GET_TSC,
-};
-
-enum PMK_CACHE_ACTION {
-	PMK_CACHE_QUERY = 0,
-	PMK_CACHE_ADD,
-	PMK_CACHE_DEL,
-
-	/* res */
-	PMK_CACHE_STATUS_OK,
-	PMK_CACHE_STATUS_FAIL,
-};
-
-typedef struct _RT_802_11_PMK_CACHE_SYNC_EVENT {
-	UCHAR addr[MAC_ADDR_LEN];
-	UCHAR pmkid[LEN_PMKID];
-	UCHAR pmk[LEN_MAX_PMK];
-	UCHAR pmk_len;
-	UINT32 akmp; /* WPA_KEY_MGMT_* */
-	UCHAR res;
-} __attribute__ ((packed)) RT_802_11_PMK_CACHE_SYNC_EVENT ;
-#endif /* OCE_FILS_SUPPORT */
-
 #ifdef RADIUS_MAC_ACL_SUPPORT
 typedef struct _RT_802_11_RADIUS_ACL_ENTRY {
 	struct _RT_802_11_RADIUS_ACL_ENTRY *pNext;
@@ -1617,7 +1498,7 @@ typedef struct _RT_CHANNEL_LIST_INFO {
 	UCHAR ChannelList[MAX_NUM_OF_CHS];	/* list all supported channels for site survey */
 	UCHAR ChannelListNum;	/* number of channel in ChannelList[] */
 } RT_CHANNEL_LIST_INFO, *PRT_CHANNEL_LIST_INFO;
-#ifndef WAPP_SUPPORT
+
 
 /* WSC configured credential */
 typedef struct _WSC_CREDENTIAL {
@@ -1636,7 +1517,7 @@ typedef struct _WSC_CREDENTIAL {
 	UCHAR DevPeerRole;	/* Device role for the peer device sending M8 */
 #endif
 } WSC_CREDENTIAL, *PWSC_CREDENTIAL;
-#endif
+
 /* WSC configured profiles */
 typedef struct _WSC_PROFILE {
 	UINT ProfileCnt;
@@ -1773,14 +1654,6 @@ struct hs_onoff {
 	UCHAR event_type;
 };
 
-#ifdef MAP_R2
-struct wnm_notify_req_data {
-	UINT32 ifindex;
-	UCHAR peer_mac_addr[6];
-	UINT32 wnm_req_len;
-	UCHAR wnm_req[0];
-};
-#endif
 struct wapp_param_setting {
 	UINT32 param;
 	UINT32 value;
@@ -1859,7 +1732,6 @@ struct qosmap_data {
 
 #define OID_802_11_MBO_MSG						0x0953
 #define OID_NEIGHBOR_REPORT						0x0954
-#define OID_802_11_OCE_REDUCED_NEIGHBOR_REPORT  0x0969
 
 #ifdef OFFCHANNEL_SCAN_FEATURE
 #define OID_OFFCHANNEL_INFO				0x0955
@@ -1871,14 +1743,6 @@ struct qosmap_data {
 #define OID_WSC_UUID				0x0990
 #define OID_SET_SSID				0x0992
 #define OID_SET_PSK				0x0993
-
-#define OID_SEND_OFFCHAN_ACTION_FRAME		0x09a3
-#define OID_802_11_CANCEL_ROC			0x09a4
-#define OID_802_11_START_ROC			0x09a5
-#ifdef DPP_SUPPORT
-#define OID_802_11_SET_PMK                      0x09a6
-#define OID_802_11_GET_DPP_FRAME                0x09a7
-#endif /* DPP_SUPPORT */
 
 #ifdef DFS_VENDOR10_CUSTOM_FEATURE
 #define OID_GET_RXDATA_LAPSE_TIME		0x0958
@@ -1909,7 +1773,7 @@ struct qosmap_data {
 #ifdef CUSTOMER_DCC_FEATURE
 #define OID_802_11_SCAN_BSSID_LIST              0x069b
 #ifdef MEMORY_OPTIMIZATION
-#define MAX_LEN_OF_BSS_TABLE             128
+#define MAX_LEN_OF_BSS_TABLE             1
 #define MAX_REORDERING_MPDU_NUM			 256
 #else
 #define MAX_LEN_OF_BSS_TABLE             256 /* 64 */
@@ -2496,14 +2360,6 @@ struct GNU_PACKED owe_trans_channel_change_info {
 #define OID_GET_BSS_INFO								0x099A
 #define OID_GET_AP_METRICS								0x099B
 #define OID_GET_NOP_CHANNEL_LIST						0x099C
-#define OID_GET_WMODE									0x099E
-#ifdef MAP_R2
-#define OID_GET_ASSOC_REQ								0x099F
-#define OID_GET_CAC_CAP									0x09A0
-#define OID_802_11_CAC_STOP								0x09A1
-#endif
-#define OID_GET_ASSOC_REQ_FRAME							0x099F
-
 
 #ifdef ACS_CTCC_SUPPORT
 #define OID_802_11_GET_ACS_CHANNEL_SCORE                0x2014

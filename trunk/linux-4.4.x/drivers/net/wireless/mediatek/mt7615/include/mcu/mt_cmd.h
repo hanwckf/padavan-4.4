@@ -34,8 +34,6 @@
 #include "icap.h"
 #endif /* defined(INTERNAL_CAPTURE_SUPPORT) || defined(WIFI_SPECTRUM_SUPPORT) */
 
-typedef UINT32 WLAN_STATUS, *P_WLAN_STATUS;
-
 struct cmd_msg;
 struct _MT_SWITCH_CHANNEL_CFG;
 struct _MT_RTS_THRESHOLD_T;
@@ -617,7 +615,7 @@ enum EXT_CMD_TYPE {
 	EXT_CMD_ID_RX_HDR_TRANS  = 0x47,
 	EXT_CMD_ID_CONFIG_MUAR = 0x48,
 	EXT_CMD_ID_BCN_OFFLOAD = 0x49,
-#if defined(VOW_SUPPORT) || defined(MAP_R2)
+#ifdef VOW_SUPPORT
 	EXT_CMD_ID_RX_AIRTIME_CTRL = 0x4a,
 	EXT_CMD_ID_AT_PROC_MODULE = 0x4b,
 #endif /* VOW_SUPPORT */
@@ -724,22 +722,10 @@ enum EXT_CMD_TYPE {
 #ifdef IGMP_TVM_SUPPORT
 	EXT_CMD_ID_IGMP_MULTICAST_SET_GET = 0xA1,
 #endif /* IGMP_TVM_SUPPORT */
-#if defined(TXRX_STAT_SUPPORT) || defined(EAP_STATS_SUPPORT)
+#ifdef TXRX_STAT_SUPPORT
 	EXT_CMD_ID_GET_STA_TX_STAT = 0xA2,
 #endif
-#ifdef AMPDU_CONF_SUPPORT
-	EXT_CMD_ID_MPDU_RETRY_COUNT = 0xA3,
-#endif /* AMPDU_CONF_SUPPORT*/
-#ifdef CONFIG_MAP_SUPPORT
-	EXT_CMD_ID_GET_ALL_STA_TX_RATE = 0xA4,
-#endif
-#ifdef OCE_SUPPORT
-	EXT_CMD_ID_FD_FRAME_OFFLOAD = 0xA6,
-#endif /* OCE_SUPPORT */
-	EXT_CMD_ID_SEND_NULL_FRAME_SUPPORT = 0xA7,
-	EXT_CMD_ID_SET_VHT_RATE_IN_2G = 0xA8,
-	EXT_CMD_ID_RA_OPTION_FREQ_DUP = 0xA9,
-	EXT_CMD_ID_IGMP_FLOODING_CMD = 0xBD,
+
 };
 
 
@@ -1028,12 +1014,10 @@ enum EXT_EVENT_TYPE {
 #ifdef IGMP_TVM_SUPPORT
 	EXT_EVENT_ID_IGMP_MULTICAST_RESP = 0x92,
 #endif
-#if defined(TXRX_STAT_SUPPORT) || defined(EAP_STATS_SUPPORT)
+#ifdef TXRX_STAT_SUPPORT
 	EXT_EVENT_ID_GET_STA_TX_STAT = 0xA2,
 #endif
-#ifdef CONFIG_MAP_SUPPORT
-	EXT_EVENT_ID_GET_TX_RATE = 0xA4,
-#endif
+
 };
 
 /*
@@ -2608,14 +2592,9 @@ typedef struct GNU_PACKED _EXT_CMD_CHAN_SWITCH_T {
 	UINT8	aucReserve2[3];
 } EXT_CMD_CHAN_SWITCH_T, *P_EXT_CMD_CHAN_SWITCH_T;
 
-#if defined(MT7615) || defined(P18) || defined(MT7663)
+#if defined(MT7615) || defined(MT7622) || defined(P18) || defined(MT7663)
 #define EFUSE_CONTENT_START 0x34
 #define EFUSE_CONTENT_END 0x3BF
-#elif defined(MT7622)
-/*7622 require more space for efuse content*/
-#define EFUSE_CONTENT_START 0x34
-#define EFUSE_CONTENT_END 0x3DB
-
 #elif defined(MT7637)
 /* todo: efuse structure need unify */
 #define EFUSE_CONTENT_START 0x2E
@@ -2794,59 +2773,6 @@ typedef struct GNU_PACKED _EXT_CMD_FW_LOG_2_HOST_CTRL_T {
 	UINT8 ucReserve[3];
 } EXT_CMD_FW_LOG_2_HOST_CTRL_T;
 
-#ifdef CONFIG_MAP_SUPPORT
-
-#define EXT_CMD_GET_ALL_STA_STATS_NUM_PER_EVENT		75
-#define TXRX_MAX_STA_NUM_PER_EVENT			30
-#define MAX_TX_RX_ADM_NUM				4
-
-typedef enum _STA_STAT_EVENT_TYPE {
-    EVENT_PHY_ALL_TX_RX_RATE = 0x1,
-    EVENT_PHY_TX_STAT_PER_WCID = 0x2,
-    EVENT_PHY_RX_STAT = 0x03,
-    EVENT_PHY_ALL_TX_RX_ADM_STAT = 0x04,
-    EVENT_PHY_TXRX_AIR_TIME = 0x05
-} STA_STAT_EVENT_TYPE, *P_STA_STAT_EVENT_TYPE;
-
-typedef struct _EXT_CMD_GET_ALL_STA_STAT_T {
-	UINT8 ucEventType /*Sub-event to FW*/;
-	UINT8 aucReserved[3];
-} EXT_CMD_GET_ALL_STA_STAT_T, *P_EXT_CMD_GET_ALL_STA_STAT_T;
-
-typedef struct _TX_RX_PHY_CFG_T {
-    UINT8  MODE;
-    UINT8  FLAGS;
-    UINT8  STBC;
-    UINT8  ShortGI;
-    UINT8  BW;
-    UINT8  ldpc;
-    UINT8  MCS;
-    UINT8  VhtNss;
-    UINT8  u1RxRate;
-    UINT8  u1RxMode;
-    UINT8  u1RxNsts;
-    UINT8  u1RxGi;
-    UINT8  u1RxCoding;
-    UINT8  u1RxStbc;
-    UINT8  u1RxBW;
-    UINT8  u1Reserved;
-} TX_RX_PHY_CFG_T, *P_TX_RX_PHY_CFG_T;
-
-typedef struct _EXT_EVENT_TXRX_AIRTIME_T {
-	UINT16 u2WlanId;
-	UINT32 u4WtblTxTime[MAX_TX_RX_ADM_NUM];
-	UINT32 u4WtblRxTime[MAX_TX_RX_ADM_NUM];
-} EXT_EVENT_TXRX_AIRTIME_T, *P_EXT_EVENT_TXRX_AIRTIME_T;
-
-typedef struct _EXT_EVENT_TXRX_AIRTIME_INFO_T {
-	UINT8 u1PhyEventId;
-	UINT8 u1FlagMoreEvent;
-	UINT16 u2StaNum;
-	EXT_EVENT_TXRX_AIRTIME_T rTxRxAirTimeStat[TXRX_MAX_STA_NUM_PER_EVENT];
-} EXT_EVENT_TXRX_AIRTIME_INFO_T, *P_EXT_EVENT_TXRX_AIRTIME_INFO_T;
-
-#endif
-
 #if defined(CUSTOMER_RSG_FEATURE) || defined (CUSTOMER_DCC_FEATURE)
 /* u4Field and ucWlanIdx is included for DCC to get per bss packet count */
 typedef struct _EXT_EVENT_WTBL_TX_COUNTER_RESULT_T {
@@ -2867,7 +2793,7 @@ typedef struct _EXT_CMD_GET_WTBL_TX_COUNT_T {
 
 #endif
 
-#if defined(TXRX_STAT_SUPPORT) || defined(EAP_STATS_SUPPORT)
+#ifdef TXRX_STAT_SUPPORT
 typedef struct _EXT_EVENT_STA_TX_STAT_RESULT_T {
 	UINT32	PerStaTxPktCnt[MAX_LEN_OF_MAC_TABLE];
 	UINT32	PerStaTxFailPktCnt[MAX_LEN_OF_MAC_TABLE];
@@ -4171,18 +4097,6 @@ typedef struct GNU_PACKED _EXT_CMD_TRGR_PRETBTT_INT_EVENT_T {
 
 } CMD_TRGR_PRETBTT_INT_EVENT_T, *P_CMD_TRGR_PRETBTT_INT_EVENT_T;
 
-typedef struct GNU_PACKED _EXT_CMD_FD_FRAME_OFFLOAD_T {
-    UINT8 ucOwnMacIdx;
-    UINT8 ucEnable;
-    UINT8 ucWlanIdx;
-    UINT8 ucBandIdx;
-
-    UINT16 u2PktLength;
-    UINT16 u2TimestampFieldPos;
-
-	UINT8 acPktContent[1520];
-} CMD_FD_FRAME_OFFLOAD_T, *P_CMD_FD_FRAME_OFFLOAD_T;
-
 typedef struct GNU_PACKED _EXT_CMD_BCN_OFFLOAD_T {
 	UINT8 ucOwnMacIdx;
 	UINT8 ucEnable;
@@ -4910,12 +4824,7 @@ typedef enum _PRE_CAL_TYPE {
 } PRE_CAL_TYPE;
 #endif /* defined(RLM_CAL_CACHE_SUPPORT) || defined(PRE_CAL_TRX_SET2_SUPPORT) */
 
-typedef struct GNU_PACKED _EXT_CMD_FW_SEND_NULL_FRAME_T {
-	UINT8 PID;
-	UINT8 WlanIdx;
-	UINT8 No_Of_Null_Frames;
-	UINT8 ucReserve;
-} EXT_CMD_FW_SEND_NULL_FRAME_T;
+
 
 typedef struct GNU_PACKED _EXT_CMD_THERMAL_RECAL_MODE_CTRL_T
 {
@@ -5086,12 +4995,7 @@ typedef struct GNU_PACKED _EXT_EVENT_TMR_CALCU_INFO_T {
 	UINT32 u4TOAECalibrationResult;
 } EXT_EVENT_TMR_CALCU_INFO_T, *P_EXT_EVENT_TMR_CALCU_INFO_T;
 
-#ifdef AMPDU_CONF_SUPPORT
-typedef struct GNU_PACKED _EVENT_RETRY_COUNT_UPDATE_T {
-	UINT8 ucBssInfoIdx;
-	UINT8 ucretrycount;
-} EVENT_RETRY_COUNT_UPDATE_T, *P_EVENT_RETRY_COUNT_UPDATE_T;
-#endif /* AMPDU_CONF_SUPPORT*/
+
 
 typedef struct GNU_PACKED _EXT_CMD_ID_MCAST_CLONE {
 	UINT8 ucMcastCloneEnable; /* 0: Disable, 1: Enable, 2:Auto */
@@ -5121,9 +5025,6 @@ typedef struct GNU_PACKED _EXT_CMD_ID_MULTICAST_ENTRY_DELETE {
 	UINT8 ucReserve;
 } EXT_CMD_ID_MULTICAST_ENTRY_DELETE_T, *P_EXT_CMD_ID_MULTICAST_ENTRY_DELETE_T;
 
-INT BitCount (IN UINT32 vMask);
-BOOLEAN isIgmpMldFloodingPkt(IN struct _RTMP_ADAPTER *pAd, IN PUCHAR pGroupIpAddr, IN UINT16 ProtoType);
-
 #ifdef IGMP_TVM_SUPPORT
 typedef enum {
 	IGMP_MCAST_SET_AGEOUT_TIME = 0x01,
@@ -5141,12 +5042,6 @@ typedef struct GNU_PACKED _EXT_CMD_ID_MULTICAST_SET_GET {
 } EXT_CMD_ID_IGMP_MULTICAST_SET_GET_T, *P_EXT_CMD_ID_IGMP_MULTICAST_SET_GET_T;
 #endif /* IGMP_TVM_SUPPORT */
 
-typedef struct GNU_PACKED _EXT_CMD_ID_IGMP_FLOODING_CMD {
-	UINT8 bInsert;
-	UINT8 uEntryIPType;
-	UINT8 auMacData[6];
-	UINT32 auPrefixMask[4];
-} EXT_CMD_ID_IGMP_FLOODING_CMD_T, *P_EXT_CMD_ID_IGMP_FLOODING_CMD_T;
 
 /* Manually setting Tx power */
 typedef struct _CMD_All_POWER_MANUAL_CTRL_T {
@@ -5335,7 +5230,6 @@ typedef struct _CMD_SET_DATA_TXPWR_OFFSET {
 	UINT8  u1WlanIdx;
 	INT8   i1TxPwrOffset;
 	UINT8  u1BandIdx;
-	UINT8  u1Reserved;
 } CMD_SET_DATA_TXPWR_OFFSET, *P_CMD_SET_DATA_TXPWR_OFFSET;
 
 typedef struct _CMD_SET_RA_TABLE {
@@ -5491,7 +5385,6 @@ typedef struct _EXT_EVENT_TXPOWER_INFO_T {
 	INT8	cTxPwrBFBackoffValue[BF_BACKOFF_MODE][BF_BACKOFF_CASE];
 	UINT32	u4BackoffCRValue[6];	/* (BBP) Band0: 0x8207067C~82070690, Band1: 0x8207087C~82070890 */
 	UINT32	u4PowerBoundCRValue;	/* (TMAC) 0x820F4080 */
-	INT8	cEpaGain[2];
 } EXT_EVENT_TXPOWER_INFO_T, *P_EXT_EVENT_TXPOWER_INFO_T;
 
 typedef struct _EXT_EVENT_TXPOWER_BACKUP_T {
@@ -5741,10 +5634,13 @@ BOOLEAN MtUpdateBcnAndTimToMcu(
 	IN UINT16 FrameLen,
 	IN UCHAR UpdatePktType);
 
+#ifdef BCN_V2_SUPPORT /* add bcn v2 support , 1.5k beacon support */
 INT32 MtCmdBcnOffloadSet(struct _RTMP_ADAPTER *pAd, CMD_BCN_OFFLOAD_T *bcn_offload);
+#else
+INT32 MtCmdBcnOffloadSet(struct _RTMP_ADAPTER *pAd, CMD_BCN_OFFLOAD_T bcn_offload);
+#endif
 #endif
 
-INT32 MtCmdFdFrameOffloadSet(struct _RTMP_ADAPTER *pAd, P_CMD_FD_FRAME_OFFLOAD_T fdFrame_offload);
 INT32 MtCmdMuarConfigSet(struct _RTMP_ADAPTER *pAd, UCHAR *pdata);
 
 INT32 MtCmdExtPwrMgtBitWifi(struct _RTMP_ADAPTER *pAd, MT_PWR_MGT_BIT_WIFI_T rPwrMgtBitWifi);
@@ -5905,7 +5801,7 @@ VOID CmdExtEventRsp(struct cmd_msg *msg, char *Data, UINT16 Len);
 
 INT32 MtCmdSendRaw(struct _RTMP_ADAPTER *pAd, UCHAR ExtendID, UCHAR *Input, INT len, UCHAR SetQuery);
 
-#if defined(TXRX_STAT_SUPPORT) || defined(EAP_STATS_SUPPORT)
+#ifdef TXRX_STAT_SUPPORT
 INT32 MtCmdGetPerStaTxStat(struct _RTMP_ADAPTER *pAd, UINT8 *ucEntryBitmap, UINT8 ucEntryCount);
 #endif
 
@@ -6353,7 +6249,6 @@ INT32 MtCmdSetRdg(struct _RTMP_ADAPTER *pAd, struct _EXT_CMD_RDG_CTRL_T *param);
 INT32 MtCmdSetSnifferMode(struct _RTMP_ADAPTER *pAd, struct _EXT_CMD_SNIFFER_MODE_T *param);
 
 VOID MtCmdMemDump(struct _RTMP_ADAPTER *pAd, UINT32 Addr, PUINT8 pData);
-INT SetRaOptionFrequecyDup_Proc(struct _RTMP_ADAPTER *pAd, RTMP_STRING *arg);
 
 
 #ifdef CONFIG_ATE
@@ -6385,7 +6280,6 @@ INT32 mt_cmd_get_sta_tx_statistic(struct _RTMP_ADAPTER *ad, UINT8 wcid, UINT8 db
 #ifdef RACTRL_LIMIT_MAX_PHY_RATE
 INT32 MtCmdSetMaxPhyRate(struct _RTMP_ADAPTER *pAd, UINT16 u2MaxPhyRate);
 #endif /* RACTRL_LIMIT_MAX_PHY_RATE */
-INT32 MtCmdSetVhtRateIn2G(struct _RTMP_ADAPTER *pAd, BOOLEAN fgEnVhtForHtIn2G);
 #ifdef MIN_PHY_RATE_SUPPORT
 INT32 MtCmdSetMinPhyRate(struct _RTMP_ADAPTER *pAd, struct wifi_dev *wdev);
 #endif /* MIN_PHY_RATE_SUPPORT */
@@ -6654,15 +6548,7 @@ INT32 MtCmdSetTxLpfCal_7622(struct _RTMP_ADAPTER *pAd);
 INT32 MtCmdSetTxDcIqCal_7622(struct _RTMP_ADAPTER *pAd);
 INT32 MtCmdSetTxDpdCal_7622(struct _RTMP_ADAPTER *pAd, UINT32 chan);
 #endif /* PRE_CAL_MT7622_SUPPORT */
-#ifdef AMPDU_CONF_SUPPORT
-INT32 Set_CR4_retry_counter(struct _RTMP_ADAPTER *pAd, UINT8 band_idx, UINT8 count);
-#endif /* AMPDU_CONF_SUPPORT*/
+
 INT32 MtCmdPhyShapingFilterDisable(struct _RTMP_ADAPTER *pAd);
-#ifdef CONFIG_MAP_SUPPORT
-INT32 MtCmdGetAllStaTxRate(struct _RTMP_ADAPTER *pAd);
-#ifdef MAP_R2
-INT32 MtCmdSetRxTxAirtimeEn(struct _RTMP_ADAPTER *pAd, UINT32 subcmd, BOOLEAN flag);
-#endif
-#endif
-INT32 MtCmdSendNullFrame(struct _RTMP_ADAPTER *pAd, UINT8 PID, UINT8 No_Of_Null_Frames, UINT8 WlanIdx);
 #endif /* __MT_CMD_H__ */
+

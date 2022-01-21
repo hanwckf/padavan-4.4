@@ -276,9 +276,6 @@ INT NICReadEEPROMParameters(RTMP_ADAPTER *pAd, RTMP_STRING *mac_addr)
 	UINT16 DoPATrim = 0;
 #endif /* CAL_BIN_FILE_SUPPORT */
 	struct _RTMP_CHIP_OP *ops = hc_get_chip_ops(pAd->hdev_ctrl);
-#if defined(TXRX_SW_ANTDIV_SUPPORT) || defined(MT7622)
-	struct _RTMP_CHIP_CAP *cap = hc_get_chip_cap(pAd->hdev_ctrl);
-#endif
 
 #ifdef PRE_CAL_MT7622_SUPPORT
 	UINT32 ch;
@@ -295,13 +292,11 @@ INT NICReadEEPROMParameters(RTMP_ADAPTER *pAd, RTMP_STRING *mac_addr)
 		checkAntCapSanity(pAd);
 #endif /*WCX_SUPPORT */
 #ifdef RF_LOCKDOWN
-#if defined(MT7615)
-		if (IS_MT7615(pAd)) {
-			/* Merge RF parameters in Effuse to E2p buffer */
-			if (ops->merge_RF_lock_parameter != NULL)
-				ops->merge_RF_lock_parameter(pAd);
-		}
-#endif
+
+		/* Merge RF parameters in Effuse to E2p buffer */
+		if (ops->merge_RF_lock_parameter != NULL)
+			ops->merge_RF_lock_parameter(pAd);
+
 		/* Replace Country code and Country Region in Profile by Effuse content */
 		if (ops->Config_Effuse_Country != NULL)
 			ops->Config_Effuse_Country(pAd);
@@ -573,19 +568,9 @@ INT NICReadEEPROMParameters(RTMP_ADAPTER *pAd, RTMP_STRING *mac_addr)
 #endif /* MT7615 */
 #ifdef MT7622
 
-	if (IS_MT7622(pAd)) {
+	if (IS_MT7622(pAd))
 		pAd->RfIcType = RFIC_7622;
 
-		/* compare with EEPROM ant setting */
-		if (cap->max_nss > Antenna.field.TxPath) {
-			MTWF_LOG(DBG_CAT_HW, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("%s(): change max_nss from:%d to %d, "
-				"rx path:%d\n",
-				__func__, cap->max_nss, Antenna.field.TxPath,
-				 Antenna.field.RxPath));
-
-			cap->max_nss = Antenna.field.TxPath;
-		}
-	}
 #endif /* MT7622 */
 
 	/* TODO: shiang-MT7615, how about the EEPROM value of MT series chip?? */

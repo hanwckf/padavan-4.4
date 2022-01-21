@@ -297,13 +297,14 @@ VOID operate_loader_phy(struct wifi_dev *wdev, struct freq_cfg *cfg)
 	struct freq_oper oper_dev;
 	struct freq_oper oper_radio;
 	struct radio_res res;
-	struct wifi_dev *tdev = NULL;
-	UCHAR i = 0;
-	UCHAR band_idx = 0;
+#ifdef CONFIG_AP_SUPPORT
+#ifdef MT_DFS_SUPPORT
 	struct _RTMP_ADAPTER *ad = NULL;
 	if (wdev == NULL)
 		return;
 	ad = (struct _RTMP_ADAPTER *)wdev->sys_handle;
+#endif
+#endif
 
 	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 			 ("%s(): oper_cfg: prim_ch(%d), ht_bw(%d), extcha(%d), vht_bw(%d), cen_ch_2(%d), PhyMode=%d!\n", __func__,
@@ -333,11 +334,6 @@ VOID operate_loader_phy(struct wifi_dev *wdev, struct freq_cfg *cfg)
 			  oper_radio.cen_ch_2));
 	/*acquire radio resouce*/
 	res.reason = REASON_NORMAL_SW;
-#ifdef OFFCHANNEL_SCAN_FEATURE
-	if (ad->ScanCtrl.state == OFFCHANNEL_SCAN_START) {
-		res.reason = REASON_NORMAL_SCAN;
-	}
-#endif
 	res.oper = &oper_radio;
 
 #ifdef CONFIG_AP_SUPPORT
@@ -370,13 +366,7 @@ VOID operate_loader_phy(struct wifi_dev *wdev, struct freq_cfg *cfg)
 #endif
 
 end:
-	wdev_sync_prim_ch(ad, wdev);
-	band_idx = HcGetBandByWdev(wdev);
-	for (i = 0; i < WDEV_NUM_MAX; i++) {
-		tdev = ad->wdev_list[i];
-		if (tdev && HcIsRadioAcq(tdev) && (band_idx == HcGetBandByWdev(tdev)))
-			phy_freq_update(tdev, &oper_dev);
-	}
+	phy_freq_update(wdev, &oper_dev);
 }
 
 
@@ -487,7 +477,6 @@ BOOLEAN wlan_operate_scan(struct wifi_dev *wdev, UCHAR prim_ch)
 	struct freq_oper oper;
 	BOOLEAN ret;
 
-	os_zero_mem(&oper, sizeof(oper));
 	res->oper = &oper;
 	oper.bw = BW_20;
 	oper.cen_ch_1 = prim_ch;

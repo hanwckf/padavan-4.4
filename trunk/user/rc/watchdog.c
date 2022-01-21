@@ -252,6 +252,37 @@ inet_handler(int is_ap_mode)
 	}
 }
 
+int timecheck_reboot(char *activeSchedule)
+{
+	int active, current_time, current_date, Time2Active, Date2Active;
+	time_t now;
+	struct tm *tm;
+	int i;
+
+	setenv("TZ", nvram_safe_get("time_zone_x"), 1);
+
+	time(&now);
+	tm = localtime(&now);
+	current_time = tm->tm_hour * 60 + tm->tm_min;
+	current_date = 1 << (6-tm->tm_wday);
+	active = 0;
+	Time2Active = 0;
+	Date2Active = 0;
+
+	Time2Active = ((activeSchedule[7]-'0')*10 + (activeSchedule[8]-'0'))*60 + ((activeSchedule[9]-'0')*10 + (activeSchedule[10]-'0'));
+
+	for(i=0;i<=6;i++) {
+		Date2Active += (activeSchedule[i]-'0') << (6-i);
+	}
+
+	if ((current_time == Time2Active) && (Date2Active & current_date))	active = 1;
+
+	//dbG("[watchdog] current_time=%d, ActiveTime=%d, current_date=%d, ActiveDate=%d, active=%d\n",
+	//	current_time, Time2Active, current_date, Date2Active, active);
+
+	return active;
+}
+
 /* Check for time-dependent service */
 static int 
 svc_timecheck(void)
@@ -342,6 +373,23 @@ svc_timecheck(void)
 		}
 	}
 
+	char ss_schedule[PATH_MAX];
+	if (nvram_match("ss_schedule_enable", "1"))
+	{
+		if (nvram_match("ntp_ready", "1"))
+		{
+			snprintf(ss_schedule, sizeof(ss_schedule), "%s", nvram_safe_get("ss_schedule"));
+			if (strlen(ss_schedule) == 11 && atoi(ss_schedule) > 2359)
+			{
+				if (timecheck_reboot(ss_schedule))
+				{
+					//logmessage("reboot scheduler", "[%s] The system is going down for reboot\n", __FUNCTION__);
+		            doSystem("/usr/bin/update_dlink.sh %s", "update");
+					sleep(70);
+				}
+			}
+		}
+	}
 	return 0;
 }
 
@@ -440,6 +488,8 @@ ntpc_updated_main(int argc, char *argv[])
 		system("hwclock -w");
 #endif
 		logmessage("NTP Client", "System time changed, offset: %ss", offset);
+		sleep(5);
+		nvram_set_int("ntp_ready", 1);
 	}
 
 	return 0;

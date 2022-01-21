@@ -368,45 +368,19 @@ VOID RTMPSetHT(
 	RTMPZeroMemory(&pAd->CommonCfg.NewExtChanOffset, sizeof(pAd->CommonCfg.NewExtChanOffset));
 
 	/* Decide Rx MCSSet*/
-	ht_cap->MCSSet[3] =  0x00;
-	ht_cap->MCSSet[2] =  0x00;
-	ht_cap->MCSSet[1] =  0x00;
-	ht_cap->MCSSet[0] =  0x00;
 	switch (wlan_config_get_rx_stream(wdev)) {
 	case 4:
-#ifdef CONFIG_RA_PHY_RATE_SUPPORT
-		if (wdev->rate.Eap_HtSupRate_En == TRUE)
-			ht_cap->MCSSet[3] = wdev->rate.EapMCSSet[3];
-		else
-#endif /* CONFIG_RA_PHY_RATE_SUPPORT */
-			ht_cap->MCSSet[3] =  0xff;
+		ht_cap->MCSSet[3] =  0xff;
 
 	case 3:
-#ifdef CONFIG_RA_PHY_RATE_SUPPORT
-		if (wdev->rate.Eap_HtSupRate_En == TRUE)
-			ht_cap->MCSSet[2] = wdev->rate.EapMCSSet[2];
-		else
-#endif /* CONFIG_RA_PHY_RATE_SUPPORT */
-			ht_cap->MCSSet[2] =  0xff;
+		ht_cap->MCSSet[2] =  0xff;
 
 	case 2:
-#ifdef CONFIG_RA_PHY_RATE_SUPPORT
-		if (wdev->rate.Eap_HtSupRate_En == TRUE)
-			ht_cap->MCSSet[1] = wdev->rate.EapMCSSet[1];
-		else
-#endif /* CONFIG_RA_PHY_RATE_SUPPORT */
-			ht_cap->MCSSet[1] =  0xff;
-
+		ht_cap->MCSSet[1] =  0xff;
 
 	case 1:
 	default:
-#ifdef CONFIG_RA_PHY_RATE_SUPPORT
-		if (wdev->rate.Eap_HtSupRate_En == TRUE)
-			ht_cap->MCSSet[0] = wdev->rate.EapMCSSet[0];
-		else
-#endif /* CONFIG_RA_PHY_RATE_SUPPORT */
-			ht_cap->MCSSet[0] =  0xff;
-
+		ht_cap->MCSSet[0] =  0xff;
 		break;
 	}
 

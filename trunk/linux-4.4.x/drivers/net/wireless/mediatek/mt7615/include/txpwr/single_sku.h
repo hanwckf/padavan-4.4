@@ -34,8 +34,8 @@
 #define A_BAND        1
 
 #define	SINGLE_SKU_TABLE_LENGTH		(SINGLE_SKU_TABLE_CCK_LENGTH+SINGLE_SKU_TABLE_OFDM_LENGTH+(SINGLE_SKU_TABLE_HT_LENGTH*2)+SINGLE_SKU_TABLE_VHT_LENGTH)
-#define SINGLE_SKU_TABLE_EFFUSE_ADDRESS 0x12C	/*7615*/
-#define MT7622_SINGLE_SKU_TABLE_EFFUSE_ADDRESS 0x10
+
+#define SINGLE_SKU_TABLE_EFFUSE_ADDRESS 0x12C
 
 #if defined(MT7615) || defined(MT7622)
 #define SINGLE_SKU_TABLE_CCK_LENGTH         2
@@ -249,7 +249,10 @@ MtBfBackOffUnloadParam(
     RTMP_ADAPTER *pAd
     );
 
-VOID MtFillSkuParam(RTMP_ADAPTER *pAd, UINT8 channel, UCHAR Band, UCHAR TxStream, UINT8 *txPowerSku, UINT8 update_ctrl_ch_pwr);
+VOID
+MtFillSkuParam(
+    RTMP_ADAPTER *pAd, UINT8 channel, UCHAR Band, UCHAR TxStream, UINT8 *txPowerSku
+    );
 
 VOID
 MtFillBackoffParam(

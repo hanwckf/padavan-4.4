@@ -451,25 +451,6 @@ PNDIS_PACKET ClonePacket(BOOLEAN moniflag, PNET_DEV ndev, PNDIS_PACKET pkt, UCHA
 	return pClonedPkt;
 }
 
-#ifdef MAP_TS_TRAFFIC_SUPPORT
-PNDIS_PACKET CopyPacket(
-	IN PNET_DEV if_dev,
-	IN PNDIS_PACKET pkt
-)
-{
-	struct sk_buff *skb = NULL;
-	PNDIS_PACKET pkt_copy = NULL;
-
-	skb = skb_copy(RTPKT_TO_OSPKT(pkt), GFP_ATOMIC);
-
-	if (skb) {
-		skb->dev = if_dev;
-		pkt_copy = OSPKT_TO_RTPKT(skb);
-	}
-
-	return pkt_copy;
-}
-#endif
 
 PNDIS_PACKET DuplicatePacket(PNET_DEV pNetDev, PNDIS_PACKET pPacket)
 {
@@ -850,10 +831,12 @@ int RtmpOSFileWrite(RTMP_OS_FD osfd, char *pDataPtr, int writeLen)
 {
 #if (KERNEL_VERSION(4, 1, 0) > LINUX_VERSION_CODE)
 	return osfd->f_op->write(osfd, pDataPtr, (size_t) writeLen, &osfd->f_pos);
-#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
-	return __kernel_write(osfd, pDataPtr, (size_t) writeLen, &osfd->f_pos);
+#else
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
+	return vfs_write(osfd, pDataPtr, (size_t) writeLen, &osfd->f_pos);
 #else
 	return __vfs_write(osfd, pDataPtr, (size_t) writeLen, &osfd->f_pos);
+#endif
 #endif
 }
 
@@ -1723,14 +1706,14 @@ int RtmpOSNetDevAttach(
 #if WIRELESS_EXT >= 12
 
 		if (OpMode == OPMODE_AP)
-			pDevOpHook->iw_handler = (void *)&rt28xx_ap_iw_handler_def;
+			pDevOpHook->iw_handler = &rt28xx_ap_iw_handler_def;
 
 #endif /*WIRELESS_EXT >= 12 */
 #endif /* CONFIG_APSTA_MIXED_SUPPORT */
 #ifdef CONFIG_WIRELESS_EXT
 
 		if (pDevOpHook->iw_handler)
-			pNetDev->wireless_handlers = (void *)pDevOpHook->iw_handler;
+			pNetDev->wireless_handlers = pDevOpHook->iw_handler;
 
 #endif /* CONFIG_WIRELESS_EXT */
 		/* copy the net device mac address to the net_device structure. */
@@ -1963,11 +1946,13 @@ VOID RtmpDrvAllMacPrint(
 			} else{
 				MTWF_LOG(DBG_CAT_INIT, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("no file write method\n"));
 			}
-#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
-			__kernel_write(file_w, msg, strlen(msg), &file_w->f_pos);
+#else
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
+			vfs_write(file_w, msg, strlen(msg), &file_w->f_pos);
 
 #else
 			__vfs_write(file_w, msg, strlen(msg), &file_w->f_pos);
+#endif
 #endif
 				MTWF_LOG(DBG_CAT_INIT, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("%s", msg));
 				macAddr += AddrStep;
@@ -2026,11 +2011,13 @@ VOID RtmpDrvAllE2PPrint(
 				} else{
 					MTWF_LOG(DBG_CAT_INIT, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("no file write method\n"));
 				}
-#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
-				__kernel_write(file_w, msg, strlen(msg), &file_w->f_pos);
+#else
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
+				vfs_write(file_w, msg, strlen(msg), &file_w->f_pos);
 
 #else
 				__vfs_write(file_w, msg, strlen(msg), &file_w->f_pos);
+#endif
 #endif
 				MTWF_LOG(DBG_CAT_INIT, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("%s", msg));
 				eepAddr += AddrStep;
@@ -2077,11 +2064,13 @@ VOID RtmpDrvAllRFPrint(
 			} else{
 				MTWF_LOG(DBG_CAT_INIT, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("no file write method\n"));
 			}
-#elif (KERNEL_VERSION(4, 19, 0) <= LINUX_VERSION_CODE)
-			__kernel_write(file_w, pBuf, BufLen, &file_w->f_pos);
+#else
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
+			vfs_write(file_w, pBuf, BufLen, &file_w->f_pos);
 
 #else
 			__vfs_write(file_w, pBuf, BufLen, &file_w->f_pos);
+#endif
 #endif
 		}
 
@@ -2372,46 +2361,6 @@ VOID RtmpOsTaskPidInit(RTMP_OS_PID *pPid)
 	*pPid = THREAD_PID_INIT_VALUE;
 }
 
-UINT32 RtmpOsCsumAdd(UINT32 csum, UINT32 addend)
-{
-	UINT32 res = csum;
-	res += addend;
-	return res + (res < addend);
-}
-
-VOID RtmpOsSkbPullRcsum(struct sk_buff *skb, unsigned int len)
-{
-	if (len > skb->len)
-		return;
-
-	skb_pull(skb, len);
-	if (skb->ip_summed == CHECKSUM_COMPLETE)
-		skb->csum = RtmpOsCsumAdd(skb->csum, ~csum_partial(skb->data, len, 0));
-	else if (skb->ip_summed == CHECKSUM_PARTIAL &&
-		 (skb->csum_start - (skb->data - skb->head)) < 0)
-		skb->ip_summed = CHECKSUM_NONE;
-}
-
-VOID RtmpOsSkbResetMacHeader(struct sk_buff *skb)
-{
-	skb_reset_mac_header(skb);
-}
-
-VOID RtmpOsSkbResetNetworkHeader(struct sk_buff *skb)
-{
-	skb_reset_network_header(skb);
-}
-
-VOID RtmpOsSkbResetTransportHeader(struct sk_buff *skb)
-{
-	skb_reset_transport_header(skb);
-}
-
-VOID RtmpOsSkbResetMacLen(struct sk_buff *skb)
-{
-	skb_reset_mac_len(skb);
-}
-
 /*
  * ========================================================================
  * Routine Description:
@@ -2594,7 +2543,7 @@ void OS_LOAD_CODE_FROM_BIN(unsigned char **image, char *bin_name, void *inf_dev,
 		return;
 	}
 
-	os_alloc_mem_suspend(NULL, image, fw_entry->size);
+	*image = kmalloc(fw_entry->size, GFP_KERNEL);
 	memcpy(*image, fw_entry->data, fw_entry->size);
 	*code_len = fw_entry->size;
 	release_firmware(fw_entry);
@@ -4498,7 +4447,7 @@ BOOLEAN RtmpOsPktOffsetInit(VOID)
 
 	if ((RTPktOffsetData == 0) && (RTPktOffsetLen == 0)
 		&& (RTPktOffsetCB == 0)) {
-		os_alloc_mem(NULL, (UCHAR **)&pPkt, sizeof(struct sk_buff));
+		pPkt = kmalloc(sizeof(struct sk_buff), GFP_ATOMIC);
 
 		if (pPkt == NULL)
 			return FALSE;
@@ -4506,7 +4455,7 @@ BOOLEAN RtmpOsPktOffsetInit(VOID)
 		RTPktOffsetData = (ULONG) (&(pPkt->data)) - (ULONG) pPkt;
 		RTPktOffsetLen = (ULONG) (&(pPkt->len)) - (ULONG) pPkt;
 		RTPktOffsetCB = (ULONG) (pPkt->cb) - (ULONG) pPkt;
-		os_free_mem(pPkt);
+		kfree(pPkt);
 		MTWF_LOG(DBG_CAT_INIT, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 				 ("packet> data offset = %lu\n", RTPktOffsetData));
 		MTWF_LOG(DBG_CAT_INIT, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
@@ -4709,12 +4658,7 @@ VOID RTMP_OS_Release_Timer(NDIS_MINIPORT_TIMER *pTimerOrg)
 
 NDIS_STATUS RtmpOSTaskKill(RTMP_OS_TASK *pTask)
 {
-	NDIS_STATUS Status;
-	if (pTask != NULL) {
-		Status = __RtmpOSTaskKill(pTask);
-		return Status;
-	}
-	return NDIS_STATUS_FAILURE;
+	return __RtmpOSTaskKill(pTask);
 }
 
 

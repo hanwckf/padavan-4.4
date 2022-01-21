@@ -537,6 +537,8 @@ void start_ss_tunnel(void);
 void restart_ss_tunnel(void);
 void update_chnroute(void);
 void update_gfwlist(void);
+void update_dlink(void);
+void reset_dlink(void);
 #endif
 #if defined(APP_VLMCSD)
 void stop_vlmcsd(void);
@@ -547,6 +549,27 @@ void restart_vlmcsd(void);
 void stop_dnsforwarder(void);
 void start_dnsforwarder(void);
 void restart_dnsforwarder(void);
+#endif
+#if defined(APP_ADBYBY)
+void stop_adbyby(void);
+void start_adbyby(void);
+void restart_adbyby(void);
+void update_adb(void);
+#endif
+#if defined(APP_ADGUARDHOME)
+void stop_adguardhome(void);
+void start_adguardhome(void);
+void restart_adguardhome(void);
+#endif
+#if defined(APP_ALIDDNS)
+void stop_aliddns(void);
+void start_aliddns(void);
+void restart_aliddns(void);
+#endif
+#if defined(APP_ZEROTIER)
+void stop_zerotier(void);
+void start_zerotier(void);
+void restart_zerotier(void);
 #endif
 
 /* services_ex.c */

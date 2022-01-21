@@ -8,12 +8,24 @@ static EC_GROUP_INFO ec_groups[] = {
 	EC_GROUP(19, EC_GROUP19_BITS_OF_R),
 	EC_GROUP(20, EC_GROUP20_BITS_OF_R),
 	EC_GROUP(21, EC_GROUP21_BITS_OF_R),
+	EC_GROUP(25, EC_GROUP25_BITS_OF_R),
+	EC_GROUP(26, EC_GROUP26_BITS_OF_R),
+	EC_GROUP(27, EC_GROUP27_BITS_OF_R),
+	EC_GROUP(28, EC_GROUP28_BITS_OF_R),
+	EC_GROUP(29, EC_GROUP29_BITS_OF_R),
+	EC_GROUP(30, EC_GROUP30_BITS_OF_R),
 };
 
 static EC_GROUP_INFO_BI ec_groups_bi[] = {
 	EC_GROUP_BI(19),
 	EC_GROUP_BI(20),
 	EC_GROUP_BI(21),
+	EC_GROUP_BI(25),
+	EC_GROUP_BI(26),
+	EC_GROUP_BI(27),
+	EC_GROUP_BI(28),
+	EC_GROUP_BI(29),
+	EC_GROUP_BI(30),
 };
 
 int ECC_COST_TIME_DBG_LVL = DBG_LVL_INFO;
@@ -69,9 +81,6 @@ EC_GROUP_INFO_BI *get_ecc_group_info_bi(
 		SAE_BN_BIN2BI((UINT8 *)ec_group->b,
 						  ec_group->b_len,
 						  &ec_group_bi->b);
-		SAE_BN_BIN2BI((UINT8 *)ec_group->z,
-						  ec_group->z_len,
-						  &ec_group_bi->z);
 
 		if (group == 19) {
 			gx = ec_group19_gx;
@@ -147,7 +156,6 @@ VOID group_info_bi_deinit(
 			SAE_BN_FREE(&ec_group_bi->b);
 			SAE_BN_FREE(&ec_group_bi->gx);
 			SAE_BN_FREE(&ec_group_bi->gy);
-			SAE_BN_FREE(&ec_group_bi->z);
 			ec_group_bi->cofactor = NULL;
 
 			if (ec_group_bi->mont != NULL) {

@@ -1,0 +1,16 @@
+[Unit]
+Description=SOCKS protocol server daemon
+#Documentation=
+After=network.target
+#Wants=
+
+[Service]
+EnvironmentFile=-/etc/sysconfig/srelay
+ExecStart=/usr/local/bin/srelay -f $OPTIONS
+#ExecReload=/bin/kill -HUP $MAINPID
+KillMode=process
+Restart=on-failure
+RestartSec=60s
+
+[Install]
+WantedBy=multi-user.target

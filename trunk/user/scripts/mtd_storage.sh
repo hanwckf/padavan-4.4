@@ -196,7 +196,7 @@ func_fill()
 	dir_crond="$dir_storage/cron/crontabs"
 	dir_wlan="$dir_storage/wlan"
 	dir_chnroute="$dir_storage/chinadns"
-	dir_gfwlist="$dir_storage/gfwlist"
+	#dir_gfwlist="$dir_storage/gfwlist"
 
 	script_start="$dir_storage/start_script.sh"
 	script_started="$dir_storage/started_script.sh"
@@ -219,7 +219,7 @@ func_fill()
 	user_sswan_secrets="$dir_sswan/ipsec.secrets"
 	
 	chnroute_file="/etc_ro/chnroute.bz2"
-	gfwlist_conf_file="/etc_ro/gfwlist.bz2"
+	#gfwlist_conf_file="/etc_ro/gfwlist.bz2"
 
 	# create crond dir
 	[ ! -d "$dir_crond" ] && mkdir -p -m 730 "$dir_crond"
@@ -235,11 +235,11 @@ func_fill()
 	fi
 
 	# create gfwlist
-	if [ ! -d "$dir_gfwlist" ] ; then
-		if [ -f "$gfwlist_conf_file" ]; then	
-			mkdir -p "$dir_gfwlist" && tar jxf "$gfwlist_conf_file" -C "$dir_gfwlist"
-		fi
-	fi
+	#if [ ! -d "$dir_gfwlist" ] ; then
+		#if [ -f "$gfwlist_conf_file" ]; then	
+			#mkdir -p "$dir_gfwlist" && tar jxf "$gfwlist_conf_file" -C "$dir_gfwlist"
+		#fi
+	#fi
 
 	# create start script
 	if [ ! -f "$script_start" ] ; then
@@ -261,7 +261,9 @@ func_fill()
 #modprobe ip_set_bitmap_ip
 #modprobe ip_set_list_set
 #modprobe xt_set
-
+echo 4096 131072  6291456 > /proc/sys/net/ipv4/tcp_rmem
+echo 4194304 >/proc/sys/net/core/rmem_max
+echo 212992 > /proc/sys/net/core/rmem_default
 #drop caches
 sync && echo 3 > /proc/sys/vm/drop_caches
 

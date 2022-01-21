@@ -92,10 +92,6 @@ VOID APMlmeBroadcastDeauthReqAction(
 		RTMPSendWirelessEvent(pAd, IW_DEAUTH_EVENT_FLAG,
 			pEntry->Addr, 0, 0);
 		ApLogEvent(pAd, pInfo->Addr, EVENT_DISASSOCIATED);
-#ifdef MAP_R2
-		if (IS_MAP_ENABLE(pAd) && IS_MAP_R2_ENABLE(pAd))
-			wapp_handle_sta_disassoc(pAd, wcid, pInfo->Reason);
-#endif
 		MacTableDeleteEntry(pAd, wcid, pEntry->Addr);
 	}
 	NStatus = MlmeAllocateMemory(pAd, &pOutBuffer);
@@ -161,11 +157,6 @@ VOID APMlmeDeauthReqAction(
 		if (pEntry && IS_ENTRY_CLIENT(pEntry))
 			DiagConnError(pAd, pEntry->func_tb_idx, pEntry->Addr, DIAG_CONN_DEAUTH, pInfo->Reason);
 #endif
-#ifdef MAP_R2
-		if (IS_ENTRY_CLIENT(pEntry) && IS_MAP_ENABLE(pAd) && IS_MAP_R2_ENABLE(pAd))
-			wapp_handle_sta_disassoc(pAd, Elem->Wcid, pInfo->Reason);
-#endif
-
 		/* 1. remove this STA from MAC table */
 		MacTableDeleteEntry(pAd, Elem->Wcid, pInfo->Addr);
 		/* 2. send out DE-AUTH request frame */
@@ -302,12 +293,8 @@ static VOID APPeerDeauthReqAction(
 		if (pEntry && !IS_ENTRY_CLIENT(pEntry))
 			MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 					 ("%s: receive not client de-auth ###\n", __func__));
-		else {
-#ifdef MAP_R2
-			wapp_send_sta_disassoc_stats_event(pAd, pEntry, Reason);
-#endif
+		else
 			MacTableDeleteEntry(pAd, Elem->Wcid, Addr2);
-		}
 
 		MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 				 ("AUTH - receive DE-AUTH(seq-%d) from %02x:%02x:%02x:%02x:%02x:%02x, reason=%d\n",
@@ -456,13 +443,6 @@ static BOOLEAN APPeerAuthSanity(
 	}
 
 #endif /* DOT11_SAE_SUPPORT */
-#ifdef OCE_FILS_SUPPORT
-	else if (auth_info->auth_alg == AUTH_MODE_FILS) {
-		MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("%s(): Recv FILS Auth from (%02x:%02x:%02x:%02x:%02x:%02x)\n",
-					__func__, PRINT_MAC(auth_info->addr2)));
-		return TRUE;
-	}
-#endif /* OCE_FILS_SUPPORT */
 	else {
 		MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("%s(): fail - wrong algorithm (=%d)\n",
 				 __func__, auth_info->auth_alg));
@@ -521,7 +501,7 @@ static VOID APPeerAuthReqAtIdleAction(RTMP_ADAPTER *pAd, MLME_QUEUE_ELEM *Elem)
 {
 	INT i;
 	USHORT RspReason;
-	AUTH_FRAME_INFO *pAuth_info;
+	AUTH_FRAME_INFO auth_info;
 	UINT32 apidx;
 	BOOLEAN checkAuthSanity = FALSE;
 	PHEADER_802_11 pRcvHdr;
@@ -541,29 +521,16 @@ static VOID APPeerAuthReqAtIdleAction(RTMP_ADAPTER *pAd, MLME_QUEUE_ELEM *Elem)
 #ifdef WAPP_SUPPORT
 	UINT8 wapp_cnnct_stage = WAPP_AUTH;
 	UINT16 wapp_auth_fail = NOT_FAILURE;
-	UINT16 status_code = MLME_SUCCESS;
 #endif /* WAPP_SUPPORT */
 #ifdef RADIUS_MAC_AUTH_SUPPORT
 	UINT32 freq;
 	MAP_CHANNEL_ID_TO_KHZ(pAd->LatchRfRegs.Channel, freq);
 	freq /= 1000;
 #endif /* RADIUS_MAC_AUTH_SUPPORT */
-#if defined(CONFIG_MAP_SUPPORT) && defined(MAP_BL_SUPPORT)
-	BOOLEAN bACLReject = FALSE;
-	BOOLEAN bBlReject = FALSE;
-#endif
 
-	os_alloc_mem_suspend(pAd, (UCHAR **)&pAuth_info, sizeof(AUTH_FRAME_INFO));
-
-	if (!pAuth_info) {
-		MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("auth_info: Mem Alloc fail!\n"));
-		return;
-	}
-	os_zero_mem(pAuth_info, sizeof(AUTH_FRAME_INFO));
-
-	checkAuthSanity = APPeerAuthSanity(pAd, Elem->Msg, Elem->MsgLen, pAuth_info);
+	checkAuthSanity = APPeerAuthSanity(pAd, Elem->Msg, Elem->MsgLen, &auth_info);
 	/* Find which MBSSID to be authenticate */
-	apidx = get_apidx_by_addr(pAd, pAuth_info->addr1);
+	apidx = get_apidx_by_addr(pAd, auth_info.addr1);
 	pMbss = &pAd->ApCfg.MBSSID[apidx];
 	wdev = &pMbss->wdev;
 	ASSERT((wdev->func_idx == apidx));
@@ -611,12 +578,7 @@ static VOID APPeerAuthReqAtIdleAction(RTMP_ADAPTER *pAd, MLME_QUEUE_ELEM *Elem)
 	}
 
 	if ((wdev->if_dev == NULL) || ((wdev->if_dev != NULL) &&
-		((!(RTMP_OS_NETDEV_STATE_RUNNING(wdev->if_dev)))
-#ifdef CONFIG_MAP_SUPPORT
-		|| (wdev->bcn_buf.bBcnSntReq == FALSE)
-#endif
-
-	))) {
+								   !(RTMP_OS_NETDEV_STATE_RUNNING(wdev->if_dev)))) {
 		MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("AUTH - Bssid IF didn't up yet.\n"));
 #ifdef WAPP_SUPPORT
 		wapp_auth_fail = BSSID_IF_NOT_READY;
@@ -625,13 +587,12 @@ static VOID APPeerAuthReqAtIdleAction(RTMP_ADAPTER *pAd, MLME_QUEUE_ELEM *Elem)
 	}
 
 
-	pEntry = MacTableLookup(pAd, pAuth_info->addr2);
+	pEntry = MacTableLookup(pAd, auth_info.addr2);
 
 	if (pEntry && IS_ENTRY_CLIENT(pEntry)) {
 		tr_entry = &pAd->MacTab.tr_entry[pEntry->wcid];
 		/* reset NoDataIdleCount to prevent unexpected STA assoc timeout and kicked by MacTableMaintenance */
 		pEntry->NoDataIdleCount = 0;
-		pEntry->NoDataLastIdleCount = 0;
 #ifdef DOT11W_PMF_SUPPORT
 
 		if ((pEntry->SecConfig.PmfCfg.UsePMFConnect == TRUE)
@@ -640,7 +601,7 @@ static VOID APPeerAuthReqAtIdleAction(RTMP_ADAPTER *pAd, MLME_QUEUE_ELEM *Elem)
 
 #endif /* DOT11W_PMF_SUPPORT */
 
-		if (!RTMPEqualMemory(pAuth_info->addr1, pAd->ApCfg.MBSSID[pEntry->func_tb_idx].wdev.bssid, MAC_ADDR_LEN)) {
+		if (!RTMPEqualMemory(auth_info.addr1, pAd->ApCfg.MBSSID[pEntry->func_tb_idx].wdev.bssid, MAC_ADDR_LEN)) {
 			MacTableDeleteEntry(pAd, pEntry->wcid, pEntry->Addr);
 			pEntry = NULL;
 			MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_WARN, ("AUTH - Bssid does not match\n"));
@@ -663,38 +624,30 @@ SendAuth:
 	pRcvHdr = (PHEADER_802_11)(Elem->Msg);
 	MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 			 ("AUTH - MBSS(%d), Rcv AUTH seq#%d, Alg=%02x, Status=%d from [wcid=%d]%02x:%02x:%02x:%02x:%02x:%02x\n",
-			  apidx, pAuth_info->auth_seq, pAuth_info->auth_alg,
-			  pAuth_info->auth_status, Elem->Wcid,
-			  PRINT_MAC(pAuth_info->addr2)));
+			  apidx, auth_info.auth_seq, auth_info.auth_alg,
+			  auth_info.auth_status, Elem->Wcid,
+			  PRINT_MAC(auth_info.addr2)));
 
 #ifdef WSC_V2_SUPPORT
 
 	/* Do not check ACL when WPS V2 is enabled and ACL policy is positive. */
 	if ((wdev->WscControl.WscConfMode != WSC_DISABLE) &&
 		(wdev->WscControl.WscV2Info.bEnableWpsV2) &&
-		(wdev->WscControl.WscV2Info.bWpsEnable))
+		(wdev->WscControl.WscV2Info.bWpsEnable) &&
+		(pMbss->AccessControlList.Policy == 1))
 		;
 	else
 #endif /* WSC_V2_SUPPORT */
-#if defined(CONFIG_MAP_SUPPORT) && defined(MAP_BL_SUPPORT)
-	/* set a flag for sending Assoc-Fail response to unwanted STA later. */
-	if (map_is_entry_bl(pAd, pAuth_info->addr2, apidx) == TRUE) {
-		bBlReject = TRUE;
-	} else
-#endif
 
 		/* fail in ACL checking => send an AUTH-Fail seq#2. */
-		if (!ApCheckAccessControlList(pAd, pAuth_info->addr2, apidx)) {
-#if defined(CONFIG_MAP_SUPPORT) && defined(MAP_BL_SUPPORT)
-			bACLReject = TRUE;
-#endif
+		if (!ApCheckAccessControlList(pAd, auth_info.addr2, apidx)) {
 #ifdef ACL_BLK_COUNT_SUPPORT
 			if (pAd->ApCfg.MBSSID[apidx].AccessControlList.Policy == 2) {
 				ULONG idx;
 				ULONG acl_num;
 				acl_num = pAd->ApCfg.MBSSID[apidx].AccessControlList.Num;
 				for (idx = 0; idx < acl_num; idx++) {
-					if (MAC_ADDR_EQUAL(pAuth_info->addr2,
+					if (MAC_ADDR_EQUAL(auth_info.addr2,
 						pAd->ApCfg.MBSSID[apidx].AccessControlList.Entry[idx].Addr)) {
 						pAd->ApCfg.MBSSID[apidx].AccessControlList.Entry[idx].Reject_Count += 1;
 						break;
@@ -702,34 +655,20 @@ SendAuth:
 				}
 			}
 #endif/*ACL_BLK_COUNT_SUPPORT*/
-#if defined(CONFIG_MAP_SUPPORT) && defined(MAP_BL_SUPPORT)
-		}
-		/* fail in ACL checking => send an AUTH-Fail seq#2. */
-		if (bBlReject || bACLReject) {
-#endif
-			ASSERT(pAuth_info->auth_seq == 1);
+			ASSERT(auth_info.auth_seq == 1);
 			ASSERT(pEntry == NULL);
-#ifdef WAPP_SUPPORT
-			status_code = MLME_UNSPECIFY_FAIL;
-#endif
-			APPeerAuthSimpleRspGenAndSend(pAd, pRcvHdr, pAuth_info->auth_alg, pAuth_info->auth_seq + 1, MLME_UNSPECIFY_FAIL);
+			APPeerAuthSimpleRspGenAndSend(pAd, pRcvHdr, auth_info.auth_alg, auth_info.auth_seq + 1, MLME_UNSPECIFY_FAIL);
 #ifdef WIFI_DIAG
-			DiagConnError(pAd, apidx, pAuth_info->addr2, DIAG_CONN_ACL_BLK, 0);
+			DiagConnError(pAd, apidx, auth_info.addr2, DIAG_CONN_ACL_BLK, 0);
 #endif
 			/* If this STA exists, delete it. */
 			if (pEntry)
 				MacTableDeleteEntry(pAd, pEntry->wcid, pEntry->Addr);
 
-			RTMPSendWirelessEvent(pAd, IW_MAC_FILTER_LIST_EVENT_FLAG, pAuth_info->addr2, wdev->wdev_idx, 0);
-#if defined(CONFIG_MAP_SUPPORT) && defined(MAP_BL_SUPPORT)
-			MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
-					 ("Failed in BL/ACL %d/%d checking => send an AUTH seq#2 with Status code = %d\n"
-					  , bBlReject, bACLReject, MLME_UNSPECIFY_FAIL));
-#else
+			RTMPSendWirelessEvent(pAd, IW_MAC_FILTER_LIST_EVENT_FLAG, auth_info.addr2, wdev->wdev_idx, 0);
 			MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 					 ("Failed in ACL checking => send an AUTH seq#2 with Status code = %d\n"
 					  , MLME_UNSPECIFY_FAIL));
-#endif
 
 
 #ifdef WAPP_SUPPORT
@@ -744,64 +683,24 @@ SendAuth:
 	) {
 		BOOLEAN bBndStrgCheck = TRUE;
 
-		bBndStrgCheck = BndStrg_CheckConnectionReq(pAd, wdev, pAuth_info->addr2, &(Elem->rssi_info), Elem->MsgType, NULL);
+		bBndStrgCheck = BndStrg_CheckConnectionReq(pAd, wdev, auth_info.addr2, &(Elem->rssi_info), Elem->MsgType, NULL);
 		if (bBndStrgCheck == FALSE) {
-#ifdef WAPP_SUPPORT
-			status_code = MLME_UNSPECIFY_FAIL;
-#endif
-			APPeerAuthSimpleRspGenAndSend(pAd, pRcvHdr, pAuth_info->auth_alg, pAuth_info->auth_seq + 1, MLME_UNSPECIFY_FAIL);
+			APPeerAuthSimpleRspGenAndSend(pAd, pRcvHdr, auth_info.auth_alg, auth_info.auth_seq + 1, MLME_UNSPECIFY_FAIL);
 			MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("AUTH - check failed.\n"));
 #ifdef WAPP_SUPPORT
 			wapp_auth_fail = BND_STRG_CONNECT_CHECK_FAIL;
 #endif /* WAPP_SUPPORT */
 #ifdef WIFI_DIAG
-			 DiagConnError(pAd, apidx, pAuth_info->addr2, DIAG_CONN_BAND_STE, 0);
+			 DiagConnError(pAd, apidx, auth_info.addr2, DIAG_CONN_BAND_STE, 0);
 #endif
 			 goto auth_failure;
 
 		}
 	}
 #endif /* BAND_STEERING */
-
-#ifdef OCE_FILS_SUPPORT
-	if (IS_AKM_FILS(wdev->SecConfig.AKMMap)
-		&& (pAuth_info->auth_alg == AUTH_MODE_FILS)) {
-
-		if (!pEntry)
-			pEntry = MacTableInsertEntry(pAd, pAuth_info->addr2, wdev, ENTRY_CLIENT, OPMODE_AP, TRUE);
-
-		/* SET FILS First for clean STA if auth fail
-		   and adjust AKM with 256/384 in assoc phase */
-		SET_AKM_FILS_SHA256(pEntry->SecConfig.AKMMap);
-		if (0) {
-		} else {
-			struct fils_info *filsInfo = &pEntry->filsInfo;
-
-			if (filsInfo->pending_ie) {
-				os_free_mem(filsInfo->pending_ie);
-				filsInfo->pending_ie_len = 0;
-				filsInfo->pending_ie = NULL;
-			}
-
-			filsInfo->auth_algo = AUTH_MODE_FILS;
-			filsInfo->pending_ie_len = Elem->MsgLen;
-			os_alloc_mem(NULL, (UCHAR **)&filsInfo->pending_ie, filsInfo->pending_ie_len);
-			NdisMoveMemory(filsInfo->pending_ie, Elem->Msg, filsInfo->pending_ie_len);
-
-			DOT1X_InternalCmdAction(pAd, pEntry, DOT1X_MLME_EVENT);
-			filsInfo->is_pending_auth = TRUE;
-
-			os_free_mem(pAuth_info);
-			return;
-		}
-	}
-#endif /* OCE_FILS_SUPPORT */
-
 #ifdef CONFIG_STEERING_API_SUPPORT
-	if (BlackList_StaLookup(pAd,pAuth_info->addr2)) {
-		os_free_mem(pAuth_info);
+	if (BlackList_StaLookup(pAd,auth_info.addr2))
 		return;
-	}
 #endif
 #ifdef RADIUS_MAC_ACL_SUPPORT
 
@@ -813,47 +712,44 @@ SendAuth:
 #define	RADIUS_ACL_ACCEPT_TIMEOUT  3
 		PRT_802_11_RADIUS_ACL_ENTRY pAclEntry = NULL;
 
-		pAclEntry = RadiusFindAclEntry(&wdev->SecConfig.RadiusMacAuthCache.cacheList, pAuth_info->addr2);
+		pAclEntry = RadiusFindAclEntry(&wdev->SecConfig.RadiusMacAuthCache.cacheList, auth_info.addr2);
 
 		if (!pEntry)
-			pEntry = MacTableInsertEntry(pAd, pAuth_info->addr2, wdev, ENTRY_CLIENT, OPMODE_AP, TRUE);
+			pEntry = MacTableInsertEntry(pAd, auth_info.addr2, wdev, ENTRY_CLIENT, OPMODE_AP, TRUE);
 
 		if (pAclEntry) {
 			if (pAclEntry->result == RADIUS_ACL_REJECT) {
-#ifdef WAPP_SUPPORT
-				status_code = MLME_UNSPECIFY_FAIL;
-#endif
-				APPeerAuthSimpleRspGenAndSend(pAd, pRcvHdr, pAuth_info->auth_alg, pAuth_info->auth_seq + 1, MLME_UNSPECIFY_FAIL);
+				APPeerAuthSimpleRspGenAndSend(pAd, pRcvHdr, auth_info.auth_alg, auth_info.auth_seq + 1, MLME_UNSPECIFY_FAIL);
 #ifdef WIFI_DIAG
-				DiagConnError(pAd, apidx, pAuth_info->addr2, DIAG_CONN_ACL_BLK, 0);
+				DiagConnError(pAd, apidx, auth_info.addr2, DIAG_CONN_ACL_BLK, 0);
 #endif
 				if (pEntry)
 					MacTableDeleteEntry(pAd, pEntry->wcid, pEntry->Addr);
 
 				RTMPSendWirelessEvent(pAd, IW_MAC_FILTER_LIST_EVENT_FLAG, Addr2, apidx, 0);
 				MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
-						 ("%02x:%02x:%02x:%02x:%02x:%02x RADIUS ACL checking => Reject.\n", PRINT_MAC(pAuth_info->addr2)));
+						 ("%02x:%02x:%02x:%02x:%02x:%02x RADIUS ACL checking => Reject.\n", PRINT_MAC(auth_info.addr2)));
 			} else if (pAclEntry->result == RADIUS_ACL_ACCEPT) {
 				MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("%02x:%02x:%02x:%02x:%02x:%02x RADIUS ACL checking => OK.\n",
-						 PRINT_MAC(pAuth_info->addr2)));
+						 PRINT_MAC(auth_info.addr2)));
 			} else if (pAclEntry->result == RADIUS_ACL_ACCEPT_TIMEOUT) {
 				/* with SESSION-TIMEOUT from Radius Server */
 				MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("%02x:%02x:%02x:%02x:%02x:%02x RADIUS ACL checking => OK. (TIMEOUT)\n",
-						 PRINT_MAC(pAuth_info->addr2)));
+						 PRINT_MAC(auth_info.addr2)));
 				DOT1X_InternalCmdAction(pAd, pEntry, DOT1X_ACL_ENTRY);
 			} else {
 				MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("%02x:%02x:%02x:%02x:%02x:%02x RADIUS ACL checking => Unkown.\n",
-						 PRINT_MAC(pAuth_info->addr2)));
+						 PRINT_MAC(auth_info.addr2)));
 			}
 		} else {
 			MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("%02x:%02x:%02x:%02x:%02x:%02x Not Found in RADIUS ACL & go to Check.\n",
-					 PRINT_MAC(pAuth_info->addr2)));
+					 PRINT_MAC(auth_info.addr2)));
 			DOT1X_InternalCmdAction(pAd, pEntry, DOT1X_ACL_ENTRY);
 #ifdef WAPP_SUPPORT
 			wapp_auth_fail = NOT_FOUND_IN_RADIUS_ACL;
 #endif /* WAPP_SUPPORT */
 #ifdef WIFI_DIAG
-			DiagConnError(pAd, apidx, pAuth_info->addr2, DIAG_CONN_ACL_BLK, 0);
+			DiagConnError(pAd, apidx, auth_info.addr2, DIAG_CONN_ACL_BLK, 0);
 #endif
 			goto auth_failure;
 		}
@@ -864,31 +760,29 @@ SendAuth:
 	pFtCfg = &wdev->FtCfg;
 
 	if ((pFtCfg->FtCapFlag.Dot11rFtEnable)
-		&& (pAuth_info->auth_alg == AUTH_MODE_FT)) {
+		&& (auth_info.auth_alg == AUTH_MODE_FT)) {
 		USHORT result;
 
 		if (!pEntry)
-			pEntry = MacTableInsertEntry(pAd, pAuth_info->addr2, wdev, ENTRY_CLIENT, OPMODE_AP, TRUE);
+			pEntry = MacTableInsertEntry(pAd, auth_info.addr2, wdev, ENTRY_CLIENT, OPMODE_AP, TRUE);
 
 		if (pEntry != NULL) {
 			os_alloc_mem(pAd, (UCHAR **)&pFtInfoBuf, sizeof(FT_INFO));
 
 			if (pFtInfoBuf) {
-				result = FT_AuthReqHandler(pAd, pEntry, &pAuth_info->FtInfo, pFtInfoBuf);
+				result = FT_AuthReqHandler(pAd, pEntry, &auth_info.FtInfo, pFtInfoBuf);
 
 				if (result == MLME_SUCCESS) {
-					NdisMoveMemory(&pEntry->MdIeInfo, &pAuth_info->FtInfo.MdIeInfo, sizeof(FT_MDIE_INFO));
+					NdisMoveMemory(&pEntry->MdIeInfo, &auth_info.FtInfo.MdIeInfo, sizeof(FT_MDIE_INFO));
 					pEntry->AuthState = AS_AUTH_OPEN;
-					/*According to specific, if it already in SST_ASSOC, it can not go back */
-					if (pEntry->Sst != SST_ASSOC)
-						pEntry->Sst = SST_AUTH;
+					pEntry->Sst = SST_AUTH;
 				} else if (result == MLME_FAIL_NO_RESOURCE) {
 					MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_OFF,
 						("%s - give up this AUTH pkt ======================> Query R1KH from backbone (Wcid%d, %d)\n",
 						 __func__, pEntry->wcid, pEntry->FT_R1kh_CacheMiss_Times));
 					os_free_mem(pFtInfoBuf);
 #ifdef WIFI_DIAG
-					DiagConnError(pAd, apidx, pAuth_info->addr2,
+					DiagConnError(pAd, apidx, auth_info.addr2,
 						DIAG_CONN_AUTH_FAIL, REASON_NO_RESOURCE);
 #endif
 #ifdef WAPP_SUPPORT
@@ -897,7 +791,7 @@ SendAuth:
 					goto auth_failure;
 				}
 
-				FT_EnqueueAuthReply(pAd, pRcvHdr, pAuth_info->auth_alg, 2, result,
+				FT_EnqueueAuthReply(pAd, pRcvHdr, auth_info.auth_alg, 2, result,
 									&pFtInfoBuf->MdIeInfo, &pFtInfoBuf->FtIeInfo, NULL,
 									pFtInfoBuf->RSN_IE, pFtInfoBuf->RSNIE_Len);
 				os_free_mem(pFtInfoBuf);
@@ -936,17 +830,16 @@ SendAuth:
 		}
 #ifdef WIFI_DIAG
 		else /* MAC table full*/
-			DiagConnError(pAd, apidx, pAuth_info->addr2, DIAG_CONN_STA_LIM, 0);
+			DiagConnError(pAd, apidx, auth_info.addr2, DIAG_CONN_STA_LIM, 0);
 #endif
-                os_free_mem(pAuth_info);
+
 		return;
 	}
 
 #endif /* DOT11R_FT_SUPPORT */
 #ifdef DOT11_SAE_SUPPORT
-	if ((pAuth_info->auth_alg == AUTH_MODE_SAE) &&
+	if ((auth_info.auth_alg == AUTH_MODE_SAE) &&
 		(IS_AKM_SAE_SHA256(pMbss->wdev.SecConfig.AKMMap))) {
-		UCHAR is_h2e_connect;
 		UCHAR *pmk;
 #ifdef DOT11W_PMF_SUPPORT
 
@@ -955,14 +848,11 @@ SendAuth:
 
 			if ((pEntry->SecConfig.PmfCfg.UsePMFConnect == TRUE)
 				&& (tr_entry->PortSecured == WPA_802_1X_PORT_SECURED)) {
-#ifdef WAPP_SUPPORT
-				status_code = MLME_ASSOC_REJ_TEMPORARILY;
-#endif
 				APPeerAuthSimpleRspGenAndSend(pAd, pRcvHdr,
-											  pAuth_info->auth_alg, pAuth_info->auth_seq, MLME_ASSOC_REJ_TEMPORARILY);
+											  auth_info.auth_alg, auth_info.auth_seq, MLME_ASSOC_REJ_TEMPORARILY);
 				PMF_MlmeSAQueryReq(pAd, pEntry);
 #ifdef WIFI_DIAG
-				DiagConnError(pAd, apidx, pAuth_info->addr2, DIAG_CONN_AUTH_FAIL, REASON_REJ_TEMPORARILY);
+				DiagConnError(pAd, apidx, auth_info.addr2, DIAG_CONN_AUTH_FAIL, REASON_REJ_TEMPORARILY);
 #endif
 #ifdef WAPP_SUPPORT
 				wapp_auth_fail = MLME_ASSOC_REJ_TEMP;
@@ -975,27 +865,19 @@ SendAuth:
 		/* ap is passive, so do not consider the retrun value of sae_handle_auth */
 		sae_handle_auth(pAd, &pAd->SaeCfg, Elem->Msg, Elem->MsgLen,
 				pMbss->wdev.SecConfig.PSK,
-				pMbss->wdev.SecConfig.pt_list,
-				&pMbss->wdev.SecConfig.sae_cap,
-#ifdef DOT11_SAE_PWD_ID_SUPPORT
-				&pMbss->wdev.SecConfig.pwd_id_list_head,
-#endif
-				pAuth_info->auth_seq, pAuth_info->auth_status, &pmk, &is_h2e_connect);
+				auth_info.auth_seq, auth_info.auth_status, &pmk);
+
 		if (pmk) {
 
 			if (!pEntry)
-				pEntry = MacTableInsertEntry(pAd, pAuth_info->addr2, wdev, ENTRY_CLIENT, OPMODE_AP, TRUE);
+				pEntry = MacTableInsertEntry(pAd, auth_info.addr2, wdev, ENTRY_CLIENT, OPMODE_AP, TRUE);
 
 			if (pEntry) {
 				UCHAR pmkid[80];
 				NdisMoveMemory(pEntry->SecConfig.PMK, pmk, LEN_PMK);
 				pEntry->AuthState = AS_AUTH_OPEN;
-				/*According to specific, if it already in SST_ASSOC, it can not go back */
-				if (pEntry->Sst != SST_ASSOC)
-					pEntry->Sst = SST_AUTH;
-				pEntry->SecConfig.is_h2e_connect = is_h2e_connect;
-				pEntry->SecConfig.sae_cap.gen_pwe_method = pMbss->wdev.SecConfig.sae_cap.gen_pwe_method;
-				if (sae_get_pmk_cache(&pAd->SaeCfg, pAuth_info->addr1, pAuth_info->addr2, pmkid, NULL)) {
+				pEntry->Sst = SST_AUTH; /* what if it already in SST_ASSOC ??????? */
+				if (sae_get_pmk_cache(&pAd->SaeCfg, auth_info.addr1, auth_info.addr2, pmkid, NULL)) {
 					RTMPAddPMKIDCache(&pAd->ApCfg.PMKIDCache,
 							  apidx,
 							  pEntry->Addr,
@@ -1009,15 +891,15 @@ SendAuth:
 			}
 #ifdef WIFI_DIAG
 			else /* MAC table full*/
-				DiagConnError(pAd, apidx, pAuth_info->addr2, DIAG_CONN_STA_LIM, 0);
+				DiagConnError(pAd, apidx, auth_info.addr2, DIAG_CONN_STA_LIM, 0);
 #endif
 		}
 	} else
 #endif /* DOT11_SAE_SUPPORT */
-		if ((pAuth_info->auth_alg == AUTH_MODE_OPEN) &&
+		if ((auth_info.auth_alg == AUTH_MODE_OPEN) &&
 			(!IS_AKM_SHARED(pMbss->wdev.SecConfig.AKMMap))) {
 			if (!pEntry)
-				pEntry = MacTableInsertEntry(pAd, pAuth_info->addr2, wdev, ENTRY_CLIENT, OPMODE_AP, TRUE);
+				pEntry = MacTableInsertEntry(pAd, auth_info.addr2, wdev, ENTRY_CLIENT, OPMODE_AP, TRUE);
 
 			if (pEntry) {
 				tr_entry = &pAd->MacTab.tr_entry[pEntry->wcid];
@@ -1028,12 +910,10 @@ SendAuth:
 #endif /* DOT11W_PMF_SUPPORT */
 					) {
 					pEntry->AuthState = AS_AUTH_OPEN;
-					/*According to specific, if it already in SST_ASSOC, it can not go back */
-					if (pEntry->Sst != SST_ASSOC)
-						pEntry->Sst = SST_AUTH;
+					pEntry->Sst = SST_AUTH; /* what if it already in SST_ASSOC ??????? */
 				}
 
-				APPeerAuthSimpleRspGenAndSend(pAd, pRcvHdr, pAuth_info->auth_alg, pAuth_info->auth_seq + 1, MLME_SUCCESS);
+				APPeerAuthSimpleRspGenAndSend(pAd, pRcvHdr, auth_info.auth_alg, auth_info.auth_seq + 1, MLME_SUCCESS);
 #ifdef RADIUS_MAC_AUTH_SUPPORT
 				if (wdev->radius_mac_auth_enable)
 					CFG80211OS_RxMgmt(wdev->if_dev, freq, Elem->Msg, Elem->MsgLen);
@@ -1041,28 +921,26 @@ SendAuth:
 			}
 #ifdef WIFI_DIAG
 			else /* MAC table full*/
-				DiagConnError(pAd, apidx, pAuth_info->addr2, DIAG_CONN_STA_LIM, 0);
+				DiagConnError(pAd, apidx, auth_info.addr2, DIAG_CONN_STA_LIM, 0);
 #endif
-		} else if ((pAuth_info->auth_alg == AUTH_MODE_KEY) &&
+		} else if ((auth_info.auth_alg == AUTH_MODE_KEY) &&
 				   (IS_AKM_SHARED(pMbss->wdev.SecConfig.AKMMap)
 					|| IS_AKM_AUTOSWITCH(pMbss->wdev.SecConfig.AKMMap))) {
 			if (!pEntry)
-				pEntry = MacTableInsertEntry(pAd, pAuth_info->addr2, wdev, ENTRY_CLIENT, OPMODE_AP, TRUE);
+				pEntry = MacTableInsertEntry(pAd, auth_info.addr2, wdev, ENTRY_CLIENT, OPMODE_AP, TRUE);
 
 			if (pEntry) {
 				pEntry->AuthState = AS_AUTHENTICATING;
-				/*According to specific, if it already in SST_ASSOC, it can not go back */
-				if (pEntry->Sst != SST_ASSOC)
-					pEntry->Sst = SST_NOT_AUTH;
+				pEntry->Sst = SST_NOT_AUTH; /* what if it already in SST_ASSOC ??????? */
 				/* log this STA in AuthRspAux machine, only one STA is stored. If two STAs using */
 				/* SHARED_KEY authentication mingled together, then the late comer will win. */
-				COPY_MAC_ADDR(&pAd->ApMlmeAux.Addr, pAuth_info->addr2);
+				COPY_MAC_ADDR(&pAd->ApMlmeAux.Addr, auth_info.addr2);
 
 				for (i = 0; i < CIPHER_TEXT_LEN; i++)
 					pAd->ApMlmeAux.Challenge[i] = RandomByte(pAd);
 
 				RspReason = 0;
-				pAuth_info->auth_seq++;
+				auth_info.auth_seq++;
 				NStatus = MlmeAllocateMemory(pAd, &pOutBuffer);
 
 				if (NStatus != NDIS_STATUS_SUCCESS) {
@@ -1070,20 +948,20 @@ SendAuth:
 					wapp_auth_fail = MLME_NO_RESOURCE;
 #endif /* WAPP_SUPPORT */
 #ifdef WIFI_DIAG
-					DiagConnError(pAd, apidx, pAuth_info->addr2,
+					DiagConnError(pAd, apidx, auth_info.addr2,
 						DIAG_CONN_AUTH_FAIL, REASON_NO_RESOURCE);
 #endif
 					goto auth_failure; /* if no memory, can't do anything */
 				}
 
 				MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("AUTH - Send AUTH seq#2 (Challenge)\n"));
-				MgtMacHeaderInit(pAd, &AuthHdr, SUBTYPE_AUTH, 0,	pAuth_info->addr2,
+				MgtMacHeaderInit(pAd, &AuthHdr, SUBTYPE_AUTH, 0,	auth_info.addr2,
 								 wdev->if_addr,
 								 wdev->bssid);
 				MakeOutgoingFrame(pOutBuffer,            &FrameLen,
 								  sizeof(HEADER_802_11), &AuthHdr,
-								  2,                     &pAuth_info->auth_alg,
-								  2,                     &pAuth_info->auth_seq,
+								  2,                     &auth_info.auth_alg,
+								  2,                     &auth_info.auth_seq,
 								  2,                     &RspReason,
 								  1,                     &ChTxtIe,
 								  1,                     &ChTxtLen,
@@ -1098,24 +976,21 @@ SendAuth:
 			}
 #ifdef WIFI_DIAG
 			else/* MAC table full */
-				DiagConnError(pAd, apidx, pAuth_info->addr2, DIAG_CONN_STA_LIM, 0);
+				DiagConnError(pAd, apidx, auth_info.addr2, DIAG_CONN_STA_LIM, 0);
 #endif
 		}
 		else {
 			/* wrong algorithm */
-#ifdef WAPP_SUPPORT
-			status_code = MLME_ALG_NOT_SUPPORT;
-#endif
-			APPeerAuthSimpleRspGenAndSend(pAd, pRcvHdr, pAuth_info->auth_alg, pAuth_info->auth_seq + 1, MLME_ALG_NOT_SUPPORT);
+			APPeerAuthSimpleRspGenAndSend(pAd, pRcvHdr, auth_info.auth_alg, auth_info.auth_seq + 1, MLME_ALG_NOT_SUPPORT);
 #ifdef WIFI_DIAG
-			DiagConnError(pAd, apidx, pAuth_info->addr2, DIAG_CONN_AUTH_FAIL, REASON_AUTH_WRONG_ALGORITHM);
+			DiagConnError(pAd, apidx, auth_info.addr2, DIAG_CONN_AUTH_FAIL, REASON_AUTH_WRONG_ALGORITHM);
 #endif
 			/* If this STA exists, delete it. */
 			if (pEntry)
 				MacTableDeleteEntry(pAd, pEntry->wcid, pEntry->Addr);
 
 			MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("AUTH - Alg=%d, Seq=%d\n",
-					 pAuth_info->auth_alg, pAuth_info->auth_seq));
+					 auth_info.auth_alg, auth_info.auth_seq));
 		}
 
 	if (pEntry && IS_ENTRY_CLIENT(pEntry)) {
@@ -1123,15 +998,11 @@ SendAuth:
 
 		SET_FLAG_CONN_IN_PROG(aid, pAd->ConInPrgress);
 	}
-        os_free_mem(pAuth_info);
 	return;
 auth_failure:
 #ifdef WAPP_SUPPORT
-	wapp_send_sta_connect_rejected(pAd, wdev, pAuth_info->addr2,
-					pAuth_info->addr1, wapp_cnnct_stage,
-					wapp_auth_fail, status_code, 0);
+	wapp_send_sta_connect_rejected(pAd, wdev, auth_info.addr2, auth_info.addr1, wapp_cnnct_stage, wapp_auth_fail);
 #endif /* WAPP_SUPPORT */
-        os_free_mem(pAuth_info);
 	return;
 }
 
@@ -1140,7 +1011,7 @@ static VOID APPeerAuthConfirmAction(
 	IN PRTMP_ADAPTER pAd,
 	IN MLME_QUEUE_ELEM *Elem)
 {
-	AUTH_FRAME_INFO *auth_info = NULL;
+	AUTH_FRAME_INFO auth_info;
 	PHEADER_802_11  pRcvHdr;
 	MAC_TABLE_ENTRY *pEntry;
 	UINT32 apidx;
@@ -1152,44 +1023,36 @@ static VOID APPeerAuthConfirmAction(
 	if (pAd == NULL)
 		return;
 
-	os_alloc_mem(pAd, (UCHAR **)&auth_info, sizeof(AUTH_FRAME_INFO));
-	if (!auth_info)
-               return;
+	if (!APPeerAuthSanity(pAd, Elem->Msg, Elem->MsgLen, &auth_info))
+		return;
 
-	if (!APPeerAuthSanity(pAd, Elem->Msg, Elem->MsgLen, auth_info))
-		goto error;
-
-	apidx = get_apidx_by_addr(pAd, auth_info->addr1);
+	apidx = get_apidx_by_addr(pAd, auth_info.addr1);
 
 	if (apidx >= pAd->ApCfg.BssidNum) {
 		MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("AUTH - Bssid not found\n"));
-		goto error;
+		return;
 	}
 
 	if (apidx >= HW_BEACON_MAX_NUM) {
 		MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("Index out of bound\n"));
-		goto error;
+		return;
 	}
 
 	if ((pAd->ApCfg.MBSSID[apidx].wdev.if_dev != NULL) &&
-		(!(RTMP_OS_NETDEV_STATE_RUNNING(pAd->ApCfg.MBSSID[apidx].wdev.if_dev))
-#ifdef CONFIG_MAP_SUPPORT
-		|| (pAd->ApCfg.MBSSID[apidx].wdev.bcn_buf.bBcnSntReq == FALSE)
-#endif
-		)) {
+		!(RTMP_OS_NETDEV_STATE_RUNNING(pAd->ApCfg.MBSSID[apidx].wdev.if_dev))) {
 		MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("AUTH - Bssid IF didn't up yet.\n"));
-		goto error;
+		return;
 	} /* End of if */
 
 	if (!VALID_UCAST_ENTRY_WCID(pAd, Elem->Wcid)) {
 		MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("AUTH - Invalid wcid (%d).\n", Elem->Wcid));
-		goto error;
+		return;
 	}
 
 	pEntry = &pAd->MacTab.Content[Elem->Wcid];
 
 	if (pEntry && IS_ENTRY_CLIENT(pEntry)) {
-		if (!RTMPEqualMemory(auth_info->addr1, pAd->ApCfg.MBSSID[pEntry->func_tb_idx].wdev.bssid, MAC_ADDR_LEN)) {
+		if (!RTMPEqualMemory(auth_info.addr1, pAd->ApCfg.MBSSID[pEntry->func_tb_idx].wdev.bssid, MAC_ADDR_LEN)) {
 			MacTableDeleteEntry(pAd, pEntry->wcid, pEntry->Addr);
 			pEntry = NULL;
 			MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_WARN, ("AUTH - Bssid does not match\n"));
@@ -1200,15 +1063,15 @@ static VOID APPeerAuthConfirmAction(
 	pRcvHdr = (PHEADER_802_11)(Elem->Msg);
 	MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 			 ("AUTH - MBSS(%d), Rcv AUTH seq#%d, Alg=%02x, Status=%d from [wcid=%d]%02x:%02x:%02x:%02x:%02x:%02x\n",
-			  apidx, auth_info->auth_seq, auth_info->auth_alg,
-			  auth_info->auth_status, Elem->Wcid,
-			  PRINT_MAC(auth_info->addr2)));
+			  apidx, auth_info.auth_seq, auth_info.auth_alg,
+			  auth_info.auth_status, Elem->Wcid,
+			  PRINT_MAC(auth_info.addr2)));
 
-	if (pEntry && MAC_ADDR_EQUAL(auth_info->addr2, pAd->ApMlmeAux.Addr)) {
+	if (pEntry && MAC_ADDR_EQUAL(auth_info.addr2, pAd->ApMlmeAux.Addr)) {
 #ifdef DOT11R_FT_SUPPORT
 		pFtCfg = &pAd->ApCfg.MBSSID[apidx].wdev.FtCfg;
 
-		if ((pFtCfg->FtCapFlag.Dot11rFtEnable) && (auth_info->auth_alg == AUTH_MODE_FT)) {
+		if ((pFtCfg->FtCapFlag.Dot11rFtEnable) && (auth_info.auth_alg == AUTH_MODE_FT)) {
 			USHORT result;
 
 			os_alloc_mem(pAd, (UCHAR **)&pFtInfoBuf, sizeof(FT_INFO));
@@ -1217,8 +1080,8 @@ static VOID APPeerAuthConfirmAction(
 				os_alloc_mem(pAd, (UCHAR **) &(pFtInfoBuf->RicInfo.pRicInfo), 512);
 
 				if (pFtInfoBuf->RicInfo.pRicInfo != NULL) {
-					result = FT_AuthConfirmHandler(pAd, pEntry, &auth_info->FtInfo, pFtInfoBuf);
-					FT_EnqueueAuthReply(pAd, pRcvHdr, auth_info->auth_alg, 4, result,
+					result = FT_AuthConfirmHandler(pAd, pEntry, &auth_info.FtInfo, pFtInfoBuf);
+					FT_EnqueueAuthReply(pAd, pRcvHdr, auth_info.auth_alg, 4, result,
 										&pFtInfoBuf->MdIeInfo, &pFtInfoBuf->FtIeInfo,
 										&pFtInfoBuf->RicInfo, pFtInfoBuf->RSN_IE, pFtInfoBuf->RSNIE_Len);
 					os_free_mem(pFtInfoBuf->RicInfo.pRicInfo);
@@ -1229,7 +1092,7 @@ static VOID APPeerAuthConfirmAction(
 		} else
 #endif /* DOT11R_FT_SUPPORT */
 			if ((pRcvHdr->FC.Wep == 1) &&
-				NdisEqualMemory(auth_info->Chtxt, pAd->ApMlmeAux.Challenge, CIPHER_TEXT_LEN)) {
+				NdisEqualMemory(auth_info.Chtxt, pAd->ApMlmeAux.Challenge, CIPHER_TEXT_LEN)) {
 				struct wifi_dev *wdev = &pAd->ApCfg.MBSSID[apidx].wdev;
 				/* Copy security config from AP to STA's entry */
 				pEntry->SecConfig.AKMMap = wdev->SecConfig.AKMMap;
@@ -1240,17 +1103,15 @@ static VOID APPeerAuthConfirmAction(
 				os_move_mem(pEntry->SecConfig.WepKey, wdev->SecConfig.WepKey, sizeof(SEC_KEY_INFO)*SEC_KEY_NUM);
 				pEntry->SecConfig.GroupKeyId = wdev->SecConfig.GroupKeyId;
 				/* Successful */
-				APPeerAuthSimpleRspGenAndSend(pAd, pRcvHdr, auth_info->auth_alg, auth_info->auth_seq + 1, MLME_SUCCESS);
+				APPeerAuthSimpleRspGenAndSend(pAd, pRcvHdr, auth_info.auth_alg, auth_info.auth_seq + 1, MLME_SUCCESS);
 				pEntry->AuthState = AS_AUTH_KEY;
-				/*According to specific, if it already in SST_ASSOC, it can not go back */
-				if (pEntry->Sst != SST_ASSOC)
-					pEntry->Sst = SST_AUTH;
+				pEntry->Sst = SST_AUTH;
 			} else {
 				/* send wireless event - Authentication rejected because of challenge failure */
 				RTMPSendWirelessEvent(pAd, IW_AUTH_REJECT_CHALLENGE_FAILURE, pEntry->Addr, 0, 0);
 				/* fail - wep bit is not set or challenge text is not equal */
-				APPeerAuthSimpleRspGenAndSend(pAd, pRcvHdr, auth_info->auth_alg,
-											  auth_info->auth_seq + 1,
+				APPeerAuthSimpleRspGenAndSend(pAd, pRcvHdr, auth_info.auth_alg,
+											  auth_info.auth_seq + 1,
 											  MLME_REJ_CHALLENGE_FAILURE);
 #ifdef WIFI_DIAG
 				if (pEntry && IS_ENTRY_CLIENT(pEntry))
@@ -1268,7 +1129,7 @@ static VOID APPeerAuthConfirmAction(
 	} else {
 		/* fail for unknown reason. most likely is AuthRspAux machine be overwritten by another */
 		/* STA also using SHARED_KEY authentication */
-		APPeerAuthSimpleRspGenAndSend(pAd, pRcvHdr, auth_info->auth_alg, auth_info->auth_seq + 1, MLME_UNSPECIFY_FAIL);
+		APPeerAuthSimpleRspGenAndSend(pAd, pRcvHdr, auth_info.auth_alg, auth_info.auth_seq + 1, MLME_UNSPECIFY_FAIL);
 
 		/* If this STA exists, delete it. */
 		if (pEntry) {
@@ -1280,8 +1141,6 @@ static VOID APPeerAuthConfirmAction(
 			MacTableDeleteEntry(pAd, pEntry->wcid, pEntry->Addr);
 		}
 	}
-error:
-	os_free_mem(auth_info);
 }
 
 
@@ -1310,9 +1169,6 @@ VOID APCls2errAction(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk)
 	if (pEntry && IS_ENTRY_CLIENT(pEntry)) {
 #ifdef WIFI_DIAG
 		DiagConnError(pAd, pEntry->func_tb_idx, pEntry->Addr, DIAG_CONN_DEAUTH, Reason);
-#endif
-#ifdef MAP_R2
-		wapp_handle_sta_disassoc(pAd, pEntry->wcid, Reason);
 #endif
 		/*ApLogEvent(pAd, pAddr, EVENT_DISASSOCIATED); */
 		mac_entry_delete(pAd, pEntry);

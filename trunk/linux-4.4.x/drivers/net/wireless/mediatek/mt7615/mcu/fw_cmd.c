@@ -1905,18 +1905,6 @@ static INT32 StaRecUpdateTxProc(RTMP_ADAPTER *pAd, struct cmd_msg *msg, VOID *ar
 		CmdStaRecTxProc.u4TxProcFlag = 0;
 	else
 #endif /*VLAN_SUPPORT*/
-#ifdef MAP_R2
-	if (IS_MAP_R2_ENABLE(pAd)) {
-		AsicRxHeaderTransCtl(pAd, TRUE, FALSE, FALSE, FALSE, FALSE);
-
-		CmdStaRecTxProc.u4TxProcFlag = 0;
-		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
-			("%s(), set u4TxProcFlag = 0 to keep vlan tag\n", __func__));
-		if (pEntry && pEntry->wdev)
-			MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
-			("%s\n", pEntry->wdev->if_dev->name));
-	} else
-#endif
 	CmdStaRecTxProc.u4TxProcFlag = RVLAN;
 #ifdef CONFIG_CSO_SUPPORT
 
@@ -2228,13 +2216,6 @@ static INT32 StaRecUpdateWtbl(RTMP_ADAPTER *pAd, struct cmd_msg *msg, VOID *args
 			MTWF_LOG(DBG_CAT_HW, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
 					 ("%s: Unknown wdev type(%d) do not support header translation\n",
 					  __func__, pEntry->wdev->wdev_type));
-
-#ifdef APCLI_AS_WDS_STA_SUPPORT
-		if ((wdev->wdev_type == WDEV_TYPE_APCLI) && (wdev->wds_enable) && pEntry->bEnable4Addr) {
-			rWtblHdrTrans.ucFd = 1;
-			rWtblHdrTrans.ucTd = 1;
-		}
-#endif
 
 #endif /* HDR_TRANS_TX_SUPPORT */
 #ifdef HDR_TRANS_RX_SUPPORT
@@ -2870,25 +2851,12 @@ static VOID bssUpdateExtBssInfo(
 {
 	UCHAR ExtBssidIdx = 1;
 	CMD_BSSINFO_EXT_BSS_INFO_T CmdBssInfoExtBssInfo = {0};
-#ifdef CONFIG_AP_SUPPORT
-	struct wifi_dev *wdev = &pAd->ApCfg.MBSSID[bss_info.ucBssIndex].wdev;
-	static UCHAR GBand_FirstBssidIdx;
-#endif
 	/* this feature is only for Omac 0x11~0x1f */
 	ASSERT(bss_info.OwnMacIdx > HW_BSSID_MAX);
 	ExtBssidIdx = (bss_info.OwnMacIdx & 0xf);
 	CmdBssInfoExtBssInfo.u2Tag = BSS_INFO_EXT_BSS;
 	CmdBssInfoExtBssInfo.u2Length = sizeof(CMD_BSSINFO_EXT_BSS_INFO_T);
-#ifdef CONFIG_AP_SUPPORT
-	if (pAd->CommonCfg.dbdc_mode && (HcGetBandByWdev(wdev) == rtmp_band_index_get_by_order(pAd, 1))) {
-		/* Order1(default BAND0,2G) */
-		if (GBand_FirstBssidIdx == 0)
-			GBand_FirstBssidIdx = ExtBssidIdx;
-		CmdBssInfoExtBssInfo.ucMbssTsfOffset = (ExtBssidIdx - GBand_FirstBssidIdx) * BCN_TRANSMIT_ESTIMATE_TIME;
-	} else
-#endif
-		/* nonDBDC or Order0(default BAND1,5G) */
-		CmdBssInfoExtBssInfo.ucMbssTsfOffset = ExtBssidIdx * BCN_TRANSMIT_ESTIMATE_TIME;
+	CmdBssInfoExtBssInfo.ucMbssTsfOffset = ExtBssidIdx * BCN_TRANSMIT_ESTIMATE_TIME;
 	/* Fill TLV format */
 	MTWF_LOG(DBG_CAT_FW, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 			 ("%s (BSSINFO_EXT_BSS_INFO), ExtBssidIdx = %d, ucMbssTsfOffset = %d\n",

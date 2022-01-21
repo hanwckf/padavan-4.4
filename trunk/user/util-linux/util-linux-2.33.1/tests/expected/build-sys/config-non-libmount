@@ -1,0 +1,99 @@
+blkid:  libblkid libuuid 
+cfdisk:  libblkid libfdisk libncursesw libsmartcols libtinfo libuuid 
+column:  libsmartcols 
+fdisk:  libblkid libfdisk libreadline libsmartcols libtinfo libuuid 
+fincore:  libsmartcols 
+findfs:  libblkid libuuid 
+libblkid.so.1.1.0:  libuuid 
+libfdisk.so.1.1.0:  libblkid libuuid 
+libsmartcols.so.1.1.0:  
+libuuid.so.1.3.0:  
+losetup:  libsmartcols 
+lscpu:  libsmartcols 
+lsipc:  libsmartcols 
+lslogins:  libsmartcols libsystemd 
+lsmem:  libsmartcols 
+mkswap:  libblkid libuuid 
+partx:  libblkid libsmartcols libuuid 
+prlimit:  libsmartcols 
+rfkill:  libsmartcols 
+sfdisk:  libblkid libfdisk libreadline libsmartcols libtinfo libuuid 
+swaplabel:  libblkid libuuid 
+uuidd:  librt libsystemd libuuid 
+uuidgen:  libuuid 
+uuidparse:  libsmartcols libuuid 
+wdctl:  libsmartcols 
+wipefs:  libblkid libsmartcols libuuid 
+zramctl:  libsmartcols 
+addpart:  
+agetty:  
+blkdiscard:  librt 
+blkzone:  
+blockdev:  
+cal:  libtinfo 
+chcpu:  
+chfn:  libpam libpam_misc libpthread libreadline libuser 
+chmem:  
+choom:  
+chrt:  
+chsh:  libpam libpam_misc libpthread libreadline libuser 
+col:  
+colcrt:  
+colrm:  
+ctrlaltdel:  
+delpart:  
+dmesg:  librt libtinfo 
+fallocate:  
+fdformat:  
+flock:  librt 
+fsck.cramfs:  libz 
+fsck.minix:  
+fsfreeze:  
+getopt:  
+hexdump:  libtinfo 
+hwclock:  libm 
+ionice:  
+ipcmk:  
+ipcrm:  
+ipcs:  
+isosize:  
+kill:  
+last:  librt 
+ldattach:  
+logger:  libsystemd 
+login:  libpam libpam_misc 
+look:  
+mcookie:  
+mesg:  
+mkfs:  
+mkfs.bfs:  
+mkfs.cramfs:  libz 
+mkfs.minix:  
+more:  libtinfo 
+namei:  
+nologin:  
+nsenter:  
+pivot_root:  
+raw:  
+readprofile:  
+rename:  
+renice:  
+resizepart:  
+rev:  
+rtcwake:  
+runuser:  libpam libpam_misc libutil 
+script:  librt libutil 
+scriptreplay:  
+setarch:  
+setpriv:  ap-ng 
+setsid:  
+setterm:  libtinfo 
+su:  libpam libpam_misc libutil 
+sulogin:  rypt 
+switch_root:  
+taskset:  
+ul:  libtinfo 
+unshare:  
+utmpdump:  
+wall:  
+whereis:  

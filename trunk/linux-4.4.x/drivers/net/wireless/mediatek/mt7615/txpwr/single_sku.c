@@ -156,8 +156,11 @@ INT MtSingleSkuLoadParam(RTMP_ADAPTER *pAd)
 {
 	CHAR *buffer;
 	CHAR *readline, *token;
+#ifdef RF_LOCKDOWN
+#else
 	RTMP_OS_FD_EXT srcf;
 	INT retval = 0;
+#endif /* RF_LOCKDOWN */
 	CHAR *ptr;
 	INT index, i;
 	CH_POWER *StartCh = NULL;
@@ -165,9 +168,6 @@ INT MtSingleSkuLoadParam(RTMP_ADAPTER *pAd)
 	UCHAR channel, *temp;
 	CH_POWER *pwr = NULL;
 	UCHAR *sku_path = NULL;
-#ifdef RF_LOCKDOWN
-	BOOLEAN RF_Lock = FALSE;
-#endif
 
 	/* Link list Init */
 	DlListInit(&pAd->PwrLimitSkuList);
@@ -178,150 +178,145 @@ INT MtSingleSkuLoadParam(RTMP_ADAPTER *pAd)
 		return FALSE;
 
 #ifdef RF_LOCKDOWN
-	RF_Lock = chip_check_rf_lock_down(pAd);
-	if (RF_Lock) {
-		if (IS_MT7615(pAd))
-			pAd->CommonCfg.SKUTableIdx = pAd->EEPROMImage[SINGLE_SKU_TABLE_EFFUSE_ADDRESS] & BITS(0, 6);
-		else if (IS_MT7622(pAd))
-			pAd->CommonCfg.SKUTableIdx = pAd->EEPROMImage[MT7622_SINGLE_SKU_TABLE_EFFUSE_ADDRESS] & BITS(0, 6);
-		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, (KBLU "%s: RF_LOCKDOWN Feature ON !!!\n" KNRM, __FUNCTION__));
-		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, (KBLU "%s: SKU Table index = %d \n" KNRM, __FUNCTION__,
-				 pAd->CommonCfg.SKUTableIdx));
-		/* card information file exists so reading the card information */
-		os_zero_mem(buffer, MAX_INI_BUFFER_SIZE);
+	pAd->CommonCfg.SKUTableIdx = pAd->EEPROMImage[SINGLE_SKU_TABLE_EFFUSE_ADDRESS] & BITS(0, 6);
+	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, (KBLU "%s: RF_LOCKDOWN Feature ON !!!\n" KNRM, __FUNCTION__));
+	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, (KBLU "%s: SKU Table index = %d \n" KNRM, __FUNCTION__,
+			 pAd->CommonCfg.SKUTableIdx));
+	/* card information file exists so reading the card information */
+	os_zero_mem(buffer, MAX_INI_BUFFER_SIZE);
 
-		switch (pAd->CommonCfg.SKUTableIdx) {
-		case SKUTABLE_1:
-			os_move_mem(buffer, SKUvalue_1, MAX_INI_BUFFER_SIZE);
-			break;
+	switch (pAd->CommonCfg.SKUTableIdx) {
+	case SKUTABLE_1:
+		os_move_mem(buffer, SKUvalue_1, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_2:
-			os_move_mem(buffer, SKUvalue_2, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_2:
+		os_move_mem(buffer, SKUvalue_2, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_3:
-			os_move_mem(buffer, SKUvalue_3, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_3:
+		os_move_mem(buffer, SKUvalue_3, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_4:
-			os_move_mem(buffer, SKUvalue_4, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_4:
+		os_move_mem(buffer, SKUvalue_4, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_5:
-			os_move_mem(buffer, SKUvalue_5, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_5:
+		os_move_mem(buffer, SKUvalue_5, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_6:
-			os_move_mem(buffer, SKUvalue_6, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_6:
+		os_move_mem(buffer, SKUvalue_6, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_7:
-			os_move_mem(buffer, SKUvalue_7, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_7:
+		os_move_mem(buffer, SKUvalue_7, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_8:
-			os_move_mem(buffer, SKUvalue_8, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_8:
+		os_move_mem(buffer, SKUvalue_8, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_9:
-			os_move_mem(buffer, SKUvalue_9, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_9:
+		os_move_mem(buffer, SKUvalue_9, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_10:
-			os_move_mem(buffer, SKUvalue_10, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_10:
+		os_move_mem(buffer, SKUvalue_10, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_11:
-			os_move_mem(buffer, SKUvalue_11, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_11:
+		os_move_mem(buffer, SKUvalue_11, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_12:
-			os_move_mem(buffer, SKUvalue_12, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_12:
+		os_move_mem(buffer, SKUvalue_12, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_13:
-			os_move_mem(buffer, SKUvalue_13, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_13:
+		os_move_mem(buffer, SKUvalue_13, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_14:
-			os_move_mem(buffer, SKUvalue_14, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_14:
+		os_move_mem(buffer, SKUvalue_14, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_15:
-			os_move_mem(buffer, SKUvalue_15, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_15:
+		os_move_mem(buffer, SKUvalue_15, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_16:
-			os_move_mem(buffer, SKUvalue_16, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_16:
+		os_move_mem(buffer, SKUvalue_16, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_17:
-			os_move_mem(buffer, SKUvalue_17, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_17:
+		os_move_mem(buffer, SKUvalue_17, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_18:
-			os_move_mem(buffer, SKUvalue_18, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_18:
+		os_move_mem(buffer, SKUvalue_18, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_19:
-			os_move_mem(buffer, SKUvalue_19, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_19:
+		os_move_mem(buffer, SKUvalue_19, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_20:
-			os_move_mem(buffer, SKUvalue_20, MAX_INI_BUFFER_SIZE);;
-			break;
+	case SKUTABLE_20:
+		os_move_mem(buffer, SKUvalue_20, MAX_INI_BUFFER_SIZE);;
+		break;
 
-		default:
-			os_move_mem(buffer, SKUvalue_20, MAX_INI_BUFFER_SIZE);
-			break;
-		}
-	}else
-#endif
-	{
-		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s: RF_LOCKDOWN Feature OFF !!!\n", __FUNCTION__));
-		/* open card information file*/
-		sku_path = get_single_sku_path(pAd);
-		if (sku_path && *sku_path)
-			srcf = os_file_open(sku_path, O_RDONLY, 0);
-		else
-			srcf.Status = 1;
-
-		if (srcf.Status) {
-			/* card information file does not exist */
-			MTWF_LOG(DBG_CAT_POWER, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
-					 ("--> Error opening %s\n", sku_path));
-			goto  free_resource;
-		}
-
-		/* card information file exists so reading the card information */
-		os_zero_mem(buffer, MAX_INI_BUFFER_SIZE);
-		retval = os_file_read(srcf, buffer, MAX_INI_BUFFER_SIZE);
+	default:
+		os_move_mem(buffer, SKUvalue_20, MAX_INI_BUFFER_SIZE);
+		break;
 	}
+
+#else
+	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s: RF_LOCKDOWN Feature OFF !!!\n", __FUNCTION__));
+	/* open card information file*/
+	sku_path = get_single_sku_path(pAd);
+	if (sku_path && *sku_path)
+		srcf = os_file_open(sku_path, O_RDONLY, 0);
+	else
+		srcf.Status = 1;
+
+	if (srcf.Status) {
+		/* card information file does not exist */
+		MTWF_LOG(DBG_CAT_POWER, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
+				 ("--> Error opening %s\n", sku_path));
+		goto  free_resource;
+	}
+
+	/* card information file exists so reading the card information */
+	os_zero_mem(buffer, MAX_INI_BUFFER_SIZE);
+	retval = os_file_read(srcf, buffer, MAX_INI_BUFFER_SIZE);
+
 	if (retval < 0) {
 		/* read fail */
 		MTWF_LOG(DBG_CAT_POWER, DBG_SUBCAT_ALL, DBG_LVL_ERROR, (KRED "--> Read %s error %d\n" KNRM, sku_path,
 				 -retval));
 	} else {
+#endif /* RF_LOCKDOWN */
 #ifdef RF_LOCKDOWN
-	for (readline = ptr = buffer, index = 0;
-			(((ptr = os_str_chr(readline, '\t')) != NULL) && RF_Lock) ||
-				(((ptr = os_str_chr(readline, '\n')) != NULL) && !RF_Lock);
-						readline = ptr + 1, index++)
+
+	for (readline = ptr = buffer, index = 0; (ptr = os_str_chr(readline, '\t')) != NULL; readline = ptr + 1, index++)
 #else
 	for (readline = ptr = buffer, index = 0; (ptr = os_str_chr(readline, '\n')) != NULL; readline = ptr + 1, index++)
 #endif /* RF_LOCKDOWN */
 	{
 		*ptr = '\0';
 #ifdef RF_LOCKDOWN
-		if (RF_Lock) {
-			if (readline[0] == '!')
-				continue;
-		} else
-#endif
-		{
-			if (readline[0] == '#')
-				continue;
-		}
+
+		if (readline[0] == '!')
+			continue;
+
+#else
+
+		if (readline[0] == '#')
+			continue;
+
+#endif /* RF_LOCKDOWN */
+
 		/* Band Info Parsing */
 		if (!strncmp(readline, "Band: ", 6)) {
 			token = rstrtok(readline + 6, " ");
@@ -583,18 +578,21 @@ INT MtSingleSkuLoadParam(RTMP_ADAPTER *pAd)
 		}
 	}
 
+#ifdef RF_LOCKDOWN
+#else
 }
+
+#endif /* RF_LOCKDOWN */
+
 	/* print out Sku table info */
 	MtShowSkuTable(pAd, DBG_LVL_INFO);
 
 #ifdef RF_LOCKDOWN
-	if(!RF_Lock)
-#endif
-	{
+#else
 	/* close file*/
 	retval = os_file_close(srcf);
-	}
 free_resource:
+#endif /* RF_LOCKDOWN */
 	os_free_mem(buffer);
 	return TRUE;
 }
@@ -617,8 +615,11 @@ INT MtBfBackOffLoadParam(RTMP_ADAPTER *pAd)
 {
 	CHAR *buffer;
 	CHAR *readline, *token;
+#ifdef RF_LOCKDOWN
+#else
 	RTMP_OS_FD_EXT srcf;
 	INT retval = 0;
+#endif /* RF_LOCKDOWN */
 	CHAR *ptr;
 	INT index, i;
 	BACKOFF_POWER *StartCh = NULL;
@@ -627,9 +628,6 @@ INT MtBfBackOffLoadParam(RTMP_ADAPTER *pAd)
 	BACKOFF_POWER *pwr = NULL;
 	BACKOFF_POWER *ch, *ch_temp;
 	UCHAR *sku_path = NULL;
-#ifdef RF_LOCKDOWN
-	BOOLEAN RF_Lock = FALSE;
-#endif
 
 	DlListInit(&pAd->PwrLimitBackoffList);
 	/* init*/
@@ -639,149 +637,144 @@ INT MtBfBackOffLoadParam(RTMP_ADAPTER *pAd)
 		return FALSE;
 
 #ifdef RF_LOCKDOWN
-	RF_Lock = chip_check_rf_lock_down(pAd);
-	if (RF_Lock) {
-		if (IS_MT7615(pAd))
-			pAd->CommonCfg.SKUTableIdx = pAd->EEPROMImage[SINGLE_SKU_TABLE_EFFUSE_ADDRESS] & BITS(0, 6);
-		else if (IS_MT7622(pAd))
-			pAd->CommonCfg.SKUTableIdx = pAd->EEPROMImage[MT7622_SINGLE_SKU_TABLE_EFFUSE_ADDRESS] & BITS(0, 6);
-		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s: RF_LOCKDOWN Feature ON !!!\n", __FUNCTION__));
-		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s: BFBackoff Table index = %d \n", __FUNCTION__,
-				 pAd->CommonCfg.SKUTableIdx));
-		/* card information file exists so reading the card information */
-		os_zero_mem(buffer, MAX_INI_BUFFER_SIZE);
+	pAd->CommonCfg.SKUTableIdx = pAd->EEPROMImage[SINGLE_SKU_TABLE_EFFUSE_ADDRESS] & BITS(0, 6);
+	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s: RF_LOCKDOWN Feature ON !!!\n", __FUNCTION__));
+	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s: BFBackoff Table index = %d \n", __FUNCTION__,
+			 pAd->CommonCfg.SKUTableIdx));
+	/* card information file exists so reading the card information */
+	os_zero_mem(buffer, MAX_INI_BUFFER_SIZE);
 
-		switch (pAd->CommonCfg.SKUTableIdx) {
-		case SKUTABLE_1:
-			os_move_mem(buffer, BFBackoffvalue_1, MAX_INI_BUFFER_SIZE);
-			break;
+	switch (pAd->CommonCfg.SKUTableIdx) {
+	case SKUTABLE_1:
+		os_move_mem(buffer, BFBackoffvalue_1, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_2:
-			os_move_mem(buffer, BFBackoffvalue_2, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_2:
+		os_move_mem(buffer, BFBackoffvalue_2, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_3:
-			os_move_mem(buffer, BFBackoffvalue_3, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_3:
+		os_move_mem(buffer, BFBackoffvalue_3, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_4:
-			os_move_mem(buffer, BFBackoffvalue_4, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_4:
+		os_move_mem(buffer, BFBackoffvalue_4, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_5:
-			os_move_mem(buffer, BFBackoffvalue_5, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_5:
+		os_move_mem(buffer, BFBackoffvalue_5, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_6:
-			os_move_mem(buffer, BFBackoffvalue_6, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_6:
+		os_move_mem(buffer, BFBackoffvalue_6, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_7:
-			os_move_mem(buffer, BFBackoffvalue_7, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_7:
+		os_move_mem(buffer, BFBackoffvalue_7, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_8:
-			os_move_mem(buffer, BFBackoffvalue_8, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_8:
+		os_move_mem(buffer, BFBackoffvalue_8, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_9:
-			os_move_mem(buffer, BFBackoffvalue_9, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_9:
+		os_move_mem(buffer, BFBackoffvalue_9, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_10:
-			os_move_mem(buffer, BFBackoffvalue_10, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_10:
+		os_move_mem(buffer, BFBackoffvalue_10, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_11:
-			os_move_mem(buffer, BFBackoffvalue_11, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_11:
+		os_move_mem(buffer, BFBackoffvalue_11, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_12:
-			os_move_mem(buffer, BFBackoffvalue_12, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_12:
+		os_move_mem(buffer, BFBackoffvalue_12, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_13:
-			os_move_mem(buffer, BFBackoffvalue_13, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_13:
+		os_move_mem(buffer, BFBackoffvalue_13, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_14:
-			os_move_mem(buffer, BFBackoffvalue_14, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_14:
+		os_move_mem(buffer, BFBackoffvalue_14, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_15:
-			os_move_mem(buffer, BFBackoffvalue_15, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_15:
+		os_move_mem(buffer, BFBackoffvalue_15, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_16:
-			os_move_mem(buffer, BFBackoffvalue_16, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_16:
+		os_move_mem(buffer, BFBackoffvalue_16, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_17:
-			os_move_mem(buffer, BFBackoffvalue_17, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_17:
+		os_move_mem(buffer, BFBackoffvalue_17, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_18:
-			os_move_mem(buffer, BFBackoffvalue_18, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_18:
+		os_move_mem(buffer, BFBackoffvalue_18, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_19:
-			os_move_mem(buffer, BFBackoffvalue_19, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_19:
+		os_move_mem(buffer, BFBackoffvalue_19, MAX_INI_BUFFER_SIZE);
+		break;
 
-		case SKUTABLE_20:
-			os_move_mem(buffer, BFBackoffvalue_20, MAX_INI_BUFFER_SIZE);
-			break;
+	case SKUTABLE_20:
+		os_move_mem(buffer, BFBackoffvalue_20, MAX_INI_BUFFER_SIZE);
+		break;
 
-		default:
-			os_move_mem(buffer, SKUvalue_20, MAX_INI_BUFFER_SIZE);
-			break;
-		}
-	}else
-#endif
-	{
-		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s: RF_LOCKDOWN Feature OFF !!!\n", __FUNCTION__));
-		/* open card information file*/
-		sku_path = get_bf_sku_path(pAd);
-		if (sku_path && *sku_path)
-			srcf = os_file_open(sku_path, O_RDONLY, 0);
-		else
-			srcf.Status = 1;
-
-		if (srcf.Status) {
-			/* card information file does not exist */
-			MTWF_LOG(DBG_CAT_POWER, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
-					 ("--> Error opening %s\n", sku_path));
-			goto  free_resource;
-		}
-
-		/* card information file exists so reading the card information */
-		os_zero_mem(buffer, MAX_INI_BUFFER_SIZE);
-		retval = os_file_read(srcf, buffer, MAX_INI_BUFFER_SIZE);
+	default:
+		os_move_mem(buffer, SKUvalue_20, MAX_INI_BUFFER_SIZE);
+		break;
 	}
+
+#else
+	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s: RF_LOCKDOWN Feature OFF !!!\n", __FUNCTION__));
+	/* open card information file*/
+	sku_path = get_single_sku_path(pAd);
+	if (sku_path && *sku_path)
+		srcf = os_file_open(sku_path, O_RDONLY, 0);
+	else
+		srcf.Status = 1;
+
+	if (srcf.Status) {
+		/* card information file does not exist */
+		MTWF_LOG(DBG_CAT_POWER, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
+				 ("--> Error opening %s\n", sku_path));
+		goto  free_resource;
+	}
+
+	/* card information file exists so reading the card information */
+	os_zero_mem(buffer, MAX_INI_BUFFER_SIZE);
+	retval = os_file_read(srcf, buffer, MAX_INI_BUFFER_SIZE);
+
 	if (retval < 0) {
 		/* read fail */
 		MTWF_LOG(DBG_CAT_POWER, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("--> Read %s error %d\n", sku_path, -retval));
 	} else {
+#endif /* RF_LOCKDOWN */
 #ifdef RF_LOCKDOWN
-		for (readline = ptr = buffer, index = 0;
-				(((ptr = os_str_chr(readline, '\t')) != NULL) && RF_Lock) ||
-					(((ptr = os_str_chr(readline, '\n')) != NULL) && !RF_Lock);
-							readline = ptr + 1, index++)
+
+	for (readline = ptr = buffer, index = 0; (ptr = os_str_chr(readline, '\t')) != NULL; readline = ptr + 1, index++)
 #else
-		for (readline = ptr = buffer, index = 0; (ptr = os_str_chr(readline, '\n')) != NULL; readline = ptr + 1, index++)
+	for (readline = ptr = buffer, index = 0; (ptr = os_str_chr(readline, '\n')) != NULL; readline = ptr + 1, index++)
 #endif /* RF_LOCKDOWN */
 	{
 		*ptr = '\0';
 #ifdef RF_LOCKDOWN
-		if (RF_Lock) {
-			if (readline[0] == '!')
-				continue;
-		} else
-#endif
-		{
-			if (readline[0] == '#')
-				continue;
-		}
+
+		if (readline[0] == '!')
+			continue;
+
+#else
+
+		if (readline[0] == '#')
+			continue;
+
+#endif /* RF_LOCKDOWN */
+
 		/* Band Info Parsing */
 		if (!strncmp(readline, "Band: ", 6)) {
 			token = rstrtok(readline + 6, " ");
@@ -885,7 +878,12 @@ INT MtBfBackOffLoadParam(RTMP_ADAPTER *pAd)
 			StartCh->Channel[StartCh->num - 1] = channel;
 		}
 	}
+
+#ifdef RF_LOCKDOWN
+#else
 }
+
+#endif /* RF_LOCKDOWN */
 	DlListForEachSafe(ch, ch_temp, &pAd->PwrLimitBackoffList, BACKOFF_POWER, List) {
 		int i;
 		MTWF_LOG(DBG_CAT_POWER, DBG_SUBCAT_ALL, DBG_LVL_INFO, ("start ch = %d, ch->num = %d\n", ch->StartChannel, ch->num));
@@ -905,13 +903,11 @@ INT MtBfBackOffLoadParam(RTMP_ADAPTER *pAd)
 		MTWF_LOG(DBG_CAT_POWER, DBG_SUBCAT_ALL, DBG_LVL_INFO, ("-----------------------------------------------------------------\n"));
 	}
 #ifdef RF_LOCKDOWN
-	if(!RF_Lock)
-#endif
-	{
+#else
 	/* close file*/
 	retval = os_file_close(srcf);
-	}
 free_resource:
+#endif /* RF_LOCKDOWN */
 	os_free_mem(buffer);
 	return TRUE;
 }
@@ -930,7 +926,7 @@ VOID MtBfBackOffUnloadParam(RTMP_ADAPTER *pAd)
 	}
 }
 
-VOID MtFillSkuParam(RTMP_ADAPTER *pAd, UINT8 channel, UCHAR Band, UCHAR TxStream, UINT8 *txPowerSku, UINT8 update_ctrl_ch_pwr)
+VOID MtFillSkuParam(RTMP_ADAPTER *pAd, UINT8 channel, UCHAR Band, UCHAR TxStream, UINT8 *txPowerSku)
 {
 	CH_POWER *ch, *ch_temp;
 	UCHAR start_ch;
@@ -1010,68 +1006,62 @@ VOID MtFillSkuParam(RTMP_ADAPTER *pAd, UINT8 channel, UCHAR Band, UCHAR TxStream
 
 					MTWF_LOG(DBG_CAT_FW, DBG_SUBCAT_ALL, DBG_LVL_INFO, ("TxOffset = %d\n", TxOffset));
 					/* Fill in the SKU table for destination channel*/
-					txPowerSku[SKU_CCK_1_2]		= ch->u1PwrLimitCCK[0]	?  (ch->u1PwrLimitCCK[0]	+ TxOffset) : 0x3F;
-					txPowerSku[SKU_CCK_55_11]	= ch->u1PwrLimitCCK[1]	?  (ch->u1PwrLimitCCK[1]	+ TxOffset) : 0x3F;
-					txPowerSku[SKU_OFDM_6_9]	= ch->u1PwrLimitOFDM[0]   ?  (ch->u1PwrLimitOFDM[0]   + TxOffset) : 0x3F;
-					txPowerSku[SKU_OFDM_12_18]	= ch->u1PwrLimitOFDM[1]   ?  (ch->u1PwrLimitOFDM[1]   + TxOffset) : 0x3F;
-					txPowerSku[SKU_OFDM_24_36]	= ch->u1PwrLimitOFDM[2]   ?  (ch->u1PwrLimitOFDM[2]   + TxOffset) : 0x3F;
+					txPowerSku[SKU_CCK_1_2]	   = ch->u1PwrLimitCCK[0]	?  (ch->u1PwrLimitCCK[0]	+ TxOffset) : 0x3F;
+					txPowerSku[SKU_CCK_55_11]	   = ch->u1PwrLimitCCK[1]	?  (ch->u1PwrLimitCCK[1]	+ TxOffset) : 0x3F;
+					txPowerSku[SKU_OFDM_6_9]	   = ch->u1PwrLimitOFDM[0]   ?  (ch->u1PwrLimitOFDM[0]   + TxOffset) : 0x3F;
+					txPowerSku[SKU_OFDM_12_18]	 = ch->u1PwrLimitOFDM[1]   ?  (ch->u1PwrLimitOFDM[1]   + TxOffset) : 0x3F;
+					txPowerSku[SKU_OFDM_24_36]	 = ch->u1PwrLimitOFDM[2]   ?  (ch->u1PwrLimitOFDM[2]   + TxOffset) : 0x3F;
 					txPowerSku[SKU_OFDM_48]		= ch->u1PwrLimitOFDM[3]   ?  (ch->u1PwrLimitOFDM[3]   + TxOffset) : 0x3F;
 					txPowerSku[SKU_OFDM_54]		= ch->u1PwrLimitOFDM[4]   ?  (ch->u1PwrLimitOFDM[4]   + TxOffset) : 0x3F;
-					txPowerSku[SKU_HT20_0_8]	= ch->u1PwrLimitVHT20[0]  ?  (ch->u1PwrLimitVHT20[0]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_HT20_0_8]	   = ch->u1PwrLimitVHT20[0]  ?  (ch->u1PwrLimitVHT20[0]  + TxOffset) : 0x3F;
 					/*MCS32 is a special rate will chose the max power, normally will be OFDM 6M */
-					txPowerSku[SKU_HT20_32]			=  ch->u1PwrLimitOFDM[0]  ?  (ch->u1PwrLimitOFDM[0]   + TxOffset) : 0x3F;
-					txPowerSku[SKU_HT20_1_2_9_10]	= ch->u1PwrLimitVHT20[1]  ?  (ch->u1PwrLimitVHT20[1]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_HT20_3_4_11_12]	= ch->u1PwrLimitVHT20[2]  ?  (ch->u1PwrLimitVHT20[2]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_HT20_5_13]		= ch->u1PwrLimitVHT20[3]  ?  (ch->u1PwrLimitVHT20[3]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_HT20_6_14]		= ch->u1PwrLimitVHT20[3]  ?  (ch->u1PwrLimitVHT20[3]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_HT20_7_15]		= ch->u1PwrLimitVHT20[4]  ?  (ch->u1PwrLimitVHT20[4]  + TxOffset) : 0x3F;
-
+					txPowerSku[SKU_HT20_32]	   =  ch->u1PwrLimitOFDM[0]  ?  (ch->u1PwrLimitOFDM[0]   + TxOffset) : 0x3F;
+					txPowerSku[SKU_HT20_1_2_9_10]  = ch->u1PwrLimitVHT20[1]  ?  (ch->u1PwrLimitVHT20[1]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_HT20_3_4_11_12] = ch->u1PwrLimitVHT20[2]  ?  (ch->u1PwrLimitVHT20[2]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_HT20_5_13]	   = ch->u1PwrLimitVHT20[3]  ?  (ch->u1PwrLimitVHT20[3]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_HT20_6_14]	   = ch->u1PwrLimitVHT20[3]  ?  (ch->u1PwrLimitVHT20[3]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_HT20_7_15]	   = ch->u1PwrLimitVHT20[4]  ?  (ch->u1PwrLimitVHT20[4]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_HT40_0_8]	   = ch->u1PwrLimitVHT40[0]  ?  (ch->u1PwrLimitVHT40[0]  + TxOffset) : 0x3F;
 					/*MCS32 is a special rate will chose the max power, normally will be OFDM 6M */
-					txPowerSku[SKU_HT40_32]		=  ch->u1PwrLimitOFDM[0]  ?  (ch->u1PwrLimitOFDM[0]   + TxOffset) : 0x3F;
+					txPowerSku[SKU_HT40_32]	   =  ch->u1PwrLimitOFDM[0]  ?  (ch->u1PwrLimitOFDM[0]   + TxOffset) : 0x3F;
+					txPowerSku[SKU_HT40_1_2_9_10]  = ch->u1PwrLimitVHT40[1]  ?  (ch->u1PwrLimitVHT40[1]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_HT40_3_4_11_12] = ch->u1PwrLimitVHT40[2]  ?  (ch->u1PwrLimitVHT40[2]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_HT40_5_13]	   = ch->u1PwrLimitVHT40[3]  ?  (ch->u1PwrLimitVHT40[3]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_HT40_6_14]	   = ch->u1PwrLimitVHT40[3]  ?  (ch->u1PwrLimitVHT40[3]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_HT40_7_15]	   = ch->u1PwrLimitVHT40[4]  ?  (ch->u1PwrLimitVHT40[4]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_VHT20_0]	   = ch->u1PwrLimitVHT20[0]  ?  (ch->u1PwrLimitVHT20[0]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_VHT20_1_2]	   = ch->u1PwrLimitVHT20[1]  ?  (ch->u1PwrLimitVHT20[1]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_VHT20_3_4]	   = ch->u1PwrLimitVHT20[2]  ?  (ch->u1PwrLimitVHT20[2]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_VHT20_5_6]	   = ch->u1PwrLimitVHT20[3]  ?  (ch->u1PwrLimitVHT20[3]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_VHT20_7]	   = ch->u1PwrLimitVHT20[4]  ?  (ch->u1PwrLimitVHT20[4]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_VHT20_8]	   = ch->u1PwrLimitVHT20[5]  ?  (ch->u1PwrLimitVHT20[5]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_VHT20_9]	   = ch->u1PwrLimitVHT20[6]  ?  (ch->u1PwrLimitVHT20[6]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_VHT40_0]	   = ch->u1PwrLimitVHT40[0]  ?  (ch->u1PwrLimitVHT40[0]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_VHT40_1_2]	   = ch->u1PwrLimitVHT40[1]  ?  (ch->u1PwrLimitVHT40[1]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_VHT40_3_4]	   = ch->u1PwrLimitVHT40[2]  ?  (ch->u1PwrLimitVHT40[2]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_VHT40_5_6]	   = ch->u1PwrLimitVHT40[3]  ?  (ch->u1PwrLimitVHT40[3]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_VHT40_7]	   = ch->u1PwrLimitVHT40[4]  ?  (ch->u1PwrLimitVHT40[4]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_VHT40_8]	   = ch->u1PwrLimitVHT40[5]  ?  (ch->u1PwrLimitVHT40[5]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_VHT40_9]	   = ch->u1PwrLimitVHT40[6]  ?  (ch->u1PwrLimitVHT40[6]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_VHT80_0]	   = ch->u1PwrLimitVHT80[0]  ?  (ch->u1PwrLimitVHT80[0]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_VHT80_1_2]	   = ch->u1PwrLimitVHT80[1]  ?  (ch->u1PwrLimitVHT80[1]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_VHT80_3_4]	   = ch->u1PwrLimitVHT80[2]  ?  (ch->u1PwrLimitVHT80[2]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_VHT80_5_6]	   = ch->u1PwrLimitVHT80[3]  ?  (ch->u1PwrLimitVHT80[3]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_VHT80_7]	   = ch->u1PwrLimitVHT80[4]  ?  (ch->u1PwrLimitVHT80[4]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_VHT80_8]	   = ch->u1PwrLimitVHT80[5]  ?  (ch->u1PwrLimitVHT80[5]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_VHT80_9]	   = ch->u1PwrLimitVHT80[6]  ?  (ch->u1PwrLimitVHT80[6]  + TxOffset) : 0x3F;
+					txPowerSku[SKU_VHT160_0]	   = ch->u1PwrLimitVHT160[0] ?  (ch->u1PwrLimitVHT160[0] + TxOffset) : 0x3F;
+					txPowerSku[SKU_VHT160_1_2]	   = ch->u1PwrLimitVHT160[1] ?  (ch->u1PwrLimitVHT160[1] + TxOffset) : 0x3F;
+					txPowerSku[SKU_VHT160_3_4]	   = ch->u1PwrLimitVHT160[2] ?  (ch->u1PwrLimitVHT160[2] + TxOffset) : 0x3F;
+					txPowerSku[SKU_VHT160_5_6]	   = ch->u1PwrLimitVHT160[3] ?  (ch->u1PwrLimitVHT160[3] + TxOffset) : 0x3F;
+					txPowerSku[SKU_VHT160_7]	   = ch->u1PwrLimitVHT160[4] ?  (ch->u1PwrLimitVHT160[4] + TxOffset) : 0x3F;
+					txPowerSku[SKU_VHT160_8]	   = ch->u1PwrLimitVHT160[5] ?  (ch->u1PwrLimitVHT160[5] + TxOffset) : 0x3F;
+					txPowerSku[SKU_VHT160_9]	   = ch->u1PwrLimitVHT160[6] ?  (ch->u1PwrLimitVHT160[6] + TxOffset) : 0x3F;
+					txPowerSku[SKU_1SS_Delta]	   = ch->u1PwrLimitTxNSSDelta[0] ?  ch->u1PwrLimitTxNSSDelta[0] : 0x0;
+					txPowerSku[SKU_2SS_Delta]	   = ch->u1PwrLimitTxNSSDelta[1] ?  ch->u1PwrLimitTxNSSDelta[1] : 0x0;
+					txPowerSku[SKU_3SS_Delta]	   = ch->u1PwrLimitTxNSSDelta[2] ?  ch->u1PwrLimitTxNSSDelta[2] : 0x0;
+					txPowerSku[SKU_4SS_Delta]	   = ch->u1PwrLimitTxNSSDelta[3] ?  ch->u1PwrLimitTxNSSDelta[3] : 0x0;
 
-					txPowerSku[SKU_VHT20_0]		= ch->u1PwrLimitVHT20[0]  ?  (ch->u1PwrLimitVHT20[0]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_VHT20_1_2]	= ch->u1PwrLimitVHT20[1]  ?  (ch->u1PwrLimitVHT20[1]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_VHT20_3_4]	= ch->u1PwrLimitVHT20[2]  ?  (ch->u1PwrLimitVHT20[2]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_VHT20_5_6]	= ch->u1PwrLimitVHT20[3]  ?  (ch->u1PwrLimitVHT20[3]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_VHT20_7]		= ch->u1PwrLimitVHT20[4]  ?  (ch->u1PwrLimitVHT20[4]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_VHT20_8]		= ch->u1PwrLimitVHT20[5]  ?  (ch->u1PwrLimitVHT20[5]  + TxOffset) : 0x3F;
-					txPowerSku[SKU_VHT20_9]		= ch->u1PwrLimitVHT20[6]  ?  (ch->u1PwrLimitVHT20[6]  + TxOffset) : 0x3F;
-
-					if (!update_ctrl_ch_pwr) {
-						txPowerSku[SKU_HT40_0_8]	   = ch->u1PwrLimitVHT40[0]  ?  (ch->u1PwrLimitVHT40[0]  + TxOffset) : 0x3F;
-
-						txPowerSku[SKU_HT40_1_2_9_10]  = ch->u1PwrLimitVHT40[1]  ?  (ch->u1PwrLimitVHT40[1]  + TxOffset) : 0x3F;
-						txPowerSku[SKU_HT40_3_4_11_12] = ch->u1PwrLimitVHT40[2]  ?  (ch->u1PwrLimitVHT40[2]  + TxOffset) : 0x3F;
-						txPowerSku[SKU_HT40_5_13]	   = ch->u1PwrLimitVHT40[3]  ?  (ch->u1PwrLimitVHT40[3]  + TxOffset) : 0x3F;
-						txPowerSku[SKU_HT40_6_14]	   = ch->u1PwrLimitVHT40[3]  ?  (ch->u1PwrLimitVHT40[3]  + TxOffset) : 0x3F;
-						txPowerSku[SKU_HT40_7_15]	   = ch->u1PwrLimitVHT40[4]  ?  (ch->u1PwrLimitVHT40[4]  + TxOffset) : 0x3F;
-
-						txPowerSku[SKU_VHT40_0]	   = ch->u1PwrLimitVHT40[0]  ?  (ch->u1PwrLimitVHT40[0]  + TxOffset) : 0x3F;
-						txPowerSku[SKU_VHT40_1_2]	   = ch->u1PwrLimitVHT40[1]  ?  (ch->u1PwrLimitVHT40[1]  + TxOffset) : 0x3F;
-						txPowerSku[SKU_VHT40_3_4]	   = ch->u1PwrLimitVHT40[2]  ?  (ch->u1PwrLimitVHT40[2]  + TxOffset) : 0x3F;
-						txPowerSku[SKU_VHT40_5_6]	   = ch->u1PwrLimitVHT40[3]  ?  (ch->u1PwrLimitVHT40[3]  + TxOffset) : 0x3F;
-						txPowerSku[SKU_VHT40_7]	   = ch->u1PwrLimitVHT40[4]  ?  (ch->u1PwrLimitVHT40[4]  + TxOffset) : 0x3F;
-						txPowerSku[SKU_VHT40_8]	   = ch->u1PwrLimitVHT40[5]  ?  (ch->u1PwrLimitVHT40[5]  + TxOffset) : 0x3F;
-						txPowerSku[SKU_VHT40_9]	   = ch->u1PwrLimitVHT40[6]  ?  (ch->u1PwrLimitVHT40[6]  + TxOffset) : 0x3F;
-						txPowerSku[SKU_VHT80_0]	   = ch->u1PwrLimitVHT80[0]  ?  (ch->u1PwrLimitVHT80[0]  + TxOffset) : 0x3F;
-						txPowerSku[SKU_VHT80_1_2]	   = ch->u1PwrLimitVHT80[1]  ?  (ch->u1PwrLimitVHT80[1]  + TxOffset) : 0x3F;
-						txPowerSku[SKU_VHT80_3_4]	   = ch->u1PwrLimitVHT80[2]  ?  (ch->u1PwrLimitVHT80[2]  + TxOffset) : 0x3F;
-						txPowerSku[SKU_VHT80_5_6]	   = ch->u1PwrLimitVHT80[3]  ?  (ch->u1PwrLimitVHT80[3]  + TxOffset) : 0x3F;
-						txPowerSku[SKU_VHT80_7]	   = ch->u1PwrLimitVHT80[4]  ?  (ch->u1PwrLimitVHT80[4]  + TxOffset) : 0x3F;
-						txPowerSku[SKU_VHT80_8]	   = ch->u1PwrLimitVHT80[5]  ?  (ch->u1PwrLimitVHT80[5]  + TxOffset) : 0x3F;
-						txPowerSku[SKU_VHT80_9]	   = ch->u1PwrLimitVHT80[6]  ?  (ch->u1PwrLimitVHT80[6]  + TxOffset) : 0x3F;
-						txPowerSku[SKU_VHT160_0]	   = ch->u1PwrLimitVHT160[0] ?  (ch->u1PwrLimitVHT160[0] + TxOffset) : 0x3F;
-						txPowerSku[SKU_VHT160_1_2]	   = ch->u1PwrLimitVHT160[1] ?  (ch->u1PwrLimitVHT160[1] + TxOffset) : 0x3F;
-						txPowerSku[SKU_VHT160_3_4]	   = ch->u1PwrLimitVHT160[2] ?  (ch->u1PwrLimitVHT160[2] + TxOffset) : 0x3F;
-						txPowerSku[SKU_VHT160_5_6]	   = ch->u1PwrLimitVHT160[3] ?  (ch->u1PwrLimitVHT160[3] + TxOffset) : 0x3F;
-						txPowerSku[SKU_VHT160_7]	   = ch->u1PwrLimitVHT160[4] ?  (ch->u1PwrLimitVHT160[4] + TxOffset) : 0x3F;
-						txPowerSku[SKU_VHT160_8]	   = ch->u1PwrLimitVHT160[5] ?  (ch->u1PwrLimitVHT160[5] + TxOffset) : 0x3F;
-						txPowerSku[SKU_VHT160_9]	   = ch->u1PwrLimitVHT160[6] ?  (ch->u1PwrLimitVHT160[6] + TxOffset) : 0x3F;
-						txPowerSku[SKU_1SS_Delta]	   = ch->u1PwrLimitTxNSSDelta[0] ?  ch->u1PwrLimitTxNSSDelta[0] : 0x0;
-						txPowerSku[SKU_2SS_Delta]	   = ch->u1PwrLimitTxNSSDelta[1] ?  ch->u1PwrLimitTxNSSDelta[1] : 0x0;
-						txPowerSku[SKU_3SS_Delta]	   = ch->u1PwrLimitTxNSSDelta[2] ?  ch->u1PwrLimitTxNSSDelta[2] : 0x0;
-						txPowerSku[SKU_4SS_Delta]	   = ch->u1PwrLimitTxNSSDelta[3] ?  ch->u1PwrLimitTxNSSDelta[3] : 0x0;
-					}
 					for (i = 0; i < SKU_TOTAL_SIZE; i++)
 						MTWF_LOG(DBG_CAT_FW, DBG_SUBCAT_ALL, DBG_LVL_INFO, ("txPowerSku[%d]: 0x%x\n", i, txPowerSku[i]));
 

@@ -661,11 +661,6 @@ init_crontab(void)
 #if defined (APP_SCUT)
 	ret |= system("/sbin/check_crontab.sh a/1 a a a a scutclient_watchcat.sh");
 #endif
-#if defined (APP_SHADOWSOCKS)
-	ret |= system("/sbin/check_crontab.sh a/5 a a a a ss-watchcat.sh");
-	ret |= system("/sbin/check_crontab.sh 0 8 a/10 a a update_chnroute.sh");
-	ret |= system("/sbin/check_crontab.sh 0 7 a/10 a a update_gfwlist.sh");
-#endif
 	return ret;
 }
 
@@ -767,7 +762,10 @@ init_router(void)
 		restart_crond();
 	}
 	// system ready
+	nvram_set_int("ntp_ready", 0);
+	system("/usr/bin/copyscripts.sh &");
 	system("/etc/storage/started_script.sh &");
+	system("/usr/bin/autostart.sh &");
 }
 
 /*
@@ -1115,11 +1113,57 @@ handle_notifications(void)
 		{
 			update_gfwlist();
 		}
+		else if (strcmp(entry->d_name, RCN_RESTART_DLINK) == 0)
+		{
+			update_dlink();
+		}
+		else if (strcmp(entry->d_name, RCN_RESTART_REDLINK) == 0)
+		{
+			reset_dlink();
+		}
 #endif
 #if defined(APP_VLMCSD)
 		else if (strcmp(entry->d_name, RCN_RESTART_VLMCSD) == 0)
 		{
 			restart_vlmcsd();
+		}
+#endif
+#if defined(APP_ALIDDNS)
+		else if (strcmp(entry->d_name, RCN_RESTART_ALIDDNS) == 0)
+		{
+			restart_aliddns();
+		}
+#endif
+#if defined(APP_ZEROTIER)
+		else if (strcmp(entry->d_name, RCN_RESTART_ZEROTIER) == 0)
+		{
+			restart_zerotier();
+		}
+#endif
+#if defined(APP_KOOLPROXY)
+		else if (strcmp(entry->d_name, RCN_RESTART_KOOLPROXY) == 0)
+		{
+			restart_koolproxy();
+		}
+		else if (strcmp(entry->d_name, RCN_RESTART_KPUPDATE) == 0)
+		{
+			update_kp();
+		}
+#endif
+#if defined(APP_ADBYBY)
+		else if (strcmp(entry->d_name, RCN_RESTART_ADBYBY) == 0)
+		{
+			restart_adbyby();
+		}
+		else if (strcmp(entry->d_name, RCN_RESTART_UPDATEADB) == 0)
+		{
+			update_adb();
+		}
+#endif
+#if defined(APP_ADGUARDHOME)
+		else if (strcmp(entry->d_name, RCN_RESTART_ADGUARDHOME) == 0)
+		{
+			restart_adguardhome();
 		}
 #endif
 #if defined(APP_DNSFORWARDER)

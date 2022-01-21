@@ -562,9 +562,7 @@ Note:
 */
 static rack_cnx *add_cnx(RTMP_ADAPTER *pAd, rack_packet *incoming_pkt)
 {
-	rack_cnx *cnx;
-
-	os_alloc_mem_suspend(NULL, (UCHAR **)&cnx, sizeof(rack_cnx));
+	rack_cnx *cnx = kmalloc(sizeof(rack_cnx), GFP_KERNEL);
 	UINT32 hashIndex = hash_cnx(incoming_pkt);
 
 	if (cnx == NULL)
@@ -627,7 +625,7 @@ static VOID delete_cnx(RTMP_ADAPTER *pAd, rack_cnx *cnx)
 		}
 
 #endif
-		os_free_mem(cnx);
+		kfree(cnx);
 	}
 
 	if (pAd->ReduceAckConnections > 0)

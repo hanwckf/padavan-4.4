@@ -425,26 +425,6 @@ stop_wifi_all_rt(void)
 	LED_CONTROL(LED_SW2G, LED_OFF);
 }
 
-void
-set_wifi_rssi_threshold(const char* ifname, int is_aband)
-{
-	int kickrssi = 0;
-	int assocrssi = 0;
-
-	if (is_aband) {
-		kickrssi = nvram_get_int("wl_KickStaRssiLow");
-		assocrssi = nvram_get_int("wl_AssocReqRssiThres");
-	} else {
-		kickrssi = nvram_get_int("rt_KickStaRssiLow");
-		assocrssi = nvram_get_int("rt_AssocReqRssiThres");
-	}
-
-	if (kickrssi <= 0 && kickrssi >= -100)
-		doSystem("iwpriv %s set %s=%d", ifname, "KickStaRssiLow", kickrssi);
-	if (assocrssi <= 0 && assocrssi >= -100)
-		doSystem("iwpriv %s set %s=%d", ifname, "AssocReqRssiThres", assocrssi);
-}
-
 void 
 start_wifi_ap_wl(int radio_on)
 {
@@ -466,14 +446,12 @@ start_wifi_ap_wl(int radio_on)
 		wif_control(IFNAME_5G_MAIN, 1);
 		br_add_del_if(IFNAME_BR, IFNAME_5G_MAIN, 1);
 		wif_control_m2u(1, IFNAME_5G_MAIN);
-		set_wifi_rssi_threshold(IFNAME_5G_MAIN, 1);
 		
 		if (is_guest_allowed_wl())
 		{
 			wif_control(IFNAME_5G_GUEST, 1);
 			br_add_del_if(IFNAME_BR, IFNAME_5G_GUEST, 1);
 			wif_control_m2u(1, IFNAME_5G_GUEST);
-			set_wifi_rssi_threshold(IFNAME_5G_GUEST, 1);
 		}
 	}
 #endif
@@ -523,14 +501,12 @@ start_wifi_ap_rt(int radio_on)
 		wif_control(IFNAME_2G_MAIN, 1);
 		br_add_del_if(IFNAME_BR, IFNAME_2G_MAIN, 1);
 		wif_control_m2u(0, IFNAME_2G_MAIN);
-		set_wifi_rssi_threshold(IFNAME_2G_MAIN, 0);
 		
 		if (is_guest_allowed_rt())
 		{
 			wif_control(IFNAME_2G_GUEST, 1);
 			br_add_del_if(IFNAME_BR, IFNAME_2G_GUEST, 1);
 			wif_control_m2u(0, IFNAME_2G_GUEST);
-			set_wifi_rssi_threshold(IFNAME_2G_GUEST, 0);
 		}
 	}
 #endif
@@ -780,7 +756,7 @@ restart_wifi_wl(int radio_on, int need_reload_conf)
 		update_vga_clamp_wl(0);
 		LED_CONTROL(LED_SW5G, LED_ON);
 	}
-		
+	system("/usr/bin/iappd.sh restart");
 #endif
 }
 
@@ -826,6 +802,7 @@ restart_wifi_rt(int radio_on, int need_reload_conf)
 		update_vga_clamp_rt(0);
 		LED_CONTROL(LED_SW2G, LED_ON);
 	}
+	system("/usr/bin/iappd.sh restart");
 }
 
 int is_need_8021x(char *auth_mode)
@@ -848,6 +825,16 @@ start_8021x_wl(void)
 	if (is_need_8021x(nvram_wlan_get(1, "auth_mode")))
 		eval("rt2860apd", "-i", IFNAME_5G_MAIN);
 #endif
+
+	const char *wifname = find_wlan_if_up(1);
+
+	if (!wifname)
+		return;
+
+	int wl_KickStaRssiLow = nvram_get_int("wl_KickStaRssiLow");
+	int wl_AssocReqRssiThres = nvram_get_int("wl_AssocReqRssiThres");
+	doSystem("iwpriv %s set %s=%d", wifname, "KickStaRssiLow", wl_KickStaRssiLow);
+	doSystem("iwpriv %s set %s=%d", wifname, "AssocReqRssiThres", wl_AssocReqRssiThres);
 }
 
 void
@@ -859,6 +846,16 @@ start_8021x_rt(void)
 #endif
 	if (is_need_8021x(nvram_wlan_get(0, "auth_mode")))
 		eval("rtinicapd", "-i", IFNAME_2G_MAIN);
+
+	const char *wifname = find_wlan_if_up(0);
+
+	if (!wifname)
+		return;
+
+	int rt_KickStaRssiLow = nvram_get_int("rt_KickStaRssiLow");
+	int rt_AssocReqRssiThres = nvram_get_int("rt_AssocReqRssiThres");
+	doSystem("iwpriv %s set %s=%d", wifname, "KickStaRssiLow", rt_KickStaRssiLow);
+	doSystem("iwpriv %s set %s=%d", wifname, "AssocReqRssiThres", rt_AssocReqRssiThres);
 }
 
 void

@@ -170,6 +170,7 @@ struct myoption {
 #define LOPT_FILTER_AAAA   357
 #define LOPT_GFWLIST       358
 #define LOPT_DHCP_TO_HOST  359
+#define LOPT_FILTER_AAAA   360
 
 #ifdef HAVE_GETOPT_LONG
 static const struct option opts[] =  
@@ -345,6 +346,7 @@ static const struct myoption opts[] =
     { "filter-aaaa", 0, 0, LOPT_FILTER_AAAA },
     { "gfwlist", 1, 0, LOPT_GFWLIST },
     { "dhcp-to-host", 0, 0, LOPT_DHCP_TO_HOST },
+    { "filter-aaaa", 0, 0, LOPT_FILTER_AAAA },
     { NULL, 0, 0, 0 }
   };
 
@@ -527,6 +529,7 @@ static struct {
   { LOPT_FILTER_AAAA, OPT_FILTER_AAAA, NULL, gettext_noop("Filter all AAAA requests."), NULL },
   { LOPT_GFWLIST, ARG_DUP, "<path|domain>[@server][^ipset]", gettext_noop("Gfwlist path or domain to special server (default 8.8.8.8~53) and ipset (default gfwlist, pass ^ only to skip default ipset)"), NULL },
   { LOPT_DHCP_TO_HOST, OPT_DHCP_TO_HOST, NULL, gettext_noop("Keep DHCP hostname valid at all times."), NULL },
+  { LOPT_FILTER_AAAA, OPT_FILTER_AAAA, NULL, gettext_noop("Filter all AAAA requests."), NULL },
   { 0, 0, NULL, NULL, NULL }
 }; 
 

@@ -11,10 +11,6 @@
 
 #include "security/owe_cmm.h"
 
-#ifdef DOT11_SAE_SUPPORT
-#include "security/sae_cmm.h"
-#endif /* DOT11_SAE_SUPPORT */
-
 /* Key Related definitions */
 #define SEC_SHARE_KEY_NUM 4
 #define SEC_KEY_NUM SEC_SHARE_KEY_NUM
@@ -52,10 +48,7 @@ typedef enum _SEC_AKM_MODE {
 	SEC_AKM_WAICERT, /* WAI certificate authentication */
 	SEC_AKM_WAIPSK, /* WAI pre-shared key */
 	SEC_AKM_OWE,
-	SEC_AKM_FILS_SHA256,
-	SEC_AKM_FILS_SHA384,
 	SEC_AKM_WPA3, /* WPA3(ent) = WPA2(ent) + PMF MFPR=1 => WPA3 code flow is same as WPA2, the usage of SEC_AKM_WPA3 is to force pmf on */
-	SEC_AKM_DPP,
 	SEC_AKM_MAX /* Not a real mode, defined as upper bound */
 } SEC_AKM_MODE, *PSEC_AKM_MODE;
 
@@ -99,12 +92,7 @@ enum RSN_FIELD {
 #define SET_AKM_SUITEB_SHA384(_AKMMap)         (_AKMMap |= (1 << SEC_AKM_SUITEB_SHA384))
 #define SET_AKM_FT_WPA2_SHA384(_AKMMap)     (_AKMMap |= (1 << SEC_AKM_FT_WPA2_SHA384))
 #define SET_AKM_OWE(_AKMMap)     (_AKMMap |= (1 << SEC_AKM_OWE))
-#ifdef OCE_FILS_SUPPORT
-#define SET_AKM_FILS_SHA256(_AKMMap)			(_AKMMap |= (1 << SEC_AKM_FILS_SHA256))
-#define SET_AKM_FILS_SHA384(_AKMMap)			(_AKMMap |= (1 << SEC_AKM_FILS_SHA384))
-#endif /* OCE_FILS_SUPPORT */
 #define SET_AKM_WPA3(_AKMMap)     (_AKMMap |= (1 << SEC_AKM_WPA3))
-#define SET_AKM_DPP(_AKMMap)     (_AKMMap |= (1 << SEC_AKM_DPP))
 
 
 #define IS_AKM_OPEN(_AKMMap)                           ((_AKMMap & (1 << SEC_AKM_OPEN)) > 0)
@@ -128,8 +116,6 @@ enum RSN_FIELD {
 #define IS_AKM_OWE(_AKMMap)      ((_AKMMap & (1 << SEC_AKM_OWE)) > 0)
 #define IS_AKM_WPA3(_AKMMap)	 ((_AKMMap & (1 << SEC_AKM_WPA3)) > 0)
 
-#define IS_AKM_DPP(_AKMMap)      ((_AKMMap & (1 << SEC_AKM_DPP)) > 0)
-
 
 
 #if defined(DOT11_SUITEB_SUPPORT) || defined(HOSTAPD_SUITEB_SUPPORT)
@@ -139,17 +125,6 @@ enum RSN_FIELD {
 #define IS_AKM_WPA3_192BIT(_AKMMap)	(FALSE)
 #define SET_AKM_WPA3_192BIT(_AKMMap)
 #endif
-
-#ifdef OCE_FILS_SUPPORT
-#define IS_AKM_FILS_SHA256(_AKMMap)                ((_AKMMap & (1 << SEC_AKM_FILS_SHA256)) > 0)
-#define IS_AKM_FILS_SHA384(_AKMMap)                ((_AKMMap & (1 << SEC_AKM_FILS_SHA384)) > 0)
-#define IS_AKM_FILS(_AKMMap)     (IS_AKM_FILS_SHA256(_AKMMap)  \
-								|| IS_AKM_FILS_SHA384(_AKMMap))
-
-#define IS_AKM_FILS_Entry(_Entry)     (IS_AKM_FILS_SHA256((_Entry)->SecConfig.AKMMap)  \
-									 || IS_AKM_FILS_SHA384((_Entry)->SecConfig.AKMMap))
-
-#endif /* OCE_FILS_SUPPORT */
 
 #if defined(DOT11_SAE_SUPPORT) || defined(HOSTAPD_SAE_SUPPORT)
 #define IS_AKM_WPA3PSK(_AKMMap) (IS_AKM_SAE_SHA256(_AKMMap))
@@ -173,7 +148,6 @@ enum RSN_FIELD {
 #define IS_AKM_PSK(_AKMMap)     (IS_AKM_WPA1PSK(_AKMMap)  \
 				|| IS_AKM_WPA2PSK(_AKMMap)\
 				|| IS_AKM_WPA3PSK(_AKMMap)\
-				|| IS_AKM_DPP(_AKMMap)\
 				|| IS_AKM_OWE(_AKMMap))
 
 #define IS_AKM_1X(_AKMMap)     (IS_AKM_WPA1(_AKMMap)  \
@@ -190,7 +164,6 @@ enum RSN_FIELD {
 		|| IS_AKM_WPA2PSK_SHA256(_AKMMap)\
 		|| IS_AKM_WPA3_192BIT(_AKMMap)\
 		|| IS_AKM_WPA3PSK(_AKMMap)\
-		|| IS_AKM_DPP(_AKMMap)\
 		|| IS_AKM_OWE(_AKMMap))
 
 #define IS_AKM_SHA256(_AKMMap)     (IS_AKM_FT_WPA2(_AKMMap)  \
@@ -292,13 +265,11 @@ typedef enum _SEC_CIPHER_MODE {
 		|| IS_AKM_WPA2PSK_SHA256((_Entry)->SecConfig.AKMMap) \
 		|| IS_AKM_WPA3_192BIT((_Entry)->SecConfig.AKMMap) \
 		|| IS_AKM_WPA3PSK((_Entry)->SecConfig.AKMMap) \
-		|| IS_AKM_DPP((_Entry)->SecConfig.AKMMap) \
 		|| IS_AKM_OWE((_Entry)->SecConfig.AKMMap))
 
 #define IS_AKM_PSK_Entry(_Entry)     (IS_AKM_WPA1PSK((_Entry)->SecConfig.AKMMap)  \
 					  || IS_AKM_WPA2PSK((_Entry)->SecConfig.AKMMap) \
 					  || IS_AKM_WPA3PSK((_Entry)->SecConfig.AKMMap) \
-					  || IS_AKM_DPP((_Entry)->SecConfig.AKMMap) \
 					  || IS_AKM_OWE((_Entry)->SecConfig.AKMMap))
 
 
@@ -308,8 +279,6 @@ typedef enum _SEC_CIPHER_MODE {
 								  || IS_AKM_WPA2PSK((_Entry)->SecConfig.AKMMap)   \
 								  || IS_AKM_FT_WPA2PSK((_Entry)->SecConfig.AKMMap) \
 								  || IS_AKM_WPA3PSK((_Entry)->SecConfig.AKMMap) \
-								  || IS_AKM_DPP((_Entry)->SecConfig.AKMMap) \
-								  || IS_AKM_FT_SAE_SHA256((_Entry)->SecConfig.AKMMap) \
 								  || IS_AKM_OWE((_Entry)->SecConfig.AKMMap))
 #endif /* DOT11R_FT_SUPPORT */
 
@@ -323,7 +292,6 @@ typedef enum _SEC_CIPHER_MODE {
 #define IS_AKM_WPA2PSK_Entry(_Entry)                          (IS_AKM_WPA2PSK((_Entry)->SecConfig.AKMMap))
 #define IS_AKM_WPA3_192BIT_Entry(_Entry)                          (IS_AKM_WPA3_192BIT((_Entry)->SecConfig.AKMMap))
 #define IS_AKM_WPA3PSK_Entry(_Entry)                          (IS_AKM_WPA3PSK((_Entry)->SecConfig.AKMMap))
-#define IS_AKM_DPP_Entry(_Entry)                          (IS_AKM_DPP((_Entry)->SecConfig.AKMMap))
 #define IS_AKM_OWE_Entry(_Entry)                          (IS_AKM_OWE((_Entry)->SecConfig.AKMMap))
 #define IS_CIPHER_WEP_Entry(_Entry)              (IS_CIPHER_WEP((_Entry)->SecConfig.PairwiseCipher))
 #define IS_CIPHER_TKIP_Entry(_Entry)              (IS_CIPHER_TKIP((_Entry)->SecConfig.PairwiseCipher))
@@ -463,24 +431,11 @@ typedef struct _SECURITY_CONFIG {
 	UCHAR RSNE_EID[SEC_RSNIE_NUM][1];
 	UCHAR RSNE_Len[SEC_RSNIE_NUM];
 	UCHAR RSNE_Content[SEC_RSNIE_NUM][MAX_LEN_OF_RSNIE];
-	UCHAR rsnxe_content[MAX_LEN_OF_RSNXEIE];
-	UCHAR rsnxe_len;
-
 	UCHAR LastGroupKeyId;
 	UCHAR LastGTK[LEN_MAX_GTK];
 #ifdef CONFIG_OWE_SUPPORT
 	OWE_INFO owe;
 #endif /*CONFIG_OWE_SUPPORT*/
-#ifdef DOT11_SAE_SUPPORT
-#ifdef DOT11_SAE_PWD_ID_SUPPORT
-	UCHAR pwd_id_only;
-	UCHAR pwd_id_cnt;
-	struct pwd_id_list pwd_id_list_head;
-#endif
-	struct sae_capability sae_cap;
-	UCHAR is_h2e_connect;
-	struct sae_pt *pt_list;
-#endif
 } SECURITY_CONFIG, *PSECURITY_CONFIG;
 
 
@@ -498,7 +453,6 @@ typedef struct _SECURITY_CONFIG {
 						 | (1 << SEC_AKM_WAIPSK) \
 						 | (1 << SEC_AKM_SAE_SHA256) \
 						 | (1 << SEC_AKM_SUITEB_SHA384) \
-						 | (1 << SEC_AKM_DPP) \
 						 | (1 << SEC_AKM_OWE) \
 						)
 #endif /* CONFIG_AP_SUPPORT */
@@ -515,12 +469,10 @@ typedef struct _SECURITY_CONFIG {
 #define AKM_APCLI_MASK     ((1 << SEC_AKM_WPA1PSK) \
 							| (1 << SEC_AKM_WPA2PSK)\
 							| (1 << SEC_AKM_SAE_SHA256)\
-							| (1 << SEC_AKM_DPP) \
 							| (1 << SEC_AKM_OWE))
 #endif /* APCLI_SUPPORT */
 
 #define MAX_PARAMETER_LEN  600 /* worse case: WEP128 for MBSS0~15 = (32+1)*16=528 */
 
-UCHAR sec_get_cipher_key_len(UINT32 cipher);
 #endif /* SEC_CMM_H */
 

@@ -33,9 +33,6 @@ static inline void ba_enqueue_head(struct reordering_list *list, struct reorderi
 	list->qlen++;
 	mpdu_blk->next = list->next;
 	list->next = mpdu_blk;
-
-	if (!list->tail)
-		list->tail = mpdu_blk;
 }
 
 static inline void ba_enqueue_tail(struct reordering_list *list, struct reordering_mpdu *mpdu_blk)
@@ -62,8 +59,9 @@ static inline struct reordering_mpdu *ba_dequeue_head(struct reordering_list *li
 		mpdu_blk = list->next;
 		list->next = mpdu_blk->next;
 
-		if (mpdu_blk == list->tail)
-			list->tail = NULL;
+		if (!list->next)
+			if (!list->next)
+				mpdu_blk->next = NULL;
 	}
 
 	return mpdu_blk;
@@ -318,9 +316,6 @@ static BOOLEAN ba_reordering_mpdu_insertsorted(struct reordering_list *list, str
 		}
 	}
 
-	if (*ppScan == NULL)
-		list->tail = mpdu;
-
 	mpdu->next = *ppScan;
 	*ppScan = mpdu;
 	list->qlen++;
@@ -394,23 +389,41 @@ VOID ba_resource_dump_all(RTMP_ADAPTER *pAd)
 		for (j = 0; j < NUM_OF_TID; j++) {
 			if (pEntry->BARecWcidArray[j] != 0) {
 				pRecBAEntry = &pAd->BATable.BARecEntry[pEntry->BARecWcidArray[j]];
-
-				NdisAcquireSpinLock(&pRecBAEntry->RxReRingLock);
 				mpdu_blk = ba_reordering_mpdu_probe(&pRecBAEntry->list);
 
-				while (mpdu_blk) {
+				if (mpdu_blk) {
 					MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("mpdu:SN = %d, AMSDU = %d\n", mpdu_blk->Sequence,
 							 mpdu_blk->bAMSDU));
 					msdu_blk = ba_reordering_mpdu_probe(&mpdu_blk->AmsduList);
 
-					while (msdu_blk && msdu_blk->bAMSDU) {
+					if (msdu_blk) {
 						MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("msdu:SN = %d, AMSDU = %d\n", msdu_blk->Sequence,
 									 msdu_blk->bAMSDU));
-						msdu_blk = msdu_blk->next;
+
+						while (msdu_blk->next) {
+							msdu_blk = msdu_blk->next;
+							MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("msdu:SN = %d, AMSDU = %d\n", msdu_blk->Sequence,
+									 msdu_blk->bAMSDU));
+						}
 					}
-					mpdu_blk = mpdu_blk->next;
+
+					while (mpdu_blk->next) {
+						mpdu_blk = mpdu_blk->next;
+						printk("mpdu:SN = %d, AMSDU = %d\n", mpdu_blk->Sequence, mpdu_blk->bAMSDU);
+						msdu_blk = ba_reordering_mpdu_probe(&mpdu_blk->AmsduList);
+
+						if (msdu_blk) {
+							MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("msdu:SN = %d, AMSDU = %d\n", msdu_blk->Sequence,
+								 msdu_blk->bAMSDU));
+
+							while (msdu_blk->next) {
+								msdu_blk = msdu_blk->next;
+								MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("msdu:SN = %d, AMSDU = %d\n", msdu_blk->Sequence,
+									 msdu_blk->bAMSDU));
+							}
+						}
+					}
 				}
-				NdisReleaseSpinLock(&pRecBAEntry->RxReRingLock);
 			}
 		}
 	}
@@ -994,7 +1007,6 @@ BOOLEAN ba_rec_session_add(
 		pBAEntry->TimeOutValue = pFrame->TimeOutValue;
 		pBAEntry->REC_BA_Status = Recipient_Initialization;
 		pBAEntry->check_amsdu_miss = TRUE;
-		pBAEntry->LastIndSeq = (pFrame->BaStartSeq.field.StartSeq - 1) & MAXSEQ;
 		MTWF_LOG(DBG_CAT_PROTO, CATPROTO_BA, DBG_LVL_TRACE, ("Start Seq = %08x\n",  pFrame->BaStartSeq.field.StartSeq));
 		NdisReleaseSpinLock(&pAd->BATabLock);
 
@@ -1667,10 +1679,8 @@ static VOID ba_enqueue_reordering_packet(
 		}
 
 		NdisGetSystemUpTime(&Now32);
-		NdisAcquireSpinLock(&pBAEntry->RxReRingLock);
 		pBAEntry->LastIndSeqAtTimer = Now32;
 		pBAEntry->CurMpdu = NULL;
-		NdisReleaseSpinLock(&pBAEntry->RxReRingLock);
 	}
 }
 

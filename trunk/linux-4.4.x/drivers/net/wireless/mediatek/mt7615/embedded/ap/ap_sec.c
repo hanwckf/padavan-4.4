@@ -57,9 +57,6 @@ VOID APPMFInit(
 		pSecConfig->PmfCfg.MFPR = (IS_AKM_WPA2PSK(pSecConfig->AKMMap)) ? FALSE : TRUE;
 	} else if (IS_AKM_WPA3_192BIT(pSecConfig->AKMMap)
 		|| IS_AKM_OWE(pSecConfig->AKMMap)
-#ifdef DPP_SUPPORT
-		|| IS_AKM_DPP(pSecConfig->AKMMap)
-#endif /* DPP_SUPPORT */
 		|| IS_AKM_WPA3(pSecConfig->AKMMap)) {
 	/* In WPA3 spec, When WPA3-Enterprise Suite B is used,
 	 * Protected Management Frame (PMF) shall be set to required (MFPR=1).
@@ -70,22 +67,12 @@ VOID APPMFInit(
 	if ((IS_AKM_WPA2(pSecConfig->AKMMap) || IS_AKM_WPA2PSK(pSecConfig->AKMMap))
 		&& IS_CIPHER_CCMP128(pSecConfig->PairwiseCipher)
 		&& IS_CIPHER_CCMP128(pSecConfig->GroupCipher)
-		&& (pSecConfig->PmfCfg.Desired_MFPC
-#ifdef OCE_SUPPORT
-		|| IS_OCE_ENABLE(wdev)
-#endif /* OCE_SUPPORT */
-		)) {
+		&& (pSecConfig->PmfCfg.Desired_MFPC)) {
 		pSecConfig->PmfCfg.MFPC = TRUE;
 		pSecConfig->PmfCfg.MFPR = pSecConfig->PmfCfg.Desired_MFPR;
 
 		if ((pSecConfig->PmfCfg.Desired_PMFSHA256) || (pSecConfig->PmfCfg.MFPR))
 			pSecConfig->PmfCfg.PMFSHA256 = TRUE;
-#ifdef OCE_SUPPORT
-		if (IS_OCE_ENABLE(wdev) &&
-			pSecConfig->PmfCfg.Desired_MFPC == FALSE)
-			MTWF_LOG(DBG_CAT_SEC, CATSEC_PMF, DBG_LVL_OFF,
-			("%s:: Force MFPC on when OCE enable\n", __func__));
-#endif /* OCE_SUPPORT */
 	} else if (pSecConfig->PmfCfg.Desired_MFPC)
 		MTWF_LOG(DBG_CAT_SEC, CATSEC_PMF, DBG_LVL_ERROR, ("[PMF]%s:: Security is not WPA2/WPA2PSK AES\n", __func__));
 
@@ -143,29 +130,12 @@ INT APSecInit(
 
 		if (IS_AKM_WPA3PSK(pSecConfig->AKMMap))
 			SET_AKM_FT_SAE_SHA256(pSecConfig->AKMMap);
-
-		if (IS_AKM_SUITEB_SHA384(pSecConfig->AKMMap))
-			SET_AKM_FT_WPA2_SHA384(pSecConfig->AKMMap);
 	}
 
 #endif /* DOT11R_FT_SUPPORT */
 #ifdef DOT11W_PMF_SUPPORT
 	APPMFInit(pAd, wdev);
 #endif /* DOT11W_PMF_SUPPORT */
-#ifdef DOT11_SAE_SUPPORT
-#ifdef DOT11_SAE_PWD_ID_SUPPORT
-	if (pSecConfig->pwd_id_cnt == 0) {
-		pSecConfig->pwd_id_only = FALSE;
-		DlListInit(&pSecConfig->pwd_id_list_head.list);
-	}
-#endif /* DOT11_SAE_PWD_ID_SUPPORT */
-
-	if (IS_AKM_SAE(pSecConfig->AKMMap)) {
-		BSS_STRUCT *pMbss = &pAd->ApCfg.MBSSID[wdev->func_idx];
-
-		sae_derive_pt(&pAd->SaeCfg, pSecConfig->PSK, pMbss->Ssid, pMbss->SsidLen, &pSecConfig->pt_list);
-	}
-#endif /* DOT11_SAE_SUPPORT */
 	/* Generate the corresponding RSNIE */
 #ifdef HOSTAPD_SUPPORT
 
@@ -177,18 +147,6 @@ INT APSecInit(
 	return TRUE;
 }
 
-INT ap_sec_deinit(
-		IN struct wifi_dev *wdev)
-{
-#ifdef DOT11_SAE_SUPPORT
-	struct _SECURITY_CONFIG *pSecConfig = &wdev->SecConfig;
-
-	if (IS_AKM_SAE(pSecConfig->AKMMap))
-		sae_pt_list_deinit(&pSecConfig->pt_list);
-#endif
-
-	return TRUE;
-}
 
 INT APKeyTableInit(
 	IN RTMP_ADAPTER * pAd,
@@ -487,21 +445,7 @@ INT Show_APSecurityInfo_Proc(
 				 portsecured[tr_entry->PortSecured]));
 	}
 
-#ifdef DOT11_SAE_PWD_ID_SUPPORT
-	if (!DlListEmpty(&pSecConfig->pwd_id_list_head.list)) {
-		struct pwd_id_list *list = NULL;
-		UCHAR i = 0;
-		DlListForEach(list, &pSecConfig->pwd_id_list_head.list, struct pwd_id_list, list) {
-			MTWF_LOG(DBG_CAT_SEC, DBG_SUBCAT_ALL, DBG_LVL_OFF,
-					("%d pwdid = %s, pwd = %s\n", i++, list->pwd_id, list->pwd));
-			hex_dump_with_lvl("pwdid", list->pwd_id, 40, 1);
-			hex_dump_with_lvl("pwd", list->pwd, LEN_PSK, 1);
-		}
-	}
-	MTWF_LOG(DBG_CAT_SEC, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("PWDID Required = %d\n",
-		pSecConfig->sae_cap.pwd_id_only));
-#endif
-
+	MTWF_LOG(DBG_CAT_SEC, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("\n"));
 #ifdef APCLI_SUPPORT
 	MTWF_LOG(DBG_CAT_SEC, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("Security Infomation: AP Client\n"));
 	MTWF_LOG(DBG_CAT_SEC, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("BSS\tWCID\tAuthMode\tPairwiseCipher\tPortSecured\n"));
@@ -791,34 +735,6 @@ INT RTMPSearchPMKIDCache(
 	return i;
 }
 
-INT RTMPSearchPMKIDCacheByPmkId(
-	IN NDIS_AP_802_11_PMKID * pPMKIDCache,
-	IN INT apidx,
-	IN UCHAR *pAddr,
-	IN UCHAR *pPmkId)
-{
-	INT	i = 0;
-
-	for (i = 0; i < MAX_PMKID_COUNT; i++) {
-		if ((pPMKIDCache->BSSIDInfo[i].Valid == TRUE)
-			&& (pPMKIDCache->BSSIDInfo[i].Mbssidx == apidx)
-			&& MAC_ADDR_EQUAL(&pPMKIDCache->BSSIDInfo[i].MAC, pAddr)
-			&& RTMPEqualMemory(pPmkId, &pPMKIDCache->BSSIDInfo[i].PMKID, LEN_PMKID)) {
-			MTWF_LOG(DBG_CAT_SEC, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
-					 ("%s():%02x:%02x:%02x:%02x:%02x:%02x cache(%d) from IF(ra%d)\n",
-					  __func__, PRINT_MAC(pAddr), i, apidx));
-			break;
-		}
-	}
-
-	if (i >= MAX_PMKID_COUNT) {
-		MTWF_LOG(DBG_CAT_SEC, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
-				 ("%s(): - IF(%d) not found\n", __func__, apidx));
-		return INVALID_PMKID_IDX;
-	}
-
-	return i;
-}
 
 INT RTMPValidatePMKIDCache(
 	IN NDIS_AP_802_11_PMKID * pPMKIDCache,

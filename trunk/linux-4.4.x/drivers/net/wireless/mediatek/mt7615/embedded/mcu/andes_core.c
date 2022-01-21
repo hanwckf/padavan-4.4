@@ -384,8 +384,8 @@ VOID _AndesUnlinkCmdMsg(struct cmd_msg *msg, DL_LIST *list)
 {
 	if (!msg)
 		return;
-	if ((msg->list.Next != NULL) && (msg->list.Prev != NULL))
-		DlListDel(&msg->list);
+
+	DlListDel(&msg->list);
 }
 
 
@@ -638,7 +638,7 @@ VOID AndesCtrlInit(RTMP_ADAPTER *pAd)
 
 
 
-#if defined(RTMP_PCI_SUPPORT) || defined(RTMP_RBUS_SUPPORT)
+#ifdef RTMP_PCI_SUPPORT
 static VOID AndesCtrlPciExit(RTMP_ADAPTER *ad)
 {
 	struct MCU_CTRL *ctl = &ad->MCUCtrl;
@@ -678,7 +678,8 @@ VOID AndesCtrlExit(RTMP_ADAPTER *pAd)
 #ifdef DBG_STARVATION
 		unregister_starv_block(&ctl->block);
 #endif /*DBG_STARVATION*/
-#if defined(RTMP_PCI_SUPPORT) || defined(RTMP_RBUS_SUPPORT)
+#ifdef RTMP_PCI_SUPPORT
+
 		if (IS_PCI_INF(pAd) || IS_RBUS_INF(pAd))
 			AndesCtrlPciExit(pAd);
 

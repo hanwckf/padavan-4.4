@@ -86,28 +86,8 @@ VOID SetWdevAuthMode(
 	} else if (rtstrcasecmp(arg, "OWE") == TRUE) {
 		SET_AKM_OWE(AKMMap);
 	}
-#ifdef OCE_FILS_SUPPORT
-	else if (rtstrcasecmp(arg, "FILS_SHA256") == TRUE) {
-		SET_AKM_WPA2(AKMMap);
-		SET_AKM_FILS_SHA256(AKMMap);
-	} else if (rtstrcasecmp(arg, "FILS_SHA384") == TRUE) {
-		SET_AKM_WPA2(AKMMap);
-		SET_AKM_FILS_SHA384(AKMMap);
-	}
-#endif /* OCE_FILS_SUPPORT */
-#ifdef DPP_SUPPORT
-	else if (rtstrcasecmp(arg, "DPP") == TRUE) {
-		SET_AKM_DPP(AKMMap);
-	} else if (rtstrcasecmp(arg, "DPPWPA3PSK") == TRUE) {
-		SET_AKM_DPP(AKMMap);
-		SET_AKM_SAE_SHA256(AKMMap);
-	} else if (rtstrcasecmp(arg, "DPPWPA3PSKWPA2PSK") == TRUE) {
-		SET_AKM_DPP(AKMMap);
-		SET_AKM_SAE_SHA256(AKMMap);
-		SET_AKM_WPA2PSK(AKMMap);
-	}
-#endif /* DPP_SUPPORT */
-	else{
+
+	else {
 		MTWF_LOG(DBG_CAT_SEC, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("%s:: Not support (AuthMode=%s, len=%d)\n",
 				 __func__, arg, (int) strlen(arg)));
 	}
@@ -235,10 +215,6 @@ INT	Set_SecWPAPSK_Proc(
 {
 	POS_COOKIE pObj = (POS_COOKIE) pAd->OS_Cookie;
 	struct _SECURITY_CONFIG *pSecConfig = pObj->pSecConfig;
-#ifdef CONFIG_AP_SUPPORT
-	BSS_STRUCT *pMbss = &pAd->ApCfg.MBSSID[pObj->ioctl_if];
-	INT i;
-#endif
 
 	if (pSecConfig == NULL) {
 		MTWF_LOG(DBG_CAT_SEC, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("%s:: pSecConfig == NULL, arg=%s\n",
@@ -247,19 +223,6 @@ INT	Set_SecWPAPSK_Proc(
 	}
 
 	if (strlen(arg) < 65) {
-#ifdef CONFIG_AP_SUPPORT
-		if (strlen(arg) != strlen(pSecConfig->PSK)
-			|| !RTMPEqualMemory(arg, pSecConfig->PSK, strlen(arg))) {
-			for (i = 0; i < MAX_PMKID_COUNT; i++) {
-				if ((pAd->ApCfg.PMKIDCache.BSSIDInfo[i].Valid == TRUE)
-					&& (pAd->ApCfg.PMKIDCache.BSSIDInfo[i].Mbssidx == pMbss->mbss_idx)) {
-					pAd->ApCfg.PMKIDCache.BSSIDInfo[i].Valid = FALSE;
-					MTWF_LOG(DBG_CAT_SEC, DBG_SUBCAT_ALL, DBG_LVL_OFF,
-							 ("%s():Modify PSK and clear PMKID (idx %d)from (mbssidx %d)\n", __func__, i, pMbss->mbss_idx));
-				}
-			}
-		}
-#endif
 		os_move_mem(pSecConfig->PSK, arg, strlen(arg));
 		pSecConfig->PSK[strlen(arg)] = '\0';
 	} else
@@ -367,8 +330,6 @@ RTMP_STRING *GetAuthModeStr(
 		return "WPAPSKWPA2PSK";
 	else if (IS_AKM_WPA2PSK(authMode) && IS_AKM_WPA3PSK(authMode))
 		return "WPA2PSKWPA3PSK";
-	else if (IS_AKM_FT_SAE_SHA256(authMode))
-		return "FT-SAE";
 	else if (IS_AKM_WPA3PSK(authMode))
 		return "WPA3PSK";
 	else if (IS_AKM_WPA1(authMode))
@@ -389,10 +350,6 @@ RTMP_STRING *GetAuthModeStr(
 		return "WPA3-192";
 	else if (IS_AKM_OWE(authMode))
 		return "OWE";
-#ifdef DPP_SUPPORT
-	else if (IS_AKM_DPP(authMode))
-		return "DPP";
-#endif /* DPP_SUPPORT */
 	else
 		return "UNKNOW";
 }
@@ -786,15 +743,6 @@ VOID ReadRadiusParameterFromFile(
 					NdisMoveMemory(pSecConfig->EAPifname, macptr, strlen(macptr));
 					MTWF_LOG(DBG_CAT_SEC, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("I/F(%s%d) ==> EAPifname=%s, len=%d\n",
 							 INF_MBSSID_DEV_NAME, apidx, pSecConfig->EAPifname, pSecConfig->EAPifname_len));
-				}
-			}
-
-			/* Apply to remaining MBSS*/
-			if (apidx == 1) {
-				for (apidx = 1; apidx < pAd->ApCfg.BssidNum; apidx++) {
-					pSecConfig = &pAd->ApCfg.MBSSID[apidx].wdev.SecConfig;
-					pSecConfig->EAPifname_len = pAd->ApCfg.MBSSID[0].wdev.SecConfig.EAPifname_len;
-					NdisMoveMemory(pSecConfig->EAPifname, pAd->ApCfg.MBSSID[0].wdev.SecConfig.EAPifname, strlen(pAd->ApCfg.MBSSID[0].wdev.SecConfig.EAPifname));
 				}
 			}
 		}
@@ -1302,11 +1250,6 @@ VOID Dot1xIoctlAddWPAKey(
 				if (IS_AKM_WPA3_192BIT(pSecConfig->AKMMap) && (pKey->KeyLength == 64))
 					key_len = LEN_PMK_SHA384;
 
-#ifdef OCE_FILS_SUPPORT
-				if (IS_AKM_FILS_SHA384(pEntry->SecConfig.AKMMap) && pKey->KeyLength == 64)
-					key_len = LEN_PMK_SHA384;
-#endif /* OCE_FILS_SUPPORT */
-
 				NdisMoveMemory(pSecConfig->PMK, pKey->KeyMaterial + k_offset, key_len);
 				hex_dump("PMK", pSecConfig->PMK, key_len);
 			}
@@ -1433,14 +1376,6 @@ VOID Dot1xIoctlStaticWepCopy(
 			struct _SECURITY_CONFIG *pSecConfigProfile = NULL;
 			STA_TR_ENTRY *tr_entry = NULL;
 			ASIC_SEC_INFO Info = {0};
-
-#ifdef OCE_FILS_SUPPORT
-			if (IS_AKM_FILS(pEntry->SecConfig.AKMMap)) {
-				MTWF_LOG(DBG_CAT_SEC, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
-					("RTMPIoctlStaticWepCopy: skip for FILS\n"));
-				return;
-			}
-#endif /* OCE_FILS_SUPPORT */
 
 			pSecConfigProfile = &pAd->ApCfg.MBSSID[apidx].wdev.SecConfig;
 			pSecConfigEnrty = &pEntry->SecConfig;
@@ -1698,142 +1633,6 @@ VOID ReadWDSSecParameterFromFile(
 }
 #endif /* WDS_SUPPORT */
 
-#ifdef DOT11_SAE_SUPPORT
-#ifdef DOT11_SAE_PWD_ID_SUPPORT
-VOID sae_pwd_id_deinit(IN PRTMP_ADAPTER pAd)
-{
-#ifdef CONFIG_AP_SUPPORT
-	INT i = 0;
-
-	for (i = 0; i < pAd->ApCfg.BssidNum; i++) {
-		struct _SECURITY_CONFIG *sec_cfg = &pAd->ApCfg.MBSSID[i].wdev.SecConfig;
-		struct pwd_id_list *pwd_id_ins = &sec_cfg->pwd_id_list_head;
-		struct pwd_id_list *pwd_id_tmp;
-
-		if (sec_cfg->pwd_id_cnt == 0)
-			continue;
-		while (DlListEmpty(&pwd_id_ins->list)) {
-			pwd_id_tmp = DlListFirst(&pwd_id_ins->list, struct pwd_id_list, list);
-			DlListDel(&pwd_id_tmp->list);
-			os_free_mem(pwd_id_tmp);
-		}
-	}
-#endif /* CONFIG_AP_SUPPORT */
-}
-
-
-VOID insert_pwd_id(struct _SECURITY_CONFIG *sec_cfg, struct pwd_id_list *pwd_id_list_head, RTMP_STRING *arg)
-{
-	RTMP_STRING *pwdid;
-	RTMP_STRING *pwd;
-	ULONG len;
-	struct pwd_id_list *pwd_id_ins = NULL;
-
-	if (arg == NULL)
-		return;
-
-	pwd = rstrtok(arg, ":");
-	pwdid = rstrtok(NULL, ":");
-
-	if (pwdid == NULL) {
-		os_zero_mem(sec_cfg->PSK, sizeof(sec_cfg->PSK));
-		os_move_mem(sec_cfg->PSK, pwd, strlen(pwd));
-		sec_cfg->sae_cap.pwd_id_only = FALSE;
-		return;
-	}
-
-	os_alloc_mem(NULL, (UCHAR **)&pwd_id_ins, sizeof(struct pwd_id_list));
-	os_zero_mem(pwd_id_ins, sizeof(struct pwd_id_list));
-
-	len = strlen(pwd);
-	os_move_mem(pwd_id_ins->pwd, pwd, len);
-	pwd_id_ins->pwd[len] = '\0';
-
-
-	len = strlen(pwdid);
-	os_move_mem(pwd_id_ins->pwd_id, pwdid, len);
-	pwd_id_ins->pwd_id[len] = '\0';
-
-	DlListAddTail(&pwd_id_list_head->list, &pwd_id_ins->list);
-	sec_cfg->pwd_id_cnt++;
-}
-#endif
-
-static VOID read_sae_parma_from_file(
-	IN PRTMP_ADAPTER pAd,
-	IN RTMP_STRING *tmpbuf,
-	IN RTMP_STRING *pBuffer)
-{
-	INT i = 0;
-	struct _SECURITY_CONFIG *sec_cfg = NULL;
-	RTMP_STRING *macptr;
-
-	if (RTMPGetKeyParameter("PweMethod", tmpbuf, MAX_PARAMETER_LEN, pBuffer, TRUE)) {
-#ifdef CONFIG_AP_SUPPORT
-		IF_DEV_CONFIG_OPMODE_ON_AP(pAd) {
-			for (i = 0, macptr = rstrtok(tmpbuf, ";"); (macptr && i < pAd->ApCfg.BssidNum); macptr = rstrtok(NULL, ";"), i++) {
-				UCHAR pwe_method = 0;
-
-				sec_cfg = &pAd->ApCfg.MBSSID[PF_TO_BSS_IDX(pAd, i)].wdev.SecConfig;
-				MTWF_LOG(DBG_CAT_SEC, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("I/F(%s%d) ==> ",
-						 INF_MBSSID_DEV_NAME, i));
-				if (macptr)
-					pwe_method = os_str_tol(macptr, 0, 10);
-
-				if (pwe_method > MAX_PWE_METHOD) {
-					MTWF_LOG(DBG_CAT_SEC, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
-						("pwe method is should not be %d",
-						 pwe_method));
-				}
-				sec_cfg->sae_cap.gen_pwe_method = pwe_method;
-			}
-		}
-#endif /* CONFIG_AP_SUPPORT */
-	}
-
-#ifdef DOT11_SAE_PWD_ID_SUPPORT
-	if (RTMPGetKeyParameter("PWDIDR", tmpbuf, MAX_PARAMETER_LEN, pBuffer, TRUE)) {
-#ifdef CONFIG_AP_SUPPORT
-		IF_DEV_CONFIG_OPMODE_ON_AP(pAd) {
-			for (i = 0, macptr = rstrtok(tmpbuf, ";"); (macptr && i < pAd->ApCfg.BssidNum); macptr = rstrtok(NULL, ";"), i++) {
-				UCHAR pwd_id_only = 0;
-				sec_cfg = &pAd->ApCfg.MBSSID[i].wdev.SecConfig;
-				MTWF_LOG(DBG_CAT_SEC, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("I/F(%s%d) ==> ",
-						 INF_MBSSID_DEV_NAME, i));
-				if (macptr)
-					pwd_id_only = os_str_tol(macptr, 0, 10);
-				sec_cfg->sae_cap.pwd_id_only = (pwd_id_only) ? TRUE : FALSE;
-			}
-		}
-#endif /* CONFIG_AP_SUPPORT */
-	}
-
-#ifdef CONFIG_AP_SUPPORT
-	IF_DEV_CONFIG_OPMODE_ON_AP(pAd) {
-		RTMP_STRING *macptr2;
-		RTMP_STRING tok_str[16];
-
-		for (i = 0; i < pAd->ApCfg.BssidNum; i++) {
-			snprintf(tok_str, sizeof(tok_str), "PWDID%d", i + 1);
-
-			if (RTMPGetKeyParameter(tok_str, tmpbuf, MAX_PARAMETER_LEN, pBuffer, FALSE)) {
-				sec_cfg = &pAd->ApCfg.MBSSID[i].wdev.SecConfig;
-				DlListInit(&sec_cfg->pwd_id_list_head.list);
-				macptr = tmpbuf;
-				do {
-					macptr = rstrtok(macptr, ";");
-					macptr2 = rstrtok(NULL, "\0");
-
-					insert_pwd_id(sec_cfg, &sec_cfg->pwd_id_list_head, macptr);
-					macptr = macptr2;
-				} while (macptr);
-			}
-		}
-	}
-#endif /* CONFIG_AP_SUPPORT */
-#endif
-}
-#endif
 
 VOID ReadSecurityParameterFromFile(
 	IN PRTMP_ADAPTER pAd,
@@ -1950,9 +1749,6 @@ VOID ReadSecurityParameterFromFile(
 	}
 
 	ReadWPAParameterFromFile(pAd, tmpbuf, pBuffer);
-#ifdef DOT11_SAE_SUPPORT
-	read_sae_parma_from_file(pAd, tmpbuf, pBuffer);
-#endif
 #ifdef DOT1X_SUPPORT
 	ReadRadiusParameterFromFile(pAd, tmpbuf, pBuffer);
 #endif /* DOT1X_SUPPORT */
@@ -2115,59 +1911,5 @@ UCHAR is_pmkid_cache_in_sec_config(
 		return TRUE;
 	else
 		return FALSE;
-}
-
-INT build_rsnxe_ie(
-	IN struct _SECURITY_CONFIG *sec_cfg,
-	IN UCHAR *buf)
-{
-	INT extend_length = 0;
-#ifdef DOT11_SAE_SUPPORT
-	UCHAR ie = IE_RSNXE;
-	UCHAR ie_len = 1;
-	UCHAR cap = 1 << IE_RSNXE_CAPAB_SAE_H2E; /* only sae use now, so use uchar */
-
-	if (!IS_AKM_SAE(sec_cfg->AKMMap))
-		return 0;
-
-	if (sec_cfg->sae_cap.gen_pwe_method == PWE_LOOPING_ONLY)
-		return 0;
-
-	NdisMoveMemory(buf + extend_length, &ie, sizeof(ie));
-	extend_length += sizeof(ie);
-	NdisMoveMemory(buf + extend_length, &ie_len, sizeof(ie_len));
-	extend_length += sizeof(ie_len);
-	NdisMoveMemory(buf + extend_length, &cap, sizeof(cap));
-	extend_length += sizeof(cap);
-#endif
-
-	return extend_length;
-}
-
-UINT parse_rsnxe_ie(
-	IN struct _SECURITY_CONFIG *sec_cfg,
-	IN UCHAR *rsnxe_ie,
-	IN UCHAR rsnxe_ie_len,
-	IN UCHAR need_copy)
-{
-#ifdef DOT11_SAE_SUPPORT
-	if (IS_AKM_SAE(sec_cfg->AKMMap) && sec_cfg->is_h2e_connect) {
-		if (rsnxe_ie[1] == 0 || !(rsnxe_ie[2] & (1 << IE_RSNXE_CAPAB_SAE_H2E))) {
-			MTWF_LOG(DBG_CAT_SEC, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
-				("%s: IE_RSNXE_CAPAB_SAE_H2E should not be 0\n", __func__));
-			return MLME_UNSPECIFY_FAIL;
-		}
-	}
-
-	if (need_copy) {
-		NdisMoveMemory(sec_cfg->rsnxe_content, rsnxe_ie, rsnxe_ie_len);
-		sec_cfg->rsnxe_len = rsnxe_ie_len;
-	} else if (sec_cfg->rsnxe_len == 0)
-		return MLME_UNSPECIFY_FAIL;
-	else if (NdisCmpMemory(sec_cfg->rsnxe_content, rsnxe_ie, rsnxe_ie_len) != 0)
-		return MLME_UNSPECIFY_FAIL;
-#endif
-
-	return MLME_SUCCESS;
 }
 

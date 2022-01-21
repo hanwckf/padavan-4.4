@@ -43,9 +43,6 @@ extern UCHAR	MARVELL_OUI[];
 extern UCHAR	ATHEROS_OUI[];
 
 
-#ifdef OCE_SUPPORT
-extern UCHAR	MBO_OCE_OUIBYTE[];
-#endif /* OCE_SUPPORT */
 
 typedef struct wsc_ie_probreq_data {
 	UCHAR	ssid[32];
@@ -246,12 +243,6 @@ BOOLEAN PeerDelBAActionSanity(
 }
 
 
-static inline void copy_to_vie(UCHAR *ptr, USHORT *len_vie, UCHAR *ptr_eid, EID_STRUCT *eid)
-{
-	NdisMoveMemory(ptr + *len_vie, ptr_eid, eid->Len + 2);
-	*len_vie += (eid->Len + 2);
-}
-
 /*
     ==========================================================================
     Description:
@@ -265,7 +256,6 @@ static inline void copy_to_vie(UCHAR *ptr, USHORT *len_vie, UCHAR *ptr_eid, EID_
  */
 BOOLEAN PeerBeaconAndProbeRspSanity(
 	IN PRTMP_ADAPTER pAd,
-	IN struct wifi_dev *wdev,
 	IN VOID * Msg,
 	IN ULONG MsgLen,
 	IN UCHAR  MsgChannel,
@@ -296,14 +286,6 @@ BOOLEAN PeerBeaconAndProbeRspSanity(
 			frame as the channel. (May inaccuracy!!)
 	*/
 	UCHAR CtrlChannel = 0;
-#ifdef OCE_SUPPORT
-#ifdef CONFIG_AP_SUPPORT
-	P_OCE_CTRL	pOceCtrl = &wdev->OceCtrl;
-	BOOLEAN bHasOceIE = FALSE;
-	INT OceNonOcePresentOldValue;
-#endif /* CONFIG_AP_SUPPORT */
-#endif /* OCE_SUPPORT */
-
 	os_alloc_mem(NULL, &pPeerWscIe, 512);
 	Sanity = 0;		/* Add for 3 necessary EID field check*/
 	ie_list->AironetCellPowerLimit = 0xFF;  /* Default of AironetCellPowerLimit is 0xFF*/
@@ -380,8 +362,8 @@ BOOLEAN PeerBeaconAndProbeRspSanity(
 		case IE_SUPP_RATES:
 			if (pEid->Len <= MAX_LEN_OF_SUPPORTED_RATES) {
 				Sanity |= 0x2;
+				NdisMoveMemory(&ie_list->SupRate[0], pEid->Octet, pEid->Len);
 				ie_list->SupRateLen = pEid->Len;
-				parse_support_rate_ie((struct dev_rate_info *)&ie_list->SupRate[0], pEid);
 				/*
 				TODO: 2004-09-14 not a good design here, cause it exclude extra
 				rates from ScanTab. We should report as is. And filter out
@@ -395,15 +377,7 @@ BOOLEAN PeerBeaconAndProbeRspSanity(
 			}
 
 			break;
-#ifdef CONFIG_AP_SUPPORT
-#ifdef NEIGHBORING_AP_STAT
-		case IE_TIM:
-		if (pEid->Len == 4) {
-			ie_list->DtimPeriod = pEid->Octet[1];
-		}
-		break;
-#endif
-#endif
+
 		case IE_HT_CAP:
 			if (pEid->Len >= SIZE_HT_CAP_IE) { /*Note: allow extension.!!*/
 				NdisMoveMemory(&ie_list->HtCapability, pEid->Octet, sizeof(HT_CAPABILITY_IE));
@@ -745,19 +719,21 @@ BOOLEAN PeerBeaconAndProbeRspSanity(
 				}
 
 			}
-
-#ifdef OCE_SUPPORT
-#ifdef CONFIG_AP_SUPPORT
-		if (IS_OCE_ENABLE(wdev) && !pOceCtrl->Scan11bOceAPTimerRunning) {
-			if (NdisEqualMemory(pEid->Octet, MBO_OCE_OUIBYTE, 4) && (pEid->Len >= 5))
-				bHasOceIE = OceCheckOceCap(pAd, wdev, pEid->Octet, pEid->Len);
-		}
-#endif
-#endif
 			break;
 
 		case IE_EXT_SUPP_RATES:
-			parse_support_ext_rate_ie((struct dev_rate_info *)&ie_list->ExtRate[0], pEid);
+			if (pEid->Len <= MAX_LEN_OF_SUPPORTED_RATES) {
+				NdisMoveMemory(&ie_list->ExtRate[0], pEid->Octet, pEid->Len);
+				ie_list->ExtRateLen = pEid->Len;
+				/*
+				TODO: 2004-09-14 not a good design here, cause it exclude extra rates
+				from ScanTab. We should report as is. And filter out unsupported
+				rates in MlmeAux
+				*/
+				/* Check against the supported rates*/
+				/* RTMPCheckRates(pAd, ExtRate, pExtRateLen,wdev->PhyMode);*/
+			}
+
 			break;
 
 		case IE_ERP:
@@ -799,16 +775,12 @@ BOOLEAN PeerBeaconAndProbeRspSanity(
 			/* There is no OUI for version anymore, check the group cipher OUI before copying*/
 			if (RTMPEqualMemory(pEid->Octet + 2, RSN_OUI, 3)) {
 				/* Copy to pVIE which will report to microsoft bssid list.*/
-				copy_to_vie((UCHAR *)pVIE, LengthVIE, ptr_eid, pEid);
+				Ptr = (PUCHAR) pVIE;
+				NdisMoveMemory(Ptr + *LengthVIE, ptr_eid, pEid->Len + 2);
+				*LengthVIE += (pEid->Len + 2);
 			}
 
 			break;
-
-		case IE_RSNXE:
-			/* Copy to pVIE which will report to microsoft bssid list.*/
-			copy_to_vie((UCHAR *)pVIE, LengthVIE, ptr_eid, pEid);
-			break;
-
 
 		case IE_QBSS_LOAD:
 			if (pEid->Len == 5) {
@@ -993,20 +965,6 @@ SanityCheck:
 	} else {
 	}
 
-#ifdef OCE_SUPPORT
-	if (IS_OCE_ENABLE(wdev) && !pOceCtrl->Scan11bOceAPTimerRunning) {
-		if (!bHasOceIE) {
-			OceNonOcePresentOldValue = OCE_GET_CONTROL_FIELD(pOceCtrl->OceCapIndication,
-			OCE_NONOCE_PRESENT_MASK, OCE_NONOCE_PRESENT_OFFSET);
-			OCE_SET_CONTROL_FIELD(pOceCtrl->OceCapIndication,
-				1, OCE_NONOCE_PRESENT_MASK, OCE_NONOCE_PRESENT_OFFSET);
-
-			if (OceNonOcePresentOldValue != OCE_GET_CONTROL_FIELD(pOceCtrl->OceCapIndication,
-				OCE_NONOCE_PRESENT_MASK, OCE_NONOCE_PRESENT_OFFSET))
-				OceSendFilsDiscoveryAction(pAd, wdev);
-		}
-	}
-#endif
 	return TRUE;
 }
 
@@ -1139,7 +1097,7 @@ UCHAR ChannelSanity(
 	return 0;
 }
 
-UCHAR ChannelSanityByWdev(
+UCHAR ChannelSanityDBDC(
 	IN PRTMP_ADAPTER pAd,
 	IN struct wifi_dev *wdev,
 	IN UCHAR channel)
@@ -1464,12 +1422,7 @@ BOOLEAN PeerProbeReqSanity(
 #endif /* WSC_INCLUDED */
 #endif /* CONFIG_AP_SUPPORT */
 	UINT		total_ie_len = 0;
-#ifdef OCE_SUPPORT
-#ifdef CONFIG_AP_SUPPORT
-	UINT32 MaxChannelTime;
-	P_OCE_CTRL pOceCtrl = &pAd->ApCfg.MBSSID[MAIN_MBSSID].wdev.OceCtrl;
-#endif
-#endif /* OCE_SUPPORT */
+
 #ifdef WSC_INCLUDED
 	MLME_QUEUE_ELEM *Elem = NULL;
 	UCHAR current_band = 0;
@@ -1477,11 +1430,6 @@ BOOLEAN PeerProbeReqSanity(
 
 	/* NdisZeroMemory(ProbeReqParam, sizeof(*ProbeReqParam)); */
 	COPY_MAC_ADDR(ProbeReqParam->Addr2, &Fr->Hdr.Addr2);
-#ifdef OCE_SUPPORT
-#ifdef CONFIG_AP_SUPPORT
-		COPY_MAC_ADDR(ProbeReqParam->Addr1, &Fr->Hdr.Addr1);
-#endif
-#endif /* OCE_SUPPORT */
 
 	if (Fr->Octet[0] != IE_SSID || Fr->Octet[1] > MAX_LEN_OF_SSID) {
 		MTWF_LOG(DBG_CAT_MLME, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("%s(): sanity fail - wrong SSID IE\n", __func__));
@@ -1582,33 +1530,8 @@ BOOLEAN PeerProbeReqSanity(
 #endif /* CONFIG_AP_SUPPORT */
 #endif /* WSC_INCLUDED */
 			}
-#ifdef OCE_SUPPORT
-#ifdef CONFIG_AP_SUPPORT
-	if (NdisEqualMemory(eid_data, MBO_OCE_OUIBYTE, 4) && (eid_len >= 5))
-		OceParseStaOceIE(pAd, eid_data, eid_len, ProbeReqParam);
-#endif
-#endif
-			break;
-#ifdef OCE_SUPPORT
-#ifdef CONFIG_AP_SUPPORT
-		case IE_WLAN_EXTENSION:
-		{
-			if (ProbeReqParam->IsOceCapability &&
-				*(eid_data) == FILS_REQ_ID_EXTENSION &&
-				MAC_ADDR_EQUAL(ProbeReqParam->Addr1, BROADCAST_ADDR)) {
-				MaxChannelTime = *(eid_data + 2);
-				ProbeReqParam->MaxChannelTime = MaxChannelTime;
-				if (!pOceCtrl->MaxChannelTimerRunning) {
-					RTMPSetTimer(&pOceCtrl->MaxChannelTimer, MaxChannelTime);
-					pOceCtrl->MaxChannelTimerRunning = TRUE;
-					pOceCtrl->MaxChannelTimesUp = FALSE;
-				}
-			}
-		}
-			break;
-#endif
-#endif
 
+			break;
 #ifdef CONFIG_HOTSPOT
 
 		case IE_INTERWORKING:

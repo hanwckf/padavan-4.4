@@ -223,15 +223,6 @@ VOID AsicSwitchChannel(RTMP_ADAPTER *pAd, UCHAR band_idx, struct freq_oper *oper
 				SwChCfg.TxStream = pAd->dbdc_band1_tx_path;
 			}
 		}
-#ifdef ANTENNA_CONTROL_SUPPORT
-			if (pAd->bAntennaSetAPEnable[band_idx] == 1) {
-				pAd->bAntennaSetAPEnable[band_idx] = 0;
-			}
-			if (pAd->RxStream[band_idx] && pAd->TxStream[band_idx]) {
-				SwChCfg.RxStream = pAd->RxStream[band_idx];
-				SwChCfg.TxStream = pAd->TxStream[band_idx];
-			}
-#endif /* ANTENNA_CONTROL_SUPPORT */
 #endif
 
 		SwChCfg.Bw = oper->bw;
@@ -816,13 +807,17 @@ VOID AsicSetSlotTime(
 	UCHAR BandIdx;
 #ifdef CONFIG_AP_SUPPORT
 	IF_DEV_CONFIG_OPMODE_ON_AP(pAd) {
-		if (bUseShortSlotTime) {
+		if (bUseShortSlotTime && OPSTATUS_TEST_FLAG(pAd, fOP_STATUS_SHORT_SLOT_INUSED))
+			return;
+		else if ((!bUseShortSlotTime) && (!OPSTATUS_TEST_FLAG(pAd, fOP_STATUS_SHORT_SLOT_INUSED)))
+			return;
+
+		if (bUseShortSlotTime)
 			OPSTATUS_SET_FLAG(pAd, fOP_STATUS_SHORT_SLOT_INUSED);
-			SlotTime = 9;
-		} else {
+		else
 			OPSTATUS_CLEAR_FLAG(pAd, fOP_STATUS_SHORT_SLOT_INUSED);
-			SlotTime = (wdev != NULL) ? wdev->SlotTimeValue : 20;
-		}
+
+		SlotTime = (bUseShortSlotTime) ? 9 : 20;
 	}
 #endif
 	BandIdx = HcGetBandByChannel(pAd, channel);

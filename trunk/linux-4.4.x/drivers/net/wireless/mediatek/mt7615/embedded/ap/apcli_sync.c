@@ -218,7 +218,7 @@ static VOID ApCliPeerProbeRspAtJoinAction(
 	ULONG *pCurrState;
 	BCN_IE_LIST *ie_list = NULL;
 
-#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT) || defined(NEIGHBORING_AP_STAT)
+#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT)
 	UCHAR Snr[4] = {0};
 	CHAR  rssi[4] = {0};
 	Snr[0] = ConvertToSnr(pAd, Elem->rssi_info.raw_Snr[0]);
@@ -257,7 +257,6 @@ static VOID ApCliPeerProbeRspAtJoinAction(
 	pCurrState = &pAd->ApCfg.ApCliTab[ifIndex].SyncCurrState;
 
 	if (PeerBeaconAndProbeRspSanity(pAd,
-									Elem->wdev,
 									Elem->Msg,
 									Elem->MsgLen,
 									Elem->Channel,
@@ -291,7 +290,7 @@ static VOID ApCliPeerProbeRspAtJoinAction(
 		{
 			/* discover new AP of this network, create BSS entry */
 			Bssidx = BssTableSetEntry(pAd, &pAd->ScanTab, ie_list, -Rssi, LenVIE, pVIE
-#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT) || defined(NEIGHBORING_AP_STAT)
+#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT)
 						, Snr, rssi
 #endif
 						);
@@ -827,7 +826,7 @@ static VOID ApCliPeerProbeRspAtJoinAction(
 								rtmp_set_channel(pAd, &pApCliEntry->wdev, pair_ch);
 								/* if bw adjust,timeout this time */
 								MlmeEnqueue(pAd, APCLI_CTRL_STATE_MACHINE, APCLI_CTRL_JOIN_REQ_TIMEOUT, 0, NULL, ifIndex);
-								goto LabelErr;
+								return;
 								} else {
 									/*Same Channel send directed probe request to OWE BSS*/
 									/*Update the Owe transtion Bssid and Ssid that will used for a directed probe request to OWE AP*/
@@ -848,7 +847,7 @@ static VOID ApCliPeerProbeRspAtJoinAction(
 										BssTableDeleteEntry(pscan_tab, pApCliEntry->MlmeAux.Bssid, pApCliEntry->MlmeAux.Channel);
 
 										MlmeEnqueue(pAd, APCLI_CTRL_STATE_MACHINE, APCLI_CTRL_JOIN_REQ_TIMEOUT, 0, NULL, ifIndex);
-										goto LabelErr;
+										return;
 
 								}
 							} else {
@@ -900,7 +899,7 @@ static VOID ApCliPeerProbeRspAtJoinAction(
 									rtmp_set_channel(pAd, &pApCliEntry->wdev, pair_ch);
 
 									MlmeEnqueue(pAd, APCLI_CTRL_STATE_MACHINE, APCLI_CTRL_JOIN_REQ_TIMEOUT, 0, NULL, ifIndex);
-									goto LabelErr;
+									return;
 								} else {
 									/*Same Channel send directed probe request to OWE BSS*/
 									/*Update the Owe transtion Bssid and Ssid that will used for a directed probe request to OWE AP*/
@@ -922,7 +921,7 @@ static VOID ApCliPeerProbeRspAtJoinAction(
 										BssTableDeleteEntry(pscan_tab, pApCliEntry->MlmeAux.Bssid, pApCliEntry->MlmeAux.Channel);
 
 										MlmeEnqueue(pAd, APCLI_CTRL_STATE_MACHINE, APCLI_CTRL_JOIN_REQ_TIMEOUT, 0, NULL, ifIndex);
-										goto LabelErr;
+										return;
 
 								}
 							} else {
@@ -960,7 +959,7 @@ static VOID ApCliPeerProbeRspAtJoinAction(
 
 
 						MlmeEnqueue(pAd, APCLI_CTRL_STATE_MACHINE, APCLI_CTRL_JOIN_REQ_TIMEOUT, 0, NULL, ifIndex);
-						goto LabelErr;
+						return;
 
 					}
 

@@ -35,17 +35,7 @@
 #include "mac/mac_mt/mt_mac_ctrl.h"
 #endif /* MT_MAC */
 
-/*! Copy memory block with specific size */
-#define kalMemCopy(pvDst, pvSrc, u4Size)            memcpy(pvDst, pvSrc, u4Size)
-
 #define WMM_QUE_NUM 4
-
-#define PRINT_MASK(mask)	\
-	(mask[0], mask[1], mask[2], mask[3])
-
-#define COPY_MASK_ADDR(_pucDestAddr, _pucSrcAddr)    \
-	kalMemCopy(_pucDestAddr, _pucSrcAddr, 16) /* 16: UINT32*sizeof(UINT32) */
-
 
 enum {
 	QID_AC_BK,
@@ -204,9 +194,6 @@ typedef struct _MAC_TX_INFO {
 #endif /* FTM_SUPPORT */
 #endif /* MT_MAC */
 	BOOLEAN IsAutoRate;
-#ifdef DPP_SUPPORT
-	UINT16 seq_no;
-#endif /* DPP_SUPPORT */
 } MAC_TX_INFO;
 
 enum {
@@ -221,10 +208,6 @@ enum {
 	PID_P2P_ACTION,
 	PID_NULL_FRAME_PWR_ACTIVE,
 	PID_NULL_FRAME_PWR_SAVE,
-#ifdef DPP_SUPPORT
-	PID_MGMT_DPP_FRAME,
-#endif /* DPP_SUPPORT */
-	PID_NULL_FRAME = 0x19,
 	PID_BEACON = 0x20,
 #ifdef FTM_SUPPORT
 	PID_FTM_MIN = 0x21,

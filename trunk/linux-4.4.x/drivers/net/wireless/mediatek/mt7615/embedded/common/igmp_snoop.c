@@ -8,9 +8,6 @@
 extern UCHAR IGMP_TVM_OUI[];
 #endif /* IGMP_TVM_SUPPORT */
 
-static BOOLEAN isIgmpMacAddr(
-	IN PUCHAR pMacAddr);
-
 UINT16 IPv6MulticastFilterExclued[] = {
 	IPV6_NEXT_HEADER_ICMPV6,	/* ICMPv6. */
 	IPV6_NEXT_HEADER_PIM,		/* PIM. */
@@ -48,58 +45,6 @@ static inline VOID FreeGrpMemberEntry(
 	insertTailList(&pMulticastFilterTable->freeEntryList, (RT_LIST_ENTRY *)pEntry);
 	RTMP_SEM_UNLOCK(&pMulticastFilterTable->FreeMemberPoolTabLock);
 }
-
-/** Count number of 1 in vMask.* e.g. 1111 1111 1111 1111 1111 1111 1111 0000 -> 28*/
-INT BitCount(IN UINT_32 vMask)
-{
-	int count = 0;
-	while (vMask) {
-		count++;
-		vMask &= (vMask - 1);
-	}
-	return count;
-}
-BOOLEAN isIgmpMldFloodingPkt(IN struct _RTMP_ADAPTER *pAd, IN PUCHAR pGroupIpAddr, IN UINT16 ProtoType)
-{
-	BOOLEAN bInclude = FALSE;
-	PMULTICAST_WHITE_LIST_FILTER_TABLE pFloodingCIDRFilterTable = pAd->pMcastWLTable;
-	UCHAR idx = 0;
-	UCHAR MaskIdx = 0;
-	UCHAR Mask = 0;
-	do {
-		if (pFloodingCIDRFilterTable->EntryNum == 0) {
-			MTWF_LOG (DBG_CAT_IGMP, CATPROTO_IGMP, DBG_LVL_OFF, ("%s: Flooding CIDR list is Empty\n", __func__));
-			break;
-			}
-		if (!isIgmpMacAddr(pGroupIpAddr)) {
-			MTWF_LOG(DBG_CAT_IGMP, CATPROTO_IGMP, DBG_LVL_OFF, ("%s: Pkt is not IGMP MAC Addr\n", __func__));
-			break;
-			}
-		if (ProtoType == ETH_P_IP) {
-			for (idx = 0; idx < MULTICAST_WHITE_LIST_SIZE_MAX; idx++) {
-				PMULTICAST_WHITE_LIST_ENTRY pEntryTab = &pFloodingCIDRFilterTable->EntryTab[idx];
-				if (pEntryTab->bValid) {
-					for (MaskIdx = 0; MaskIdx < IPV4_ADDR_LEN; MaskIdx++) {
-						Mask = pEntryTab->PrefixMask.Byte[3-MaskIdx];
-						if (Mask > 0) {
-							bInclude = TRUE;
-							if ((pEntryTab->Addr[MaskIdx+2] & Mask) != (pGroupIpAddr[MaskIdx+2] & Mask)) {
-								bInclude = FALSE;
-								break;
-								}
-							}
-						}
-					if (bInclude == TRUE) {
-						break;
-						}
-					}
-				}
-			}
-		} while (FALSE);
-		return bInclude;
-
-}
-
 
 static VOID IGMPTableDisplay(
 	IN PRTMP_ADAPTER pAd);
@@ -369,7 +314,9 @@ BOOLEAN MulticastFilterTableInsertEntry(
 #ifdef IGMP_TVM_SUPPORT
 				pEntry->AgeOutTime = AgeOutTime;
 #endif /* IGMP_TVM_SUPPORT */
-				pEntry->type = type;
+				pEntry->type = (MulticastFilterEntryType)(((UINT8)type) & GROUP_ENTRY_TYPE_BITMASK); /* remove member detail*/
+				initList(&pEntry->MemberList);
+
 				if (pMemberAddr != NULL)
 					InsertIgmpMember(pMulticastFilterTable, &pEntry->MemberList, pMemberAddr, type);
 
@@ -1459,8 +1406,8 @@ BOOLEAN MulticastFilterInitMcastTable(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, 
 		MTWF_LOG(DBG_CAT_PROTO, CATPROTO_IGMP, DBG_LVL_WARN,
 			("%s: Allocate IGMP Multicast Memory size = %u\n", __func__, wdev->IgmpTableSize));
 
-
-		os_alloc_mem(NULL, (UCHAR **)&wdev->pIgmpMcastTable, wdev->IgmpTableSize);
+		wdev->pIgmpMcastTable =
+			(P_IGMP_MULTICAST_TABLE)kmalloc(wdev->IgmpTableSize, 0);
 		if (wdev->pIgmpMcastTable == NULL) {
 			wdev->IgmpTableSize = 0;
 			MTWF_LOG(DBG_CAT_PROTO, CATPROTO_IGMP, DBG_LVL_WARN,
@@ -1471,7 +1418,7 @@ BOOLEAN MulticastFilterInitMcastTable(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, 
 	} else {
 		MTWF_LOG(DBG_CAT_PROTO, CATPROTO_IGMP, DBG_LVL_WARN,
 			("%s: Deallocate IGMP Multicast Memory\n", __func__));
-		os_free_mem(wdev->pIgmpMcastTable);
+		kfree(wdev->pIgmpMcastTable);
 		wdev->pIgmpMcastTable = NULL;
 		wdev->IgmpTableSize = 0;
 	}
@@ -2174,322 +2121,6 @@ INT Set_IgmpSn_TabDisplay_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 	return TRUE;
 }
 
-VOID MulticastWLTableInit(
-	IN PRTMP_ADAPTER pAd,
-	IN PMULTICAST_WHITE_LIST_FILTER_TABLE *ppMulticastWLTable)
-{
-	/* Initialize MAC table and allocate spin lock */
-	os_alloc_mem(NULL, (UCHAR **)ppMulticastWLTable, sizeof(MULTICAST_WHITE_LIST_FILTER_TABLE));
-
-	if (*ppMulticastWLTable == NULL) {
-		MTWF_LOG(DBG_CAT_PROTO, CATPROTO_IGMP, DBG_LVL_ERROR, ("%s unable to alloc memory for Multicase White list table, size=%lu\n",
-				 __func__, (ULONG)sizeof(MULTICAST_WHITE_LIST_FILTER_TABLE)));
-		return;
-	}
-
-	NdisZeroMemory(*ppMulticastWLTable, sizeof(MULTICAST_WHITE_LIST_FILTER_TABLE));
-	NdisAllocateSpinLock(pAd, &((*ppMulticastWLTable)->MulticastWLTabLock));
-	return;
-}
-
-VOID MultiCastWLTableReset(RTMP_ADAPTER *pAd,
-							   IN PMULTICAST_WHITE_LIST_FILTER_TABLE *ppMulticastWLTable)
-{
-	if (*ppMulticastWLTable == NULL) {
-		MTWF_LOG(DBG_CAT_PROTO, CATPROTO_IGMP, DBG_LVL_ERROR, ("%s Multicase White list table is not ready.\n", __func__));
-		return;
-	}
-
-	NdisFreeSpinLock(&((*ppMulticastWLTable)->MulticastWLTabLock));
-	os_free_mem(*ppMulticastWLTable);
-	*ppMulticastWLTable = NULL;
-}
-
-INT Set_Igmp_Flooding_CIDR_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
-{
-	RTMP_STRING IPString[25] = {'\0'};
-	RTMP_STRING *pIPString = NULL;
-	UCHAR *pOperationType = NULL;
-	UCHAR *pIP = NULL;
-	UCHAR *pPrefix = NULL;
-	UCHAR Prefix = 0;
-	BOOLEAN bPrintCmdUsages = FALSE;
-	BOOLEAN bAdd = FALSE;
-	UCHAR i = 0;
-	UCHAR *value = 0;
-	INT Result = FALSE;
-	UCHAR GroupMacAddr[6];
-	PUCHAR pGroupMacAddr = (PUCHAR)&GroupMacAddr;
-	PMULTICAST_WHITE_LIST_FILTER_TABLE pMcastWLTable = pAd->pMcastWLTable;
-	MULTICAST_WHITE_LIST_ENTRY ThisMcastEntry = {0};
-
-
-	do {
-		if (pMcastWLTable == NULL) {
-			MTWF_LOG(DBG_CAT_PROTO, CATPROTO_IGMP, DBG_LVL_OFF,
-				("%s() Mcast White List Not init, skip this operation\n", __func__));
-			break;
-		}
-
-		pIPString = IPString;
-		NdisMoveMemory(pIPString, arg, strlen(arg));
-		pIPString[strlen(arg)] = '\0';
-
-		pOperationType = strsep((char **)&pIPString, "-");
-		if (pIPString && (*pIPString != '\0')) {
-			pIP = strsep((char **)&pIPString, "/");
-			if (pIPString && (*pIPString != '\0')) {
-				pPrefix = strsep((char **)&pIPString, "-");
-				if (pPrefix) {
-					Prefix = (UCHAR)os_str_tol(pPrefix, NULL, 10);
-				}
-			}
-		}
-
-		/* Check if incorrect or no operation entered */
-		if ((pOperationType == NULL) || ((*pOperationType != '0') && (*pOperationType != '1'))) {
-			MTWF_LOG(DBG_CAT_PROTO, CATPROTO_IGMP, DBG_LVL_OFF,
-				("%s() Incorrect Operation Type entered, skip this operation\n", __func__));
-			bPrintCmdUsages = TRUE;
-			break;
-		}
-
-		bAdd = (BOOLEAN)(((UCHAR)os_str_tol(pOperationType, NULL, 10) == 0) ? FALSE : TRUE);
-
-		/* Check if add operation but IP not entered */
-		if ((bAdd == TRUE) && (pIP == NULL)) {
-			MTWF_LOG(DBG_CAT_PROTO, CATPROTO_IGMP, DBG_LVL_OFF,
-				("%s() Mcast IP address not entered, skip this operation\n", __func__));
-			bPrintCmdUsages = TRUE;
-			break;
-		}
-
-
-		if ((bAdd == TRUE) && (pMcastWLTable->EntryNum >= MULTICAST_WHITE_LIST_SIZE_MAX)) {
-			MTWF_LOG(DBG_CAT_PROTO, CATPROTO_IGMP, DBG_LVL_OFF,
-				("%s() Mcast List Already full, skip this operation\n", __func__));
-			bPrintCmdUsages = TRUE;
-			break;
-		}
-
-		if ((bAdd == FALSE) && (pIP == NULL)) {
-			PMULTICAST_WHITE_LIST_ENTRY pEntryTab = NULL;
-			RTMP_SEM_LOCK(&pMcastWLTable->MulticastWLTabLock);
-			MTWF_LOG(DBG_CAT_PROTO, CATPROTO_IGMP, DBG_LVL_OFF, ("%s() Delete full list\n", __func__));
-			for (i = 0; i < MULTICAST_WHITE_LIST_SIZE_MAX; i++) {
-				pEntryTab = &pMcastWLTable->EntryTab[i];
-				if (pEntryTab->bValid == TRUE) {
-					NdisZeroMemory((PUCHAR)pEntryTab, sizeof(MULTICAST_WHITE_LIST_ENTRY));
-					pEntryTab->bValid = FALSE;
-					pMcastWLTable->EntryNum -= 1;
-				}
-			}
-			Result = TRUE;
-			RTMP_SEM_UNLOCK(&pMcastWLTable->MulticastWLTabLock);
-			break;
-		}
-
-		if ((strlen(pIP) >= 9) && (strlen(pIP) <= 15)) {
-			for (i = 0, value = rstrtok(pIP, "."); value; value = rstrtok(NULL, "."), i++) {
-				UCHAR ii = 0;
-				if (strlen(value) > 3) {
-					bPrintCmdUsages = TRUE;
-					break;
-				}
-				for (ii = 0; ii < strlen(value); ii++) {
-					if (!isdigit(*(value + ii))) {
-						bPrintCmdUsages = TRUE;
-						break;
-					}
-				}
-				if (bPrintCmdUsages == TRUE)
-					break;
-
-				ThisMcastEntry.IPData.IPv4[i] = (UCHAR)os_str_tol(value, NULL, 10);
-			}
-			/* Check if any invalid multicast address specified */
-			if ((bPrintCmdUsages == TRUE) ||
-				(ThisMcastEntry.IPData.IPv4[0] < 224) ||
-				(ThisMcastEntry.IPData.IPv4[0] > 239)) {
-				bPrintCmdUsages = TRUE;
-				break;
-			}
-			ThisMcastEntry.bValid = TRUE;
-			ThisMcastEntry.EntryIPType = IP_V4;
-			if (Prefix == 0)
-				Prefix = 32;
-		}
-
-		if (ThisMcastEntry.bValid == TRUE) {
-			ThisMcastEntry.PrefixLen = Prefix;
-			if (bAdd == TRUE) {
-				PMULTICAST_WHITE_LIST_ENTRY pEntryTab = NULL;
-				RTMP_SEM_LOCK(&pMcastWLTable->MulticastWLTabLock);
-				/* First check if there is any existing entry */
-				for (i = 0; i < MULTICAST_WHITE_LIST_SIZE_MAX; i++) {
-					pEntryTab = &pMcastWLTable->EntryTab[i];
-					if ((pEntryTab->bValid == TRUE) &&
-						(((ThisMcastEntry.EntryIPType == IP_V4) && (pEntryTab->EntryIPType == IP_V4) &&
-						NdisEqualMemory(pEntryTab->IPData.IPv4, ThisMcastEntry.IPData.IPv4, IPV4_ADDR_LEN))) &&
-						(pEntryTab->PrefixLen == ThisMcastEntry.PrefixLen)) {
-						Result = TRUE;
-						MTWF_LOG(DBG_CAT_PROTO, CATPROTO_IGMP, DBG_LVL_OFF,
-							("This IP address already present in Igmp Flooding CIDR table\n\n"));
-						break;
-					}
-				}
-				RTMP_SEM_UNLOCK(&pMcastWLTable->MulticastWLTabLock);
-				/* IP entry already present, no need to add again, so exit */
-				if (Result == TRUE)
-					break;
-
-				RTMP_SEM_LOCK(&pMcastWLTable->MulticastWLTabLock);
-				/* Find the empty entry in white list entry to add new entry */
-				for (i = 0; i < MULTICAST_WHITE_LIST_SIZE_MAX; i++) {
-					UCHAR Index = 0;
-					UCHAR Bits = 0;
-					UINT32 Mask = 0;
-					if (pMcastWLTable->EntryTab[i].bValid == FALSE) {
-						NdisZeroMemory(&pMcastWLTable->EntryTab[i],
-										sizeof(MULTICAST_WHITE_LIST_ENTRY));
-						NdisMoveMemory(&pMcastWLTable->EntryTab[i],
-										&ThisMcastEntry,
-										sizeof(MULTICAST_WHITE_LIST_ENTRY));
-						pMcastWLTable->EntryNum += 1;
-
-						if (pMcastWLTable->EntryTab[i].EntryIPType == IP_V4)
-							ConvertMulticastIP2MAC(ThisMcastEntry.IPData.IPv4, (PUCHAR *)&pGroupMacAddr, ETH_P_IP);
-						else
-							ConvertMulticastIP2MAC(ThisMcastEntry.IPData.IPv6, (PUCHAR *)&pGroupMacAddr, ETH_P_IPV6);
-						COPY_MAC_ADDR(pMcastWLTable->EntryTab[i].Addr, GroupMacAddr);
-
-						/* Prepare Mask of bytes from Prefix Length to be matched with IP address of entery and packets received */
-						Index = 0;
-						do {
-							/* here 32 = 32 bits in a DWord */
-							Bits = ((Prefix%32)?(Prefix%32):32);
-							if (Bits == 32)
-								Mask = ((UINT32)~0);
-							else
-								Mask = (((UINT32)~0) << (UINT32)(32-Bits));
-
-							pMcastWLTable->EntryTab[i].PrefixMask.DWord[Index] = Mask;
-							Prefix = Prefix - ((Prefix%32)?(Prefix%32):32);
-							Index += 1;
-						} while (Prefix > 0);
-						MTWF_LOG(DBG_CAT_PROTO, CATPROTO_IGMP, DBG_LVL_OFF, ("White list %sING: IPv4 addr = %d.%d.%d.%d%s%s\n", ((bAdd == TRUE) ? "ADD":"DELETE"),
-							ThisMcastEntry.IPData.IPv4[0], ThisMcastEntry.IPData.IPv4[1], ThisMcastEntry.IPData.IPv4[2], ThisMcastEntry.IPData.IPv4[3],
-							(PUCHAR)((pPrefix) ? (PUCHAR)"/" : (PUCHAR)""), (PUCHAR)((pPrefix) ? pPrefix : (PUCHAR)"")));
-						MTWF_LOG(DBG_CAT_PROTO, CATPROTO_IGMP, DBG_LVL_OFF,
-							("This IP address added in Igmp Flooding CIDR table\n\n"));
-						break;
-					}
-				}
-				RTMP_SEM_UNLOCK(&pMcastWLTable->MulticastWLTabLock);
-			} else {
-				/* Find the this entry in white list entry to delete it from list */
-				PMULTICAST_WHITE_LIST_ENTRY pEntryTab = NULL;
-				Result = TRUE;
-				RTMP_SEM_LOCK(&pMcastWLTable->MulticastWLTabLock);
-				for (i = 0; i < MULTICAST_WHITE_LIST_SIZE_MAX; i++) {
-					UCHAR Index = 0;
-					UCHAR Bits = 0;
-					UINT32 Mask = 0;
-					pEntryTab = &pMcastWLTable->EntryTab[i];
-					if ((pEntryTab->bValid == TRUE) &&
-						(((ThisMcastEntry.EntryIPType == IP_V4) && (pEntryTab->EntryIPType == IP_V4) &&
-						NdisEqualMemory(pEntryTab->IPData.IPv4, ThisMcastEntry.IPData.IPv4, IPV4_ADDR_LEN))) &&
-						(pEntryTab->PrefixLen == ThisMcastEntry.PrefixLen)) {
-						NdisZeroMemory((PUCHAR)pEntryTab,
-								sizeof(MULTICAST_WHITE_LIST_ENTRY));
-						pEntryTab->bValid = FALSE;
-						pMcastWLTable->EntryNum -= 1;
-
-						if (pMcastWLTable->EntryTab[i].EntryIPType == IP_V4)
-							ConvertMulticastIP2MAC(ThisMcastEntry.IPData.IPv4, (PUCHAR *)&pGroupMacAddr, ETH_P_IP);
-						else
-							ConvertMulticastIP2MAC(ThisMcastEntry.IPData.IPv6, (PUCHAR *)&pGroupMacAddr, ETH_P_IPV6);
-						COPY_MAC_ADDR(pMcastWLTable->EntryTab[i].Addr, GroupMacAddr);
-						/* Prepare Mask of bytes from Prefix Length to be matched with IP address of entery and packets received */
-						Index = 0;
-						do {
-							/* here 32 = 32 bits in a DWord */
-							Bits = ((Prefix%32)?(Prefix%32):32);
-							if (Bits == 32)
-								Mask = ((UINT32)~0);
-							else
-								Mask = (((UINT32)~0) << (UINT32)(32-Bits));
-							pMcastWLTable->EntryTab[i].PrefixMask.DWord[Index] = Mask;
-							Prefix = Prefix - ((Prefix%32)?(Prefix%32):32);
-							Index += 1;
-						} while (Prefix > 0);
-						MTWF_LOG(DBG_CAT_PROTO, CATPROTO_IGMP, DBG_LVL_OFF, ("White list %sING: IPv4 addr = %d.%d.%d.%d%s%s\n", ((bAdd == TRUE) ? "ADD":"DELETE"),
-							ThisMcastEntry.IPData.IPv4[0], ThisMcastEntry.IPData.IPv4[1], ThisMcastEntry.IPData.IPv4[2], ThisMcastEntry.IPData.IPv4[3],
-							(PUCHAR)((pPrefix) ? (PUCHAR)"/" : (PUCHAR)""), (PUCHAR)((pPrefix) ? pPrefix : (PUCHAR)"")));
-						MTWF_LOG(DBG_CAT_PROTO, CATPROTO_IGMP, DBG_LVL_OFF,
-							("This IP address deleted from Flooding CIDR table\n\n"));
-						break;
-					}
-				}
-				RTMP_SEM_UNLOCK(&pMcastWLTable->MulticastWLTabLock);
-			}
-			Result = TRUE;
-		} else {
-			MTWF_LOG(DBG_CAT_PROTO, CATPROTO_IGMP, DBG_LVL_OFF, ("Invalid command!\n"));
-			bPrintCmdUsages = TRUE;
-			break;
-		}
-	} while (FALSE);
-
-	if (bPrintCmdUsages == TRUE) {
-		MTWF_LOG(DBG_CAT_PROTO, CATPROTO_IGMP, DBG_LVL_OFF,
-			("\nCommand usages:\n"
-			"	iwpriv ra0 set IgmpFloodingCIDR=<Operation>-<IP Addr>/<PrefixLength>\n"
-			"		<Operation>     :	1 for ADD and 0 for DELETE\n"
-			"		<IP Addr>       :	IPv4 address which is allowed to receive pkts\n"
-			"		<PrefixLength>  :	Prefix Length, Value between 1 to 32 for IPv4\n"
-			"\n"
-			"		IPv4 address format :\n"
-			"			Example = 224.0.0.1/24\n"
-			"\n"
-			"	Example : iwpriv ra0 set IgmpFloodingCIDR=1-224.0.0.1/24\n"
-			"		or  : iwpriv ra0 set IgmpFloodingCIDR=0-224.0.0.1/24\n"));
-
-		}
-	return Result;
-}
-
-INT Set_Igmp_Show_Flooding_CIDR_Proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
-{
-	INT Result = FALSE;
-	UCHAR idx = 0;
-	PMULTICAST_WHITE_LIST_FILTER_TABLE pFloodingCIDRFilterTable = pAd->pMcastWLTable;
-
-	if (pFloodingCIDRFilterTable == NULL) {
-		MTWF_LOG(DBG_CAT_PROTO, CATPROTO_IGMP, DBG_LVL_OFF,
-			("%s() Mcast White List Not init, skip this operation\n", __func__));
-		return Result;
-	}
-
-	if (pFloodingCIDRFilterTable->EntryNum == 0) {
-		MTWF_LOG(DBG_CAT_PROTO, CATPROTO_IGMP, DBG_LVL_ERROR, ("Table empty.\n"));
-		Result = TRUE;
-		return Result;
-	}
-
-	MTWF_LOG(DBG_CAT_PROTO, CATPROTO_IGMP, DBG_LVL_OFF, ("=================Dump Driver Table=================\n\n"));
-	RTMP_SEM_LOCK(&pFloodingCIDRFilterTable->MulticastWLTabLock);
-	for (idx = 0; idx < MULTICAST_WHITE_LIST_SIZE_MAX; idx++) {
-		if (pFloodingCIDRFilterTable->EntryTab[idx].bValid) {
-			MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("entry #%d, GrpId=%02x:%02x:%02x:%02x:%02x:%02x/%d\n\n",
-				idx,  PRINT_MAC(pFloodingCIDRFilterTable->EntryTab[idx].Addr), pFloodingCIDRFilterTable->EntryTab[idx].PrefixLen));
-		}
-	}
-	RTMP_SEM_UNLOCK(&pFloodingCIDRFilterTable->MulticastWLTabLock);
-	Result = TRUE;
-	return Result;
-}
-
 void rtmp_read_igmp_snoop_from_file(
 	IN  PRTMP_ADAPTER pAd,
 	RTMP_STRING *tmpbuf,
@@ -2645,9 +2276,6 @@ NDIS_STATUS IgmpPktInfoQuery(
 	if (IS_MULTICAST_MAC_ADDR(pSrcBufVA)) {
 		BOOLEAN IgmpMldPkt = FALSE;
 		PUCHAR pIpHeader = pSrcBufVA + 12;
-		UINT_16 IpProtocol;
-
-		IpProtocol = ntohs(*((UINT_16 *)(pSrcBufVA + 12)));
 #ifdef VENDOR_FEATURE7_SUPPORT
 		UINT16 TypeLen;
 
@@ -2693,11 +2321,6 @@ NDIS_STATUS IgmpPktInfoQuery(
 			*pInIgmpGroup = IGMP_NONE;
 			return NDIS_STATUS_SUCCESS;
 #else
-			if (isIgmpMldFloodingPkt(pAd, pSrcBufVA, IpProtocol)) {
-			 /* If in Flooding table, not drop  */
-			MTWF_LOG(DBG_CAT_PROTO, CATPROTO_IGMP, DBG_LVL_OFF, ("No Pkt drop\n"));
-			return NDIS_STATUS_SUCCESS;
-			}
 			RELEASE_NDIS_PACKET(pAd, pPacket, NDIS_STATUS_FAILURE);
 			return NDIS_STATUS_FAILURE;
 #endif /* IGMP_TVM_SUPPORT */
@@ -2782,11 +2405,7 @@ NDIS_STATUS IgmpPktClone(
 #endif /* IGMP_TVM_SUPPORT */
 
 		if (pMacEntry && (Sst == SST_ASSOC) &&
-			(pAd->MacTab.tr_entry[pMacEntry->wcid].PortSecured == WPA_802_1X_PORT_SECURED)
-#ifdef A4_CONN
-			&&(!isMemberOnMWDSLink(pMemberEntry))
-#endif
-		) {
+			(pAd->MacTab.tr_entry[pMacEntry->wcid].PortSecured == WPA_802_1X_PORT_SECURED)) {
 			tr_entry = &pAd->MacTab.tr_entry[pMacEntry->wcid];
 			OS_PKT_CLONE(pAd, pPacket, pSkbClone, MEM_ALLOC_FLAG);
 

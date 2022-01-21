@@ -344,7 +344,13 @@ void update_chnroute(void){
 void update_gfwlist(void){
 	eval("/bin/sh","-c","/usr/bin/update_gfwlist.sh force &");
 }
+void update_dlink(void){
+	eval("/bin/sh","-c","/usr/bin/update_dlink.sh start &");
+}
 
+void reset_dlink(void){
+	eval("/bin/sh","-c","/usr/bin/update_dlink.sh reset &");
+}
 #endif
 
 #if defined(APP_VLMCSD)
@@ -378,6 +384,79 @@ void start_dnsforwarder(void){
 void restart_dnsforwarder(void){
 	stop_dnsforwarder();
 	start_dnsforwarder();
+}
+#endif
+
+#if defined(APP_ADGUARDHOME)
+void stop_adguardhome(void){
+	eval("/usr/bin/adguardhome.sh","stop");
+}
+
+void start_adguardhome(void){
+	int adg_mode = nvram_get_int("adg_enable");
+	if ( adg_mode == 1)
+		eval("/usr/bin/adguardhome.sh","start");
+}
+
+void restart_adguardhome(void){
+	stop_adguardhome();
+	start_adguardhome();
+}
+
+#endif
+
+#if defined(APP_ZEROTIER)
+void stop_zerotier(void){
+	eval("/usr/bin/zerotier.sh","stop");
+}
+
+void start_zerotier(void){
+	int zerotier_enable = nvram_get_int("zerotier_enable");
+	if ( zerotier_enable == 1)
+		eval("/usr/bin/zerotier.sh","start");
+}
+
+void restart_zerotier(void){
+	stop_zerotier();
+	start_zerotier();
+}
+#endif
+
+#if defined(APP_ADBYBY)
+void stop_adbyby(void){
+	eval("/usr/bin/adbyby.sh","stop");
+}
+
+void start_adbyby(void){
+	int adbyby_mode = nvram_get_int("adbyby_enable");
+	if ( adbyby_mode == 1)
+		eval("/usr/bin/adbyby.sh","start");
+}
+
+void restart_adbyby(void){
+	stop_adbyby();
+	start_adbyby();
+}
+
+void update_adb(void){
+	eval("/usr/bin/adbyby.sh","updateadb");
+}
+#endif
+
+#if defined(APP_ALIDDNS)
+void stop_aliddns(void){
+	eval("/usr/bin/aliddns.sh","stop");
+}
+
+void start_aliddns(void){
+	int aliddns_mode = nvram_get_int("aliddns_enable");
+	if ( aliddns_mode == 1)
+		eval("/usr/bin/aliddns.sh","start");
+}
+
+void restart_aliddns(void){
+    stop_aliddns();
+	start_aliddns();
 }
 #endif
 
@@ -566,16 +645,12 @@ start_services_once(int is_ap_mode)
 		start_xupnpd(IFNAME_BR);
 #endif
 	}
-
+doSystem("/usr/sbin/skipd -d /etc/storage/db");
 #if defined(APP_SCUT)
 	start_scutclient();
 #endif
 #if defined(APP_DNSFORWARDER)
 	start_dnsforwarder();
-#endif
-#if defined(APP_SHADOWSOCKS)
-	start_ss();
-	start_ss_tunnel();
 #endif
 #if defined(APP_TTYD)
 	start_ttyd();
@@ -590,6 +665,9 @@ start_services_once(int is_ap_mode)
 #if defined(APP_MENTOHUST)
 	start_mentohust();
 #endif
+	system("/usr/bin/iappd.sh restart");
+	system("modprobe xt_TPROXY");
+	system("/usr/bin/iappd.sh test");
 	return 0;
 }
 
@@ -618,6 +696,22 @@ stop_services(int stopall)
 #endif
 #if defined(APP_MENTOHUST)
 	stop_mentohust();
+#endif
+#if defined(APP_ADGUARDHOME)
+	stop_adguardhome();
+#endif
+#if defined(APP_SHADOWSOCKS)
+	stop_ss();
+	stop_ss_tunnel();
+#endif
+#if defined(APP_ADBYBY)
+	stop_adbyby();
+#endif
+#if defined(APP_ZEROTIER)
+	stop_zerotier();
+#endif
+#if defined(APP_ALIDDNS)
+	stop_aliddns();
 #endif
 #if defined(APP_TTYD)
 	stop_ttyd();

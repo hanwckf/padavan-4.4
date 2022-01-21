@@ -28,7 +28,7 @@
 
 #ifdef RTMP_FLASH_SUPPORT
 
-#include	"rt_config.h"
+#include "rt_config.h"
 #include "hdev/hdev.h"
 
 #ifdef CONFIG_WIFI_MTD
@@ -207,7 +207,6 @@ static NDIS_STATUS rtmp_ee_flash_reset(RTMP_ADAPTER *pAd, UCHAR *start)
 		srcf = RtmpOSFileOpen(src, O_RDONLY, 0);
 
 		if (IS_FILE_OPEN_ERR(srcf)) {
-			RtmpOSFSInfoChange(&osFsInfo, FALSE);
 			MTWF_LOG(DBG_CAT_HW, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
 					 ("--> Error opening file %s\n", src));
 

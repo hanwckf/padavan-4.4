@@ -178,12 +178,11 @@ enum {
 #define V10_W53_SIZE           4
 #define V10_W56_VHT80_A_SIZE   4
 #define V10_W56_VHT80_B_SIZE   4
-#define V10_W56_VHT80_C_SIZE   4
-#define V10_W56_VHT80_SIZE     (V10_W56_VHT80_A_SIZE + V10_W56_VHT80_A_SIZE + V10_W56_VHT80_C_SIZE)
+#define V10_W56_VHT80_SIZE     (V10_W56_VHT80_A_SIZE + V10_W56_VHT80_A_SIZE)
 #define V10_W56_VHT20_SIZE     3
-#define V10_W56_SIZE          12
+#define V10_W56_SIZE          11
 #define V10_TOTAL_CHANNEL_COUNT (V10_W52_SIZE + V10_W53_SIZE \
-				+ V10_W56_VHT80_A_SIZE + V10_W56_VHT80_B_SIZE + V10_W56_VHT80_C_SIZE)
+				+ V10_W56_VHT80_A_SIZE + V10_W56_VHT80_B_SIZE + V10_W56_VHT20_SIZE)
 #define V10_5G_TOTAL_CHNL_COUNT (V10_TOTAL_CHANNEL_COUNT + V10_LAST_SIZE)
 
 typedef enum _V10_NEC_GRP_LIST {
@@ -361,11 +360,6 @@ union dfs_zero_wait_msg {
 };
 
 #ifdef CUSTOMISE_RDD_THRESHOLD_SUPPORT
-typedef struct _DFS_RT_MATCHING_LIST {
-	RTMP_STRING *pRadarType;
-	RTMP_STRING *pMatchingRadarType;
-} DFS_RT_MATCHING_LIST, *PDFS_RT_MATCHING_LIST;
-
 typedef struct _DFS_PULSE_THRESHOLD_PARAM {
 	UINT32 u4PulseWidthMax;			/* unit us */
 	INT32 i4PulsePwrMax;			/* unit dbm */
@@ -631,9 +625,6 @@ VOID DfsOutBandCacPass(
 NTSTATUS DfsChannelSwitchTimeoutAction(
 	PRTMP_ADAPTER pAd, PCmdQElmt CMDQelmt);
 
-NTSTATUS DfsSwitchChAfterRadarDetected(
-	PRTMP_ADAPTER pAd, PCmdQElmt CMDQelmt);
-
 NTSTATUS DfsAPRestart(
 	PRTMP_ADAPTER pAd, PCmdQElmt CMDQelmt);
 
@@ -690,11 +681,9 @@ USHORT DfsV10SelectBestChannel(/*Select the Channel from Rank List by ACS*/
 	IN UCHAR oldChannel);
 
 UCHAR DfsV10CheckChnlGrp(
-	IN PRTMP_ADAPTER pAd,
 	IN UCHAR Channel);
 
 BOOLEAN DfsV10CheckW56Grp(
-	IN PRTMP_ADAPTER pAd,
 	IN UCHAR channel);
 
 VOID DfsV10AddWeighingFactor(

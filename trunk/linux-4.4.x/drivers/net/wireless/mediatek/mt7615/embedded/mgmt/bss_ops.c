@@ -39,16 +39,9 @@ UCHAR MTK_OUI[]         = {0x00, 0x0c, 0xe7};
 #endif /* WH_EZ_SETUP || MWDS */
 
 
-#ifdef DPP_SUPPORT
-UCHAR DPP_OUI[]     = {0x50, 0x6f, 0x9a, 0x02};
-#endif /* DPP_SUPPORT */
-
 #ifdef IGMP_TVM_SUPPORT
 UCHAR IGMP_TVM_OUI[] = {0x00, 0x0D, 0x02, 0x03};
 #endif /* IGMP_TVM_SUPPORT */
-#ifdef OCE_SUPPORT
-UCHAR	MBO_OCE_OUIBYTE[] = {0x50, 0x6f, 0x9a, 0x16};
-#endif
 
 extern UCHAR WPA_OUI[];
 extern UCHAR SES_OUI[];
@@ -200,7 +193,7 @@ static VOID BssCipherParse(BSS_ENTRY *pBss)
 
 		case IE_RSN:
 			pRsnHeader = (PRSN_IE_HEADER_STRUCT) pTmp;
-			res = wpa_rsne_sanity(pTmp, pRsnHeader->Length + 2, &end_field);
+			res = wpa_rsne_sanity(pTmp, le2cpu16(pRsnHeader->Length) + 2, &end_field);
 
 			if (res == FALSE)
 				break;
@@ -325,11 +318,7 @@ static VOID BssCipherParse(BSS_ENTRY *pBss)
 			while (Count > 0) {
 				pAKM = (PAKM_SUITE_STRUCT) pTmp;
 
-				if (!RTMPEqualMemory(pTmp, RSN_OUI, 3)
-#ifdef DPP_SUPPORT
-					&& !RTMPEqualMemory(pTmp, DPP_OUI, 3)
-#endif /* DPP_SUPPORT */
-					)
+				if (!RTMPEqualMemory(pTmp, RSN_OUI, 3))
 					break;
 
 				switch (pAKM->Type) {
@@ -342,14 +331,7 @@ static VOID BssCipherParse(BSS_ENTRY *pBss)
 					break;
 
 				case 2:
-#ifdef DPP_SUPPORT
-					if (RTMPEqualMemory(pTmp, RSN_OUI, 3))
-						SET_AKM_WPA2PSK(pBss->AKMMap);
-					else if (!RTMPEqualMemory(pTmp, DPP_OUI, 3))
-						SET_AKM_DPP(pBss->AKMMap);
-#else
 					SET_AKM_WPA2PSK(pBss->AKMMap);
-#endif /* DPP_SUPPORT */
 					break;
 
 				case 3:
@@ -421,14 +403,6 @@ static VOID BssCipherParse(BSS_ENTRY *pBss)
 			pBss->RsnCapability = (pTmp[1] << 8) + pTmp[0];
 			pTmp += sizeof(USHORT);
 			break;
-		case IE_RSNXE:
-#ifdef DOT11_SAE_SUPPORT
-			if (pEid->Octet[0] & (1 << IE_RSNXE_CAPAB_SAE_H2E))
-				pBss->use_h2e_connect = TRUE;
-			pBss->rsnxe_len = pEid->Len + 2;
-			NdisMoveMemory(pBss->rsnxe_content, (UCHAR *)pEid, pBss->rsnxe_len);
-#endif
-			break;
 
 		default:
 			break;
@@ -482,7 +456,7 @@ VOID BssTableInit(BSS_TABLE *Tab)
 	}
 }
 
-#if defined(DBDC_MODE)
+#if defined(DBDC_MODE) && defined(DOT11K_RRM_SUPPORT)
 /*
 	backup the other band's scan result, and init the Band from input.
 
@@ -572,7 +546,6 @@ VOID BssTableInitByBand(BSS_TABLE *Tab, UCHAR Band)
  */
 ULONG BssTableSearch(BSS_TABLE *Tab, UCHAR *pBssid, UCHAR Channel)
 {
-	//UCHAR i;
 	UINT i;
 
 	for (i = 0; i < Tab->BssNr && Tab->BssNr <= MAX_LEN_OF_BSS_TABLE; i++) {
@@ -597,7 +570,6 @@ ULONG BssSsidTableSearch(
 	IN UCHAR	 SsidLen,
 	IN UCHAR	 Channel)
 {
-	//UCHAR i;
 	UINT i;
 
 	for (i = 0; i < Tab->BssNr  && Tab->BssNr <= MAX_LEN_OF_BSS_TABLE; i++) {
@@ -622,7 +594,6 @@ ULONG BssTableSearchWithSSID(
 	IN UCHAR	 SsidLen,
 	IN UCHAR	 Channel)
 {
-	//UCHAR i;
 	UINT i;
 
 	for (i = 0; i < Tab->BssNr  && Tab->BssNr <= MAX_LEN_OF_BSS_TABLE; i++) {
@@ -641,7 +612,6 @@ ULONG BssTableSearchWithSSID(
 
 ULONG BssSsidTableSearchBySSID(BSS_TABLE *Tab, UCHAR *pSsid, UCHAR SsidLen)
 {
-	//UCHAR i;
 	UINT i;
 
 	for (i = 0; i < Tab->BssNr  && Tab->BssNr <= MAX_LEN_OF_BSS_TABLE; i++) {
@@ -655,7 +625,6 @@ ULONG BssSsidTableSearchBySSID(BSS_TABLE *Tab, UCHAR *pSsid, UCHAR SsidLen)
 
 VOID BssTableDeleteEntry(BSS_TABLE *Tab, UCHAR *pBssid, UCHAR Channel)
 {
-	//UCHAR i, j;
 	UINT i, j;
 
 	for (i = 0; i < Tab->BssNr && Tab->BssNr <= MAX_LEN_OF_BSS_TABLE; i++) {
@@ -738,22 +707,15 @@ VOID BssEntrySet(
 	IN CHAR Rssi,
 	IN USHORT LengthVIE,
 	IN PNDIS_802_11_VARIABLE_IEs pVIE
-#ifdef CONFIG_AP_SUPPORT
-#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT) || defined(NEIGHBORING_AP_STAT)
+#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT)
 	,
 	IN UCHAR	*Snr,
 	IN CHAR 	*rssi
 #endif
-#endif
+
 	)
 
 {
-#ifdef NEIGHBORING_AP_STAT
-	UINT8 index = SCAN_RESULT_2G;
-	SCAN_RPT_ITEM *item = NULL;
-	UCHAR idx = 0;
-	BOOLEAN Bssid_Found = FALSE;
-#endif
 	COPY_MAC_ADDR(pBss->Bssid, ie_list->Bssid);
 	/* Default Hidden SSID to be TRUE, it will be turned to FALSE after coping SSID*/
 	pBss->Hidden = 1;
@@ -816,8 +778,7 @@ VOID BssEntrySet(
 	pBss->Channel = ie_list->Channel;
 	pBss->CentralChannel = ie_list->Channel;
 	pBss->Rssi = Rssi;
-#ifdef CONFIG_AP_SUPPORT
-#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT) || defined(NEIGHBORING_AP_STAT)
+#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT)
 	pBss->Snr[0] = Snr[0];
 	pBss->Snr[1] = Snr[1];
 	pBss->Snr[2] = Snr[2];
@@ -827,53 +788,19 @@ VOID BssEntrySet(
 	pBss->rssi[1] = rssi[1];
 	pBss->rssi[2] = rssi[2];
 	pBss->rssi[3] = rssi[3];
-#endif
-#endif
 
-#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT)
 	NdisMoveMemory(pBss->vendorOUI0, ie_list->VendorID0, 3);
 	NdisMoveMemory(pBss->vendorOUI1, ie_list->VendorID1, 3);
 #endif
 
-#ifdef CONFIG_AP_SUPPORT
-#ifdef NEIGHBORING_AP_STAT
-	pBss->DtimPeriod = ie_list->DtimPeriod;
-	if (ie_list->Channel <= 14)
-		index = SCAN_RESULT_2G;
-	else
-		index = SCAN_RESULT_5G;
-	for (idx = 0; (idx < pAd->ScanTab.ScanResult[index].item_ctr)  && (pAd->ScanTab.ScanResult[index].item_ctr < MAX_LEN_OF_BSS_TABLE); idx++) {
-		if (MAC_ADDR_EQUAL(pAd->ScanTab.ScanResult[index].items[idx].macAddr, ie_list->Bssid))
-				Bssid_Found = TRUE;
-	}
-	if (!Bssid_Found) {
-		item = &pAd->ScanTab.ScanResult[index].items[pAd->ScanTab.ScanResult[index].item_ctr];
-		NdisMoveMemory(item->ssid, pBss->Ssid, pBss->SsidLen);
-		NdisMoveMemory(item->macAddr, ie_list->Bssid, MAC_ADDR_LEN);
-		item->noise = pBss->Rssi - pBss->Snr[0];
-		item->beaconPeriod = ie_list->BeaconPeriod;
-		item->dtimPeriod = ie_list->DtimPeriod;
-		item->channel = ie_list->Channel;
-		for (idx = 0; idx < ie_list->SupRateLen; idx++) {
-			if (pBss->SupRate[idx] & 0x80)
-				item->basicRate[item->basicRateLen++] = ie_list->SupRate[idx] & 0x7F;
-			else
-				item->suppoRate[item->suppRateLen++] = ie_list->SupRate[idx];
-		}
-		pAd->ScanTab.ScanResult[index].item_ctr++;
-	}
-#endif
-#endif
 	/* Update CkipFlag. if not exists, the value is 0x0*/
 	pBss->CkipFlag = ie_list->CkipFlag;
 	/* New for microsoft Fixed IEs*/
 	NdisMoveMemory(pBss->FixIEs.Timestamp, &ie_list->TimeStamp, 8);
 	pBss->FixIEs.BeaconInterval = ie_list->BeaconPeriod;
 	pBss->FixIEs.Capabilities = ie_list->CapabilityInfo;
-#ifdef CONFIG_AP_SUPPORT
-#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT) || defined(NEIGHBORING_AP_STAT)
+#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT)
 	pBss->LastBeaconRxTimeT = jiffies_to_msecs(jiffies);
-#endif
 #endif
 
 #ifdef CONFIG_OWE_SUPPORT
@@ -1058,13 +985,12 @@ ULONG BssTableSetEntry(
 	IN CHAR Rssi,
 	IN USHORT LengthVIE,
 	IN PNDIS_802_11_VARIABLE_IEs pVIE
-#ifdef CONFIG_AP_SUPPORT
-#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT) || defined(NEIGHBORING_AP_STAT)
+#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT)
 	,
 	IN UCHAR	*Snr,
 	IN CHAR 	*rssi
 #endif
-#endif
+
 	)
 {
 	ULONG	Idx;
@@ -1086,8 +1012,7 @@ ULONG BssTableSetEntry(
 			for (i = 0; i < pAd->ApCfg.ApCliNum; i++) {
 				pApCliEntry = &pAd->ApCfg.ApCliTab[i];
 
-				if ((!MAC_ADDR_EQUAL(pApCliEntry->MlmeAux.Bssid, ZERO_MAC_ADDR) && MAC_ADDR_EQUAL(pApCliEntry->MlmeAux.Bssid, ie_list->Bssid))
-					|| (pApCliEntry->MlmeAux.SsidLen> 0 && SSID_EQUAL(pApCliEntry->MlmeAux.Ssid, pApCliEntry->MlmeAux.SsidLen, ie_list->Ssid, ie_list->SsidLen))) {
+				if ((!MAC_ADDR_EQUAL(pApCliEntry->MlmeAux.Bssid, ZERO_MAC_ADDR) && MAC_ADDR_EQUAL(pApCliEntry->MlmeAux.Bssid, ie_list->Bssid)) || (pApCliEntry->MlmeAux.SsidLen> 0 && SSID_EQUAL(pApCliEntry->MlmeAux.Ssid, pApCliEntry->MlmeAux.SsidLen, ie_list->Ssid, ie_list->SsidLen))) {
 					bInsert = TRUE;
 					break;
 				}
@@ -1106,8 +1031,7 @@ ULONG BssTableSetEntry(
 				!OPSTATUS_TEST_FLAG(pAd, fOP_STATUS_MEDIA_STATE_CONNECTED) ||
 #endif
 				!OPSTATUS_TEST_FLAG(pAd, fOP_AP_STATUS_MEDIA_STATE_CONNECTED)) {
-				if ((!MAC_ADDR_EQUAL(pAd->ScanCtrl.Bssid, ZERO_MAC_ADDR) && MAC_ADDR_EQUAL(pAd->ScanCtrl.Bssid, ie_list->Bssid)) ||
-					(pAd->ScanCtrl.SsidLen > 0 && SSID_EQUAL(pAd->ScanCtrl.Ssid, pAd->ScanCtrl.SsidLen, ie_list->Ssid, ie_list->SsidLen))
+				if ((!MAC_ADDR_EQUAL(pAd->ScanCtrl.Bssid, ZERO_MAC_ADDR) && MAC_ADDR_EQUAL(pAd->ScanCtrl.Bssid, ie_list->Bssid)) || (pAd->ScanCtrl.SsidLen > 0 && SSID_EQUAL(pAd->ScanCtrl.Ssid, pAd->ScanCtrl.SsidLen, ie_list->Ssid, ie_list->SsidLen))
 #ifdef APCLI_SUPPORT
 					|| bInsert
 #endif /* APCLI_SUPPORT */
@@ -1120,10 +1044,8 @@ ULONG BssTableSetEntry(
 					Idx = Tab->BssOverlapNr;
 					NdisZeroMemory(&(Tab->BssEntry[Idx]), sizeof(BSS_ENTRY));
 					BssEntrySet(pAd, &Tab->BssEntry[Idx], ie_list, Rssi, LengthVIE, pVIE
-#ifdef CONFIG_AP_SUPPORT
-#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT) || defined(NEIGHBORING_AP_STAT)
+#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT)
 					, Snr, rssi
-#endif
 #endif
 					);
 					Tab->BssOverlapNr += 1;
@@ -1141,19 +1063,15 @@ ULONG BssTableSetEntry(
 
 		Idx = Tab->BssNr;
 		BssEntrySet(pAd, &Tab->BssEntry[Idx], ie_list, Rssi, LengthVIE, pVIE
-#ifdef CONFIG_AP_SUPPORT
-#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT) || defined(NEIGHBORING_AP_STAT)
+#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT)
 		, Snr, rssi
-#endif
 #endif
 		);
 		Tab->BssNr++;
 	} else if (Idx < MAX_LEN_OF_BSS_TABLE)
 		BssEntrySet(pAd, &Tab->BssEntry[Idx], ie_list, Rssi, LengthVIE, pVIE
-#ifdef CONFIG_AP_SUPPORT
-#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT) || defined(NEIGHBORING_AP_STAT)
+#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT)
 		, Snr, rssi
-#endif
 #endif
 		);
 	else

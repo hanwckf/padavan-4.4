@@ -261,7 +261,8 @@ struct event_desc {
 #define OPT_UBUS           58
 #define OPT_FILTER_AAAA    59
 #define OPT_DHCP_TO_HOST   60
-#define OPT_LAST           61
+#define OPT_FILTER_AAAA	   61
+#define OPT_LAST           62
 
 #define OPTION_BITS (sizeof(unsigned int)*8)
 #define OPTION_SIZE ( (OPT_LAST/OPTION_BITS)+((OPT_LAST%OPTION_BITS)!=0) )

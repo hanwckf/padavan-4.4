@@ -186,6 +186,9 @@ ifneq ($(CONFIG_FIRMWARE_INCLUDE_SCUTCLIENT),y)
 	rm -f $(INSTALLDIR)/www/scutclient_log.asp
 	rm -f $(INSTALLDIR)/www/scutclient_action.asp
 endif
+ifneq ($(CONFIG_FIRMWARE_INCLUDE_ADGUARDHOME),y)
+	rm -f $(INSTALLDIR)/www/Advanced_adguardhome.asp
+endif
 ifneq ($(CONFIG_FIRMWARE_INCLUDE_MENTOHUST),y)
 	rm -f $(INSTALLDIR)/www/mentohust.asp
 	rm -f $(INSTALLDIR)/www/mentohust_log.asp
@@ -199,6 +202,14 @@ ifneq ($(CONFIG_FIRMWARE_INCLUDE_SHADOWSOCKS),y)
 	rm -f $(INSTALLDIR)/www/Shadowsocks_action.asp
 	rm -f $(INSTALLDIR)/www/Shadowsocks_log.asp
 endif
-
+ifneq ($(CONFIG_FIRMWARE_INCLUDE_ADBYBY),y)
+	rm -f $(INSTALLDIR)/www/Advanced_adbyby.asp
+endif
+ifneq ($(CONFIG_FIRMWARE_INCLUDE_ALIDDNS),y)
+	rm -f $(INSTALLDIR)/www/Advanced_aliddns.asp
+endif
+ifneq ($(CONFIG_FIRMWARE_INCLUDE_ZEROTIER),y)
+	rm -f $(INSTALLDIR)/www/Advanced_zerotier.asp
+endif
 clean:
 	@echo "Clean www romfs"

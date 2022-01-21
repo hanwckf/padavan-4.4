@@ -762,7 +762,7 @@ VOID RRM_BeaconReportHandler(
 	IN PRRM_BEACON_REP_INFO pBcnRepInfo,
 	IN LONG Length
 #endif /* CONFIG_11KV_API_SUPPORT */
-#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT) || defined(NEIGHBORING_AP_STAT)
+#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT)
 	,
 	IN UCHAR	*Snr,
 	IN CHAR 	*rssi
@@ -846,7 +846,6 @@ VOID RRM_BeaconReportHandler(
 				pVIE = (PNDIS_802_11_VARIABLE_IEs) VarIE;
 				pVIE->Length = 0;
 				bFrameBody = PeerBeaconAndProbeRspSanity(pAd,
-							 pWdev,
 							 pRrmSubFrame->Oct,
 							 pRrmSubFrame->Length,
 							 pBcnRep->ChNumber,
@@ -895,7 +894,7 @@ VOID RRM_BeaconReportHandler(
 	if (bFrameBody) {
 		ie_list->FromBcnReport = TRUE;
 		Idx = BssTableSetEntry(pAd, &pAd->ScanTab, ie_list, Rssi, LenVIE, pVIE
-#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT) || defined(NEIGHBORING_AP_STAT)
+#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT)
 							, Snr, rssi
 #endif /* CONFIG_AP_SUPPORT */
 					);
@@ -944,7 +943,7 @@ VOID RRM_PeerMeasureRepAction(
 	PNET_DEV NetDev = NULL;
 #endif /* CONFIG_11KV_API_SUPPORT */
 #endif
-#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT) || defined(NEIGHBORING_AP_STAT)
+#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT)
 		UCHAR Snr[4] = {0};
 		CHAR  rssi[4] = {0};
 		Snr[0] = ConvertToSnr(pAd, Elem->rssi_info.raw_Snr[0]);
@@ -1044,13 +1043,11 @@ VOID RRM_PeerMeasureRepAction(
 									pMeasureRep,
 									BcnRepLen,
 									pDialogEntry
-#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT) || defined(NEIGHBORING_AP_STAT)
+#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT)
 									, Snr, rssi
 #endif
+
 									);
-#ifdef WAPP_SUPPORT
-						wapp_send_bcn_report(pAd, pEntry, (UCHAR*)&eid_ptr->Eid, eid_ptr->Len +2);
-#endif /* WAPP_SUPPORT */
 				} else {
 					if (ReportMode.field.Refused) {
 						MTWF_LOG(DBG_CAT_PROTO, CATPROTO_RRM, DBG_LVL_TRACE,
@@ -1068,9 +1065,6 @@ VOID RRM_PeerMeasureRepAction(
 						}
 						/* send Beacon Response to up-layer */
 						NetDev = pAd->ApCfg.MBSSID[pDialogEntry->ControlIndex].wdev.if_dev;
-#if defined(WAPP_SUPPORT)
-						wapp_send_bcn_report(pAd, pEntry, (UCHAR*)&eid_ptr->Eid, eid_ptr->Len + 2);
-#endif
 						wext_send_bcn_rsp_event(NetDev, pDialogEntry->StaMac,
 							(PUCHAR)eid_ptr->Octet, 3, DialogToken);
 				}
@@ -1080,7 +1074,7 @@ VOID RRM_PeerMeasureRepAction(
 								pEntry->wdev,
 								pMeasureRep,
 								BcnRepLen
-#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT) || defined(NEIGHBORING_AP_STAT)
+#if defined(CUSTOMER_DCC_FEATURE) || defined(CONFIG_MAP_SUPPORT)
 								, Snr, rssi
 #endif
 							);
@@ -1285,7 +1279,6 @@ int rrm_send_beacon_req(
 		MTWF_LOG(DBG_CAT_PROTO, CATPROTO_RRM, DBG_LVL_ERROR,
 			("%s, invalid MesureReq Token(0)!\n",
 			__func__));
-		os_free_mem(pBuf);
 		return NDIS_STATUS_FAILURE;
 	}
 	pEntry = MeasureReqInsert(pAd, p_bcn_req_data->dialog_token);
@@ -1293,7 +1286,6 @@ int rrm_send_beacon_req(
 		MTWF_LOG(DBG_CAT_PROTO, CATPROTO_RRM, DBG_LVL_ERROR,
 			("%s, Fail to Insert MesureReq Token(%d)!\n",
 			__func__, p_bcn_req_data->dialog_token));
-		os_free_mem(pBuf);
 		return NDIS_STATUS_FAILURE;
 	}
 	pEntry->skip_time_check = TRUE;
@@ -1622,7 +1614,7 @@ void compose_rrm_nrrsp_ie(RTMP_ADAPTER *pAd,
 			(p_info->ap_reachability == 0)?3:p_info->ap_reachability;
 		BssidInfo.field.Security = p_info->security;
 		BssidInfo.field.KeyScope = p_info->key_scope;
-		BssidInfo.field.SpectrumMng = (p_info->capinfo & (1 << 8))?1:0;
+		BssidInfo.field.SepctrumMng = (p_info->capinfo & (1 << 8))?1:0;
 		BssidInfo.field.Qos = (p_info->capinfo & (1 << 9))?1:0;
 		BssidInfo.field.APSD = (p_info->capinfo & (1 << 11))?1:0;
 		BssidInfo.field.RRM = (p_info->capinfo & RRM_CAP_BIT)?1:0;
@@ -2194,7 +2186,7 @@ void compose_rrm_BcnReq_ie(RTMP_ADAPTER *pAd,
 
 	if (p_beacon_req->detail == 1) {
 		RRM_InsertRequestIE_11KV_API(pAd, (pOutBuffer+FrameLen),
-			&FrameLen, p_beacon_req->request, p_beacon_req->request_len);
+			&FrameLen, p_beacon_req->request_len, p_beacon_req->request);
 		TotalLen += (p_beacon_req->request_len + 2);
 	}
 
@@ -2206,7 +2198,7 @@ void compose_rrm_BcnReq_ie(RTMP_ADAPTER *pAd,
 			InsertChannelRepIE(pAd, (pOutBuffer+FrameLen), &FrameLen,
 				(RTMP_STRING *)pAd->CommonCfg.CountryCode,
 				p_beacon_req->op_class_list[idx],
-				p_beacon_req->ch_list, pAd->ApCfg.MBSSID[ifidx].wdev.PhyMode, ifidx);
+				p_beacon_req->ch_list, pAd->ApCfg.MBSSID[ifidx].wdev.PhyMode);
 			TotalLen += (FrameLen - FramelenTmp);
 			idx++;
 		}

@@ -81,8 +81,7 @@ ssize_t video_Update_get(char *page, char **start, off_t off, int count,
 ssize_t video_Update_set(struct file *file, const char __user *buffer,
 						 size_t count, loff_t *ppos)
 {
-	char *buf;
-	os_alloc_mem_suspend(NULL, (UCHAR **)&buf, count);
+	char *buf = kmalloc(count, GFP_KERNEL);
 
 	if (buf) {
 		unsigned long val;
@@ -110,8 +109,7 @@ ssize_t video_Enable_get(char *page, char **start, off_t off, int count,
 ssize_t video_Enable_set(struct file *file, const char __user *buffer,
 						 size_t count, loff_t *ppos)
 {
-	char *buf;
-	os_alloc_mem_suspend(NULL, (UCHAR **)&buf, count);
+	char *buf = kmalloc(count, GFP_KERNEL);
 
 	if (buf) {
 		unsigned long val;
@@ -139,8 +137,7 @@ ssize_t video_ClassifierEnable_get(char *page, char **start, off_t off, int coun
 ssize_t video_ClassifierEnable_set(struct file *file, const char __user *buffer,
 								   size_t count, loff_t *ppos)
 {
-	char *buf;
-	os_alloc_mem_suspend(NULL, (UCHAR **)&buf, count);
+	char *buf = kmalloc(count, GFP_KERNEL);
 
 	if (buf) {
 		unsigned long val;
@@ -168,8 +165,7 @@ ssize_t video_HighTxMode_get(char *page, char **start, off_t off, int count,
 ssize_t video_HighTxMode_set(struct file *file, const char __user *buffer,
 							 size_t count, loff_t *ppos)
 {
-	char *buf;
-	os_alloc_mem_suspend(NULL, (UCHAR **)&buf, count);
+	char *buf = kmalloc(count, GFP_KERNEL);
 
 	if (buf) {
 		unsigned long val;
@@ -197,8 +193,7 @@ ssize_t video_TxPwr_get(char *page, char **start, off_t off, int count,
 ssize_t video_TxPwr_set(struct file *file, const char __user *buffer,
 						size_t count, loff_t *ppos)
 {
-	char *buf;
-	os_alloc_mem_suspend(NULL, (UCHAR **)&buf, count);
+	char *buf = kmalloc(count, GFP_KERNEL);
 
 	if (buf) {
 		unsigned long val;
@@ -226,8 +221,7 @@ ssize_t video_VideoMCSEnable_get(char *page, char **start, off_t off, int count,
 ssize_t video_VideoMCSEnable_set(struct file *file, const char __user *buffer,
 								 size_t count, loff_t *ppos)
 {
-	char *buf;
-	os_alloc_mem_suspend(NULL, (UCHAR **)&buf, count);
+	char *buf = kmalloc(count, GFP_KERNEL);
 
 	if (buf) {
 		unsigned long val;
@@ -255,8 +249,7 @@ ssize_t video_VideoMCS_get(char *page, char **start, off_t off, int count,
 ssize_t video_VideoMCS_set(struct file *file, const char __user *buffer,
 						   size_t count, loff_t *ppos)
 {
-	char *buf;
-	os_alloc_mem_suspend(NULL, (UCHAR **)&buf, count);
+	char *buf = kmalloc(count, GFP_KERNEL);
 
 	if (buf) {
 		unsigned long val;
@@ -284,8 +277,7 @@ ssize_t video_TxBASize_get(char *page, char **start, off_t off, int count,
 ssize_t video_TxBASize_set(struct file *file, const char __user *buffer,
 						   size_t count, loff_t *ppos)
 {
-	char *buf;
-	os_alloc_mem_suspend(NULL, (UCHAR **)&buf, count);
+	char *buf = kmalloc(count, GFP_KERNEL);
 
 	if (buf) {
 		unsigned long val;
@@ -313,8 +305,7 @@ ssize_t video_TxLifeTimeMode_get(char *page, char **start, off_t off, int count,
 ssize_t video_TxLifeTimeMode_set(struct file *file, const char __user *buffer,
 								 size_t count, loff_t *ppos)
 {
-	char *buf;
-	os_alloc_mem_suspend(NULL, (UCHAR **)&buf, count);
+	char *buf = kmalloc(count, GFP_KERNEL);
 
 	if (buf) {
 		unsigned long val;
@@ -342,8 +333,7 @@ ssize_t video_TxLifeTime_get(char *page, char **start, off_t off, int count,
 ssize_t video_TxLifeTime_set(struct file *file, const char __user *buffer,
 							 size_t count, loff_t *ppos)
 {
-	char *buf;
-	os_alloc_mem_suspend(NULL, (UCHAR **)&buf, count);
+	char *buf = kmalloc(count, GFP_KERNEL);
 
 	if (buf) {
 		unsigned long val;
@@ -371,8 +361,7 @@ ssize_t video_TxRetryLimit_get(char *page, char **start, off_t off, int count,
 ssize_t video_TxRetryLimit_set(struct file *file, const char __user *buffer,
 							   size_t count, loff_t *ppos)
 {
-	char *buf;
-	os_alloc_mem_suspend(NULL, (UCHAR **)&buf, count);
+	char *buf = kmalloc(count, GFP_KERNEL);
 
 	if (buf) {
 		unsigned long val;

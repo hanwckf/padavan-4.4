@@ -198,15 +198,7 @@ VOID MBSS_Init(RTMP_ADAPTER *pAd, RTMP_OS_NETDEV_OP_HOOK *pNetDevOps)
 		struct wireless_dev *pWdev;
 		CFG80211_CB *p80211CB = pAd->pCfg80211_CB;
 		UINT32 DevType = RT_CMD_80211_IFTYPE_AP;
-		os_alloc_mem_suspend(NULL, (UCHAR **)&pWdev ,sizeof(*pWdev));
-		if (!pWdev) {
-			MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
-					 ("mem alloc failed for %s, free net device!\n",
-					  RTMP_OS_NETDEV_GET_DEVNAME(pDevNew)));
-			RtmpOSNetDevFree(pDevNew);
-			break;
-		}
-		os_zero_mem((PUCHAR)pWdev, sizeof(*pWdev));
+		pWdev = kzalloc(sizeof(*pWdev), GFP_KERNEL);
 		pDevNew->ieee80211_ptr = pWdev;
 		pWdev->wiphy = p80211CB->pCfg80211_Wdev->wiphy;
 		SET_NETDEV_DEV(pDevNew, wiphy_dev(pWdev->wiphy));
@@ -217,19 +209,9 @@ VOID MBSS_Init(RTMP_ADAPTER *pAd, RTMP_OS_NETDEV_OP_HOOK *pNetDevOps)
 
 		/* register this device to OS */
 		status = RtmpOSNetDevAttach(pAd->OpMode, pDevNew, &netDevHook);
-#ifdef CONFIG_MAP_SUPPORT
-		if (IS_MAP_TURNKEY_ENABLE(pAd)) {
-			if (wdev && wdev->wdev_type == WDEV_TYPE_AP)
-				map_make_vend_ie(pAd, IdBss);
-		}
-#endif /* CONFIG_MAP_SUPPORT */
 	}
 
 	pAd->FlgMbssInit = TRUE;
-#ifdef MAP_R2
-	if (IS_MAP_ENABLE(pAd))
-		MtCmdSetRxTxAirtimeEn(pAd, ENUM_RX_AT_FEATURE_SUB_TYPE_AIRTIME_EN, TRUE);
-#endif
 }
 
 
@@ -277,10 +259,6 @@ VOID MBSS_Remove(RTMP_ADAPTER *pAd)
 			RtmpOSNetDevDetach(wdev->if_dev);
 			RtmpOSNetDevProtect(0);
 			wdev_deinit(pAd, wdev);
-#ifdef RT_CFG80211_SUPPORT
-			os_free_mem(wdev->if_dev->ieee80211_ptr);
-			wdev->if_dev->ieee80211_ptr = NULL;
-#endif /* RT_CFG80211_SUPPORT */
 			RtmpOSNetDevFree(wdev->if_dev);
 			wdev->if_dev = NULL;
 		}

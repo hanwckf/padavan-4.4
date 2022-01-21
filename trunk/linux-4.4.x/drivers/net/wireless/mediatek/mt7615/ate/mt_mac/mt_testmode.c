@@ -1345,12 +1345,8 @@ static INT32 MT_ATESetTxPowerX(RTMP_ADAPTER *pAd, ATE_TXPOWER TxPower)
 		return Ret;
 
 	/* Tx Power value upper bound protection */
-	if (TxPower.Power > 50 && TxPower.Power <= 63)
-		TxPower.Power = 50;
-
-	/* Tx Power value lower bound protection */
-	if (TxPower.Power > 63 && TxPower.Power < 78)
-		TxPower.Power = 78;
+	if (TxPower.Power > 50)
+			TxPower.Power = 50;
 
 	switch (TxPower.Ant_idx) {
 	case 0:
@@ -4849,8 +4845,7 @@ static INT32 MT_ATESetTxAntenna(RTMP_ADAPTER *pAd, UINT32 Ant)
 	for (ant_loop = 0; ant_loop < cap->max_nss; ant_loop++)
 		ant_mask |= (0x1 << ant_loop);
 
-	if ((Ant & ATE_ANT_USER_SEL) != ATE_ANT_USER_SEL)
-		Ant &= ant_mask;
+	Ant &= ant_mask;
 
 	MTWF_LOG(DBG_CAT_TEST, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 		("%s: Ant = 0x%x, control_band_idx = %d\n",
@@ -5132,11 +5127,8 @@ static INT32 MT_ATESetChannel(RTMP_ADAPTER *pAd,
 				else
 					break;
 			}
-		} else {
+		} else
 			tx_stream_num = max_stream_num;
-			MTWF_LOG(DBG_CAT_HW, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("%s():max_nss:%d, max_stream_num:%d\n",
-					__func__, cap->max_nss, max_stream_num));
-		}
 
 #else
 		tx_stream_num = max_stream_num;
@@ -7017,7 +7009,6 @@ static INT32 pci_ate_leave(RTMP_ADAPTER *pAd)
 {
 	struct _ATE_CTRL *ATECtrl = &pAd->ATECtrl;
 	MTWF_LOG(DBG_CAT_TEST,  DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("%s\n", __func__));
-	RtmpChipOpsEepromHook(pAd, pAd->infType, E2P_NONE);
 	NICReadEEPROMParameters(pAd, NULL);
 	NICInitAsicFromEEPROM(pAd);
 

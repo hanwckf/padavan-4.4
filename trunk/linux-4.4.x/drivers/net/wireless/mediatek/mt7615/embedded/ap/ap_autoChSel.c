@@ -74,7 +74,6 @@ ULONG AutoChBssSearchWithSSID(
 	IN UCHAR Channel,
 	IN struct wifi_dev *pwdev)
 {
-	//UCHAR i;
 	UINT i;
 	UCHAR BandIdx = HcGetBandByWdev(pwdev);
 	AUTO_CH_CTRL *pAutoChCtrl = HcGetAutoChCtrlbyBandIdx(pAd, BandIdx);
@@ -158,7 +157,7 @@ VOID UpdateChannelInfo(
 		BusyTime = AsicGetChBusyCnt(pAd, BandIdx);
 #if (defined(CUSTOMER_DCC_FEATURE) || defined(OFFCHANNEL_SCAN_FEATURE))
 		if ((pAd->ScanCtrl.ScanTime[pAd->ScanCtrl.CurrentGivenChan_Index]) != 0)
-			pAd->ScanCtrl.ScanTimeActualEnd = jiffies;
+			pAd->ScanCtrl.ScanTimeActualEnd = ktime_get();
 #endif
 #ifdef AP_QLOAD_SUPPORT
 		pAutoChCtrl->pChannelInfo->chanbusytime[ch_index] = (BusyTime * 100) / AUTO_CHANNEL_SEL_TIMEOUT;
@@ -169,13 +168,11 @@ VOID UpdateChannelInfo(
 		pAd->ChannelInfo.chanbusytime[ch_index] = BusyTime;
 		MTWF_LOG(DBG_CAT_PROTO, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 		("[%s] channel busy time[%d] = %d\n", __func__, ch_index, BusyTime));
-#ifndef NEIGHBORING_AP_STAT
 		if ((pAd->ScanCtrl.ScanTime[pAd->ScanCtrl.CurrentGivenChan_Index]) != 0) {
 			MTWF_LOG(DBG_CAT_PROTO, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 			("[%s] calling Calculate_NF with bandidx = %d\n", __func__, pAd->ChannelInfo.bandidx));
 			Calculate_NF(pAd, pAd->ChannelInfo.bandidx);
 		}
-#endif
 #endif
 #ifdef CUSTOMER_DCC_FEATURE
 		pAd->ChannelInfo.FalseCCA[ch_index] = cca_cnt;
@@ -185,7 +182,7 @@ VOID UpdateChannelInfo(
 #if (defined(CUSTOMER_DCC_FEATURE) || defined(OFFCHANNEL_SCAN_FEATURE))
 		if ((pAd->ScanCtrl.ScanTime[pAd->ScanCtrl.CurrentGivenChan_Index]) != 0) {
 			/* Calculate the channel busy value precision by using actual scan time */
-			pAd->ScanCtrl.ScanTimeActualDiff = (UCHAR)jiffies_to_msecs(abs(pAd->ScanCtrl.ScanTimeActualEnd - pAd->ScanCtrl.ScanTimeActualStart));
+			pAd->ScanCtrl.ScanTimeActualDiff = ktime_to_ms(ktime_sub(pAd->ScanCtrl.ScanTimeActualEnd, pAd->ScanCtrl.ScanTimeActualStart)) + 1;
 			MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("time_diff: %d Busytime: %d\n",
 				pAd->ScanCtrl.ScanTimeActualDiff, pAd->ChannelInfo.chanbusytime[ch_index]));
 		}
@@ -667,17 +664,11 @@ BOOLEAN DfsV10ACSMarkChnlConsumed(
 	PDFS_PARAM pDfsParam = &pAd->CommonCfg.DfsParameter;
 	UCHAR i = 0;
 	BOOLEAN status = FALSE;
-	UCHAR channelcount = 0;
 
 	if (IS_DFS_V10_ACS_VALID(pAd) == FALSE)
 		return FALSE;
 
-	if (pAd->CommonCfg.bCh144Enabled)
-		channelcount = V10_TOTAL_CHANNEL_COUNT;
-	else
-		channelcount = V10_TOTAL_CHANNEL_COUNT - 1;
-
-	for (i = 0; i < channelcount; i++) {
+	for (i = 0; i < V10_TOTAL_CHANNEL_COUNT; i++) {
 		if (channel == pDfsParam->DfsV10SortedACSList[i].Channel) {
 			pDfsParam->DfsV10SortedACSList[i].isConsumed = TRUE;
 			status = TRUE;
@@ -694,14 +685,13 @@ BOOLEAN DfsV10ACSMarkChnlConsumed(
 }
 
 BOOLEAN DfsV10ACSListSortFunction(
-	IN PRTMP_ADAPTER pAd, struct wifi_dev *wdev)
+	IN PRTMP_ADAPTER pAd)
 {
 	PDFS_PARAM pDfsParam = &pAd->CommonCfg.DfsParameter;
 	UINT_32 temp_busy = 0;
 	UCHAR i = 0, j = 0, temp_chnl = 0;
-	UCHAR BandIdx = HcGetBandByWdev(wdev);
 
-	if ((!pAd->ApCfg.bAutoChannelAtBootup[BandIdx]) && IS_DFS_V10_ACS_VALID(pAd)) {
+	if ((!pAd->ApCfg.bAutoChannelAtBootup) && IS_DFS_V10_ACS_VALID(pAd)) {
 		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("[%s] False Entry \n", __func__));
 		return FALSE;
 	}
@@ -1772,36 +1762,16 @@ static inline UCHAR SelectClearChannelBusyTime(
 	StartChannelIdx = SubGroupMaxBusyTimeChIdx + 1;
 	GroupNum = 0;
 	os_alloc_mem(pAd, (UCHAR **)&pSubGroupMaxBusyTimeTable, (MAX_NUM_OF_CHANNELS+1)*sizeof(UINT32));
-	if (!pSubGroupMaxBusyTimeTable) {
-		MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_OFF,
-			("alloc buf for pSubGroupMaxBusyTimeTable failed!\n"));
-		goto ReturnCh;
-	}
 	os_alloc_mem(pAd, (UCHAR **)&pSubGroupMaxBusyTimeChIdxTable, (MAX_NUM_OF_CHANNELS+1)*sizeof(UINT32));
-	if (!pSubGroupMaxBusyTimeChIdxTable) {
-		MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_OFF,
-			("alloc buf for pSubGroupMaxBusyTimeChIdxTable failed!\n"));
-		goto ReturnCh;
-	}
 	os_alloc_mem(pAd, (UCHAR **)&pSubGroupMinBusyTimeTable, (MAX_NUM_OF_CHANNELS+1)*sizeof(UINT32));
-	if (!pSubGroupMinBusyTimeTable) {
-		MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_OFF,
-			("alloc buf for pSubGroupMinBusyTimeTable failed!\n"));
-		goto ReturnCh;
-	}
 	os_alloc_mem(pAd, (UCHAR **)&pSubGroupMinBusyTimeChIdxTable, (MAX_NUM_OF_CHANNELS+1)*sizeof(UINT32));
-	if (!pSubGroupMinBusyTimeChIdxTable) {
-		MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_OFF,
-			("alloc buf for pSubGroupMinBusyTimeChIdxTable failed!\n"));
-		goto ReturnCh;
-	}
 	NdisZeroMemory(pSubGroupMaxBusyTimeTable, (MAX_NUM_OF_CHANNELS+1)*sizeof(UINT32));
 	NdisZeroMemory(pSubGroupMaxBusyTimeChIdxTable, (MAX_NUM_OF_CHANNELS+1)*sizeof(UINT32));
 	NdisZeroMemory(pSubGroupMinBusyTimeTable, (MAX_NUM_OF_CHANNELS+1)*sizeof(UINT32));
 	NdisZeroMemory(pSubGroupMinBusyTimeChIdxTable, (MAX_NUM_OF_CHANNELS+1)*sizeof(UINT32));
 
 #ifdef DFS_VENDOR10_CUSTOM_FEATURE
-	if ((pAd->ApCfg.bAutoChannelAtBootup[BandIdx]) && IS_SUPPORT_V10_DFS(pAd) && (WMODE_CAP_5G(wdev->PhyMode))
+	if ((pAd->ApCfg.bAutoChannelAtBootup) && IS_SUPPORT_V10_DFS(pAd) && (WMODE_CAP_5G(wdev->PhyMode))
 		&& (IS_DFS_V10_ACS_VALID(pAd) == FALSE) && (wlan_config_get_vht_bw(wdev) == VHT_BW_2040)) {
 		UCHAR listSize = 0;
 		ChannelIdx = 0;
@@ -1815,7 +1785,7 @@ static inline UCHAR SelectClearChannelBusyTime(
 
 	for (ChannelIdx = StartChannelIdx; ChannelIdx < pAutoChCtrl->AutoChSelCtrl.ChListNum; ChannelIdx++) {
 #ifdef DFS_VENDOR10_CUSTOM_FEATURE
-		if ((pAd->ApCfg.bAutoChannelAtBootup[BandIdx]) && IS_SUPPORT_V10_DFS(pAd) && (WMODE_CAP_5G(wdev->PhyMode))
+		if ((pAd->ApCfg.bAutoChannelAtBootup) && IS_SUPPORT_V10_DFS(pAd) && (WMODE_CAP_5G(wdev->PhyMode))
 			&& (IS_DFS_V10_ACS_VALID(pAd) == FALSE) && (wlan_config_get_vht_bw(wdev) == VHT_BW_2040)) {
 			pDfsParam->DfsV10SortedACSList[ChannelIdx].BusyTime = pChannelInfo->chanbusytime[ChannelIdx];
 			pDfsParam->DfsV10SortedACSList[ChannelIdx].Channel = pAutoChCtrl->AutoChSelCtrl.AutoChSelChList[ChannelIdx].Channel;
@@ -1951,6 +1921,10 @@ static inline UCHAR SelectClearChannelBusyTime(
 				 ("Rule 3 Channel Busy time value : MinorMin Channel Busy = %u\n", MinorMinBusyTime));
 		MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_OFF,
 				 ("Rule 3 Channel Busy time value : BW = %s\n", "80+80"));
+		os_free_mem(pSubGroupMaxBusyTimeTable);
+		os_free_mem(pSubGroupMaxBusyTimeChIdxTable);
+		os_free_mem(pSubGroupMinBusyTimeTable);
+		os_free_mem(pSubGroupMinBusyTimeChIdxTable);
 		goto ReturnCh;
 	}
 
@@ -1986,7 +1960,7 @@ static inline UCHAR SelectClearChannelBusyTime(
 
 #ifdef DFS_VENDOR10_CUSTOM_FEATURE
 	/* V10 VHT80 ACS Enable */
-	if ((pAd->ApCfg.bAutoChannelAtBootup[BandIdx]) && IS_SUPPORT_V10_DFS(pAd) && (WMODE_CAP_5G(wdev->PhyMode))
+	if ((pAd->ApCfg.bAutoChannelAtBootup) && IS_SUPPORT_V10_DFS(pAd) && (WMODE_CAP_5G(wdev->PhyMode))
 		&& (IS_DFS_V10_ACS_VALID(pAd) == FALSE) && (wlan_config_get_vht_bw(wdev) == VHT_BW_80)) {
 			/* Record Best Channels from each group */
 			os_zero_mem(pDfsParam->DfsV10SortedACSList, (GroupNum)*sizeof(V10_CHANNEL_LIST));
@@ -2005,8 +1979,8 @@ static inline UCHAR SelectClearChannelBusyTime(
 			pDfsParam->GroupCount = GroupNum;
 		}
 
-		if ((pAd->ApCfg.bAutoChannelAtBootup[BandIdx]) && (wlan_config_get_vht_bw(wdev) == VHT_BW_2040)
-			&& DfsV10ACSListSortFunction(pAd, wdev) == FALSE)
+		if ((pAd->ApCfg.bAutoChannelAtBootup) && (wlan_config_get_vht_bw(wdev) == VHT_BW_2040)
+			&& DfsV10ACSListSortFunction(pAd) == FALSE)
 			MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
 				("[%s] Invalid V10 ACS List BW %d \n", __func__, wlan_config_get_vht_bw(wdev)));
 #endif
@@ -2024,6 +1998,10 @@ static inline UCHAR SelectClearChannelBusyTime(
 				 (pAutoChCtrl->AutoChSelCtrl.AutoChSelChList[CandidateChIdx1].Bw == BW_160) ? "160"
 				 : (pAutoChCtrl->AutoChSelCtrl.AutoChSelChList[CandidateChIdx1].Bw == BW_80) ? "80"
 				 : (pAutoChCtrl->AutoChSelCtrl.AutoChSelChList[CandidateChIdx1].Bw == BW_40) ? "40":"20"));
+		os_free_mem(pSubGroupMaxBusyTimeTable);
+		os_free_mem(pSubGroupMaxBusyTimeChIdxTable);
+		os_free_mem(pSubGroupMinBusyTimeTable);
+		os_free_mem(pSubGroupMinBusyTimeChIdxTable);
 		goto ReturnCh;
 	}
 
@@ -2046,17 +2024,6 @@ static inline UCHAR SelectClearChannelBusyTime(
 	MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 			 ("Randomly Select : Select Channel %d\n", CandidateCh1));
 ReturnCh:
-	if (pSubGroupMaxBusyTimeTable)
-		os_free_mem(pSubGroupMaxBusyTimeTable);
-
-	if (pSubGroupMaxBusyTimeChIdxTable)
-		os_free_mem(pSubGroupMaxBusyTimeChIdxTable);
-
-	if (pSubGroupMinBusyTimeTable)
-		os_free_mem(pSubGroupMinBusyTimeTable);
-
-	if (pSubGroupMinBusyTimeChIdxTable)
-		os_free_mem(pSubGroupMinBusyTimeChIdxTable);
 	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("%s<-----------------\n", __func__));
 	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("[SelectClearChannelBusyTime] - band%d END\n", BandIdx));
 	return CandidateCh1;
@@ -2254,7 +2221,7 @@ UCHAR MTAPAutoSelectChannel(
 	/* Re-arrange channel list and fill in channel properties for auto-channel selection*/
 	AutoChSelBuildChannelList(pAd, IsABand, pwdev);
 
-	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
+	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_OFF,
 			("%s: IsABand = %d, ChannelListNum = %d\n", __func__, IsABand, pAutoChCtrl->AutoChSelCtrl.ChListNum));
 
 #ifdef ACS_CTCC_SUPPORT
@@ -2473,46 +2440,6 @@ VOID AutoChSelBuildChannelListFor2G(
 			ChListNum++;
 		}
 	}
-#ifdef OCE_SUPPORT
-
-	if (IS_OCE_ENABLE(pwdev)) {
-		ChListNum = 0;
-		for (ChIdx = 0; ChIdx < pAutoChCtrl->AutoChSelCtrl.ChListNum; ChIdx++) {
-			if (pACSChList[ChIdx].Channel != 1 && pACSChList[ChIdx].Channel != 6 &&
-				pACSChList[ChIdx].Channel != 11)
-				continue;
-			else {
-				pAutoChCtrl->AutoChSelCtrl.AutoChSelChList[ChListNum].Channel =
-					pACSChList[ChIdx].Channel;
-				pAutoChCtrl->AutoChSelCtrl.AutoChSelChList[ChListNum].Bw =
-					pACSChList[ChIdx].Bw;
-				pAutoChCtrl->AutoChSelCtrl.AutoChSelChList[ChListNum].BwCap = TRUE;
-				pAutoChCtrl->AutoChSelCtrl.AutoChSelChList[ChListNum].CentralChannel =
-					pACSChList[ChIdx].CentralChannel;
-				pAutoChCtrl->AutoChSelCtrl.AutoChSelChList[ChListNum].SkipChannel =
-					pACSChList[ChIdx].SkipChannel;
-				pAutoChCtrl->AutoChSelCtrl.AutoChSelChList[ChListNum].Flags =
-					pACSChList[ChIdx].Flags;
-				ChListNum++;
-			}
-		}
-		if (ChListNum == 0) {
-			for (ChIdx = 1; ChIdx <= 11; ChIdx += 5) {
-				pAutoChCtrl->AutoChSelCtrl.AutoChSelChList[ChListNum].Channel =
-					pACSChList[ChIdx].Channel;
-				pAutoChCtrl->AutoChSelCtrl.AutoChSelChList[ChListNum].Bw = pACSChList[ChIdx].Bw;
-				pAutoChCtrl->AutoChSelCtrl.AutoChSelChList[ChListNum].BwCap = pACSChList[ChIdx].BwCap;
-				pAutoChCtrl->AutoChSelCtrl.AutoChSelChList[ChListNum].CentralChannel =
-					pACSChList[ChIdx].CentralChannel;
-				pAutoChCtrl->AutoChSelCtrl.AutoChSelChList[ChListNum].SkipChannel =
-					pACSChList[ChIdx].SkipChannel;
-				pAutoChCtrl->AutoChSelCtrl.AutoChSelChList[ChListNum].Flags = pACSChList[ChIdx].Flags;
-				ChListNum++;
-			}
-		}
-	}
-#endif /* OCE_SUPPORT */
-
 	pAutoChCtrl->AutoChSelCtrl.ChListNum = ChListNum;
 	os_free_mem(pACSChList);
 }
@@ -2602,8 +2529,7 @@ VOID AutoChSelBuildChannelListFor5G(
 				pACSChList[ChIdx].BwCap = TRUE;
 			else {
 #ifdef DFS_VENDOR10_CUSTOM_FEATURE
-				if ((IS_SUPPORT_V10_DFS(pAd) && pACSChList[ChIdx].Channel == 140 && pAd->CommonCfg.bCh144Enabled == FALSE) ||
-					(IS_SUPPORT_V10_DFS(pAd) && pACSChList[ChIdx].Channel == 144 && pAd->CommonCfg.bCh144Enabled == TRUE))
+				if (IS_SUPPORT_V10_DFS(pAd) && pACSChList[ChIdx].Channel == 140)
 					pACSChList[ChIdx].BwCap = TRUE;
 				else
 #endif
@@ -3033,11 +2959,7 @@ VOID AutoChSelScanNextChannel(
 
 		pAutoChCtrl->AutoChSelCtrl.ACSChStat = ACS_CH_STATE_SELECTED;
 		/* Update current state from listen state to idle. */
-		if (pAd->CommonCfg.set_ch_async_flag == FALSE) {
-			pAutoChCtrl->AutoChSelCtrl.AutoChScanStatMachine.CurrState = AUTO_CH_SEL_SCAN_IDLE;
-			if (pAd->CommonCfg.iwpriv_event_flag)
-				RTMP_OS_COMPLETE(&pAd->CommonCfg.set_ch_aync_done);
-		}
+		pAutoChCtrl->AutoChSelCtrl.AutoChScanStatMachine.CurrState = AUTO_CH_SEL_SCAN_IDLE;
 #ifdef ACS_CTCC_SUPPORT
 		pAd->ApCfg.auto_ch_score_flag = FALSE;
 #endif
@@ -3255,72 +3177,6 @@ VOID AutoChSelRelease(
 	}
 }
 
-/*
-   ==========================================================================
-   Description:
-       Set auto channel select parameters by reading profile settings.
-
-    Return:
-	None.
-   ==========================================================================
-*/
-VOID auto_ch_select_set_cfg(RTMP_ADAPTER *pAd, RTMP_STRING *buffer)
-{
-	UINT8 band_idx = 0;
-	RTMP_STRING *ptr;
-	struct wifi_dev *pwdev = &pAd->ApCfg.MBSSID[MAIN_MBSSID].wdev;
-	ChannelSel_Alg sel_alg = ChannelAlgBusyTime;
-
-	for (band_idx = 0, ptr = rstrtok(buffer, ";"); ptr; ptr = rstrtok(NULL, ";"), band_idx++) {
-
-		BOOLEAN acs_bootup = FALSE;
-
-		if (band_idx >= DBDC_BAND_NUM)
-			break;
-
-		sel_alg = (ChannelSel_Alg)simple_strtol(ptr, 0, 10);
-		if ((ChannelAlgRandom < sel_alg) && (sel_alg <= ChannelAlgBusyTime))
-			acs_bootup = TRUE;
-		else if (ChannelAlgRandom == sel_alg)
-			acs_bootup = FALSE;
-		else {
-			MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("%s():INFO::Invalid argument!\n", __func__));
-		}
-
-		if (pAd->CommonCfg.eDBDC_mode == ENUM_DBDC_5G5G) {
-			/* 5G + 5G */
-				pAd->ApCfg.AutoChannelAlg[band_idx] = sel_alg;
-				pAd->ApCfg.bAutoChannelAtBootup[band_idx] = acs_bootup;
-		} else {
-			if (WMODE_CAP_5G(pwdev->PhyMode)) {
-				/* 5G + 2G */
-				if (band_idx == 0 && (pAd->CommonCfg.dbdc_mode == 1)) {
-#ifdef DBDC_MODE
-					/* [5G] + 2G */
-					pAd->ApCfg.AutoChannelAlg[BAND1] = sel_alg;
-					pAd->ApCfg.bAutoChannelAtBootup[BAND1] = acs_bootup;
-#endif
-				} else {
-					/* 5G + [2G] */
-					pAd->ApCfg.AutoChannelAlg[BAND0] = sel_alg;
-					pAd->ApCfg.bAutoChannelAtBootup[BAND0] = acs_bootup;
-				}
-			} else {
-			/* 2G + 5G or 2G only */
-				pAd->ApCfg.AutoChannelAlg[band_idx] = sel_alg;
-				pAd->ApCfg.bAutoChannelAtBootup[band_idx] = acs_bootup;
-			}
-		}
-	}
-
-	for (band_idx = 0; band_idx < DBDC_BAND_NUM; band_idx++) {
-		MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF,
-		("%s(): BandIdx%d, AutoChannelAtBootup=%d, AutoChannelAlg = %d\n",
-		__func__, band_idx, pAd->ApCfg.bAutoChannelAtBootup[band_idx], pAd->ApCfg.AutoChannelAlg[band_idx]));
-	}
-
-}
-
 #ifdef AP_SCAN_SUPPORT
 /*
    ==========================================================================
@@ -3388,7 +3244,7 @@ VOID AutoChannelSelCheck(RTMP_ADAPTER *pAd)
 				MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
 						("%s(): Scanning channels for channel selection.\n", __func__));
 
-				if (pAd->ApCfg.AutoChannelAlg[BandIdx] == ChannelAlgBusyTime) {
+				if (pAd->ApCfg.AutoChannelAlg == ChannelAlgBusyTime) {
 #ifdef TR181_SUPPORT
 					{
 						struct hdev_obj *hdev = (struct hdev_obj *)pwdev->pHObj;

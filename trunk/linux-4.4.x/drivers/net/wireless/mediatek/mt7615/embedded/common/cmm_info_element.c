@@ -268,20 +268,12 @@ INT build_ap_extended_cap_ie(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, UCHAR *bu
 		extCapInfo.interworking = 1;
 #endif
 
-#if defined(CONFIG_HOTSPOT) || defined(FTM_SUPPORT) || defined(CONFIG_DOT11U_INTERWORKING)
+#if defined(CONFIG_HOTSPOT) || defined(FTM_SUPPORT)
 
 	if (mbss->GASCtrl.b11U_enable)
 		extCapInfo.interworking = 1;
 
 #endif
-
-#ifdef DOT11_VHT_AC
-
-	if (WMODE_CAP_AC(wdev->PhyMode) &&
-		(wdev->channel > 14))
-		extCapInfo.operating_mode_notification = 1;
-
-#endif /* DOT11_VHT_AC */
 #ifdef FTM_SUPPORT
 
 	/* add IE_EXT_CAPABILITY IE here */
@@ -300,28 +292,6 @@ INT build_ap_extended_cap_ie(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, UCHAR *bu
 	*/
 	extCapInfo.ftm_resp = 1;
 #endif /* FTM_SUPPORT */
-
-#ifdef OCE_FILS_SUPPORT
-	if (IS_AKM_FILS(wdev->SecConfig.AKMMap))
-		extCapInfo.FILSCap = 1;
-#endif /* OCE_FILS_SUPPORT */
-
-#ifdef DOT11_SAE_PWD_ID_SUPPORT
-	{
-		struct _SECURITY_CONFIG *sec_cfg = &wdev->SecConfig;
-
-		if (IS_AKM_SAE(sec_cfg->AKMMap) && sec_cfg->pwd_id_cnt != 0)
-			extCapInfo.sae_pwd_id_in_use = 1;
-		else
-			extCapInfo.sae_pwd_id_in_use = 0;
-
-		if (IS_AKM_SAE(sec_cfg->AKMMap) && sec_cfg->sae_cap.pwd_id_only)
-			extCapInfo.sae_pwd_id_used_exclusively = 1;
-		else
-			extCapInfo.sae_pwd_id_used_exclusively = 0;
-	}
-#endif
-
 	pInfo = (PUCHAR)(&extCapInfo);
 
 	for (infoPos = 0; infoPos < extInfoLen; infoPos++) {
@@ -424,112 +394,3 @@ INT build_wmm_cap_ie(RTMP_ADAPTER *pAd, struct _build_ie_info *info)
 	return len;
 }
 
-ULONG build_support_rate_ie(struct wifi_dev *wdev, UCHAR *sup_rate, UCHAR sup_rate_len, UCHAR *buf)
-{
-	ULONG frame_len;
-	ULONG bss_mem_selector_len = 0;
-	UCHAR bss_mem_selector_code = BSS_MEMBERSHIP_SELECTOR_VALID | BSS_MEMBERSHIP_SELECTOR_SAE_H2E_ONLY;
-	USHORT PhyMode = wdev->PhyMode;
-	UCHAR real_sup_rate_len = sup_rate_len;
-	UCHAR total_len;
-
-	if (PhyMode == WMODE_B)
-		real_sup_rate_len = 4;
-
-#ifdef DOT11_SAE_SUPPORT
-	if (wdev->SecConfig.sae_cap.gen_pwe_method == PWE_HASH_ONLY && real_sup_rate_len < 8)
-		bss_mem_selector_len++;
-#endif
-	total_len = real_sup_rate_len + bss_mem_selector_len;
-
-	MakeOutgoingFrame(buf, &frame_len, 1, &SupRateIe,
-				1, &total_len,
-				real_sup_rate_len, sup_rate,
-				bss_mem_selector_len, &bss_mem_selector_code,
-				END_OF_ARGS);
-
-	return frame_len;
-}
-
-ULONG build_support_ext_rate_ie(struct wifi_dev *wdev, UCHAR sup_rate_len,
-	UCHAR *ext_sup_rate, UCHAR ext_sup_rate_len, UCHAR *buf)
-{
-	ULONG frame_len = 0;
-	ULONG bss_mem_selector_len = 0;
-	UCHAR bss_mem_selector_code = BSS_MEMBERSHIP_SELECTOR_VALID | BSS_MEMBERSHIP_SELECTOR_SAE_H2E_ONLY;
-	USHORT PhyMode = wdev->PhyMode;
-	UCHAR total_len;
-
-	if (PhyMode == WMODE_B)
-		return frame_len;
-
-#ifdef DOT11_SAE_SUPPORT
-	if (sup_rate_len >= 8 && wdev->SecConfig.sae_cap.gen_pwe_method == PWE_HASH_ONLY)
-		bss_mem_selector_len++;
-#endif
-	if (ext_sup_rate_len == 0 && bss_mem_selector_len == 0)
-		return frame_len;
-
-	total_len = ext_sup_rate_len + bss_mem_selector_len;
-
-	MakeOutgoingFrame(buf, &frame_len, 1, &ExtRateIe,
-				1, &total_len,
-				ext_sup_rate_len, ext_sup_rate,
-				bss_mem_selector_len, &bss_mem_selector_code,
-				END_OF_ARGS);
-
-	return frame_len;
-}
-
-VOID parse_support_rate_ie(struct dev_rate_info *rate, EID_STRUCT *eid_ptr)
-{
-	UCHAR i = 0;
-
-	if ((eid_ptr->Len <= MAX_LEN_OF_SUPPORTED_RATES) && (eid_ptr->Len > 0)) {
-		rate->SupRateLen = 0;
-		for (i = 0; i < eid_ptr->Len; i++)
-			if (eid_ptr->Octet[i] != (BSS_MEMBERSHIP_SELECTOR_VALID | BSS_MEMBERSHIP_SELECTOR_HT_PHY) &&
-			    eid_ptr->Octet[i] != (BSS_MEMBERSHIP_SELECTOR_VALID | BSS_MEMBERSHIP_SELECTOR_VHT_PHY) &&
-			    eid_ptr->Octet[i] != (BSS_MEMBERSHIP_SELECTOR_VALID | BSS_MEMBERSHIP_SELECTOR_SAE_H2E_ONLY) &&
-			    eid_ptr->Octet[i] != (BSS_MEMBERSHIP_SELECTOR_VALID | BSS_MEMBERSHIP_SELECTOR_HE_PHY))
-				rate->SupRate[rate->SupRateLen++] = eid_ptr->Octet[i];
-		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_INFO,
-				 ("%s - IE_SUPP_RATES., Len=%d. Rates[0]=%x\n",
-				 __func__, eid_ptr->Len, rate->SupRate[0]));
-		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_INFO,
-				 ("Rates[1]=%x %x %x %x %x %x %x\n",
-				  rate->SupRate[1], rate->SupRate[2],
-				  rate->SupRate[3], rate->SupRate[4],
-				  rate->SupRate[5], rate->SupRate[6],
-				  rate->SupRate[7]));
-	} else {
-		UCHAR RateDefault[8] = { 0x82, 0x84, 0x8b, 0x96, 0x12, 0x24, 0x48, 0x6c };
-		/* HT rate not ready yet. return true temporarily. rt2860c */
-		/*MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("PeerAssocReqSanity - wrong IE_SUPP_RATES\n")); */
-		NdisMoveMemory(rate->SupRate, RateDefault, 8);
-		rate->SupRateLen = 8;
-		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
-				 ("%s - wrong IE_SUPP_RATES., Len=%d\n",
-				 __func__, eid_ptr->Len));
-	}
-}
-
-VOID parse_support_ext_rate_ie(struct dev_rate_info *rate, EID_STRUCT *eid_ptr)
-{
-	UINT16 i = 0;
-
-	if (eid_ptr->Len > MAX_LEN_OF_SUPPORTED_RATES) {
-		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
-			("%s:ext support rate ie size(%d) is large than MAX_LEN_OF_SUPPORTED_RATE(%d))\n",
-			__func__, eid_ptr->Len, MAX_LEN_OF_SUPPORTED_RATES));
-		return;
-	}
-
-	rate->ExtRateLen = 0;
-	for (i = 0; i < eid_ptr->Len; i++)
-		if (eid_ptr->Octet[i] != (BSS_MEMBERSHIP_SELECTOR_VALID | BSS_MEMBERSHIP_SELECTOR_HT_PHY) &&
-			eid_ptr->Octet[i] != (BSS_MEMBERSHIP_SELECTOR_VALID | BSS_MEMBERSHIP_SELECTOR_VHT_PHY) &&
-			eid_ptr->Octet[i] != (BSS_MEMBERSHIP_SELECTOR_VALID | BSS_MEMBERSHIP_SELECTOR_SAE_H2E_ONLY) &&
-			eid_ptr->Octet[i] != (BSS_MEMBERSHIP_SELECTOR_VALID | BSS_MEMBERSHIP_SELECTOR_HE_PHY))
-			rate->ExtRate[rate->ExtRateLen++] = eid_ptr->Octet[i];
-}

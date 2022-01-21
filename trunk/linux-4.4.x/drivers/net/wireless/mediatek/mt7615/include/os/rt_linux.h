@@ -166,12 +166,12 @@ typedef struct usb_ctrlrequest devctrlrequest;
 #endif
 
 
-#define AP_DRIVER_VERSION			"5.1.0.0"
+#define AP_DRIVER_VERSION			"5.0.4.0"
 #ifdef MULTIPLE_CARD_SUPPORT
 #define CARD_INFO_PATH			"/etc/Wireless/RT2860AP/RT2860APCard.dat"
 #endif /* MULTIPLE_CARD_SUPPORT */
 #ifdef WAPP_SUPPORT
-#define WAPP_SUPPORT_VERSION		"v2.0.2"
+#define WAPP_SUPPORT_VERSION		"2.0"
 #endif /* WAPP_SUPPORT */
 #endif /* RTMP_MAC_PCI */
 
@@ -542,18 +542,9 @@ typedef spinlock_t			OS_NDIS_SPIN_LOCK;
 	do { \
 		if ((_pTask)->kthread_task) { \
 			(_pTask)->kthread_running = TRUE; \
-			wake_up_interruptible(&(_pTask)->kthread_q); \
+			wake_up(&(_pTask)->kthread_q); \
 		} \
 	} while (0)
-#endif
-
-#ifdef LINUX
-#define OS_SCHEDULE()	\
-{							\
-	schedule();			\
-}
-#else
-#define OS_SCHEDULE()
 #endif
 
 /***********************************************************************************

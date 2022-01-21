@@ -450,7 +450,7 @@ static INT CFG80211DRV_UpdateApSettingFromBeacon(PRTMP_ADAPTER pAd, UINT mbss_id
 #endif /* CONFIG_AP_SUPPORT */
 
 	pMbss->CapabilityInfo =	CAP_GENERATE(1, 0, (!IS_CIPHER_NONE(wdev->SecConfig.PairwiseCipher)),
-										 (pAd->CommonCfg.TxPreamble == Rt802_11PreambleLong ? 0 : 1), wdev->bUseShortSlotTime, /*SpectrumMgmt*/FALSE);
+										 (pAd->CommonCfg.TxPreamble == Rt802_11PreambleLong ? 0 : 1), pAd->CommonCfg.bUseShortSlotTime, /*SpectrumMgmt*/FALSE);
 
 #ifdef DOT11K_RRM_SUPPORT
 	if (IS_RRM_ENABLE(wdev))
@@ -792,7 +792,7 @@ BOOLEAN CFG80211DRV_OpsBeaconAdd(VOID *pAdOrg, VOID *pData)
 #ifdef DISABLE_HOSTAPD_BEACON
 	UINT16 FrameLen = 0;
 #endif
-	UCHAR tr_tb_idx;
+	CHAR tr_tb_idx;
 	PNET_DEV pNetDev;
 	CMD_RTPRIV_IOCTL_80211_BEACON *pBeacon =  (CMD_RTPRIV_IOCTL_80211_BEACON *)pData;
 #ifdef RT_CFG80211_P2P_MULTI_CHAN_SUPPORT
@@ -802,9 +802,8 @@ BOOLEAN CFG80211DRV_OpsBeaconAdd(VOID *pAdOrg, VOID *pData)
 	UINT apidx = pBeacon->apidx;
 	BSS_STRUCT *pMbss = &pAd->ApCfg.MBSSID[apidx];
 	struct wifi_dev *wdev = &pMbss->wdev;
-	HT_CAPABILITY_IE *ht_cap = (HT_CAPABILITY_IE *)wlan_operate_get_ht_cap(wdev);
 	BCN_BUF_STRUC *bcn_buf = &wdev->bcn_buf;
-	tr_tb_idx = wdev->tr_tb_idx;
+	tr_tb_idx = MAX_LEN_OF_MAC_TABLE + apidx;
 	pNetDev = pBeacon->pNetDev;
 #ifdef RT_CFG80211_SUPPORT
 		wdev->Hostapd = Hostapd_CFG;
@@ -870,14 +869,6 @@ BOOLEAN CFG80211DRV_OpsBeaconAdd(VOID *pAdOrg, VOID *pData)
 	COPY_MAC_ADDR(wdev->if_addr, pNetDev->dev_addr);
 	os_move_mem(wdev->bss_info_argument.Bssid, wdev->bssid, MAC_ADDR_LEN);
 	}
-	if ((pAd->CommonCfg.LastBSSCoexist2040.field.BSS20WidthReq == 1)
-		&& (pAd->MacTab.fAnyStaFortyIntolerant != TRUE)
-		&& ((pAd->CommonCfg.BssCoexApCnt > 0))) {
-		wlan_operate_set_ht_bw(wdev, HT_BW_20, EXTCHA_NONE);
-	}
-
-	if (WMODE_CAP_N(wdev->PhyMode) && wlan_config_get_ht_bw(wdev) == BW_40)
-		ht_cap->MCSSet[4] = 0x1; /* MCS 32*/
 
 	/* cfg_todo */
 	wdev->bWmmCapable = TRUE;
@@ -1344,7 +1335,7 @@ BOOLEAN CFG80211DRV_ApKeyAdd(
 						os_alloc_mem(NULL, (UCHAR **)&info, sizeof(ASIC_SEC_INFO));
 						if (info) {
 							os_zero_mem(info, sizeof(ASIC_SEC_INFO));
-						        NdisCopyMemory(&pEntry->SecConfig.PTK[LEN_PTK_KCK + LEN_PTK_KEK], pKeyInfo->KeyBuf, (LEN_TK + LEN_TK2));
+							NdisCopyMemory(&pEntry->SecConfig.PTK[LEN_PTK_KCK + LEN_PTK_KEK], pKeyInfo->KeyBuf, LEN_MAX_PTK);
 							info->Operation = SEC_ASIC_ADD_PAIRWISE_KEY;
 							info->Direction = SEC_ASIC_KEY_BOTH;
 							info->Wcid = pEntry->wcid;
@@ -1417,8 +1408,9 @@ BOOLEAN CFG80211DRV_ApKeyAdd(
 			hex_dump("PMF IGTK pKeyInfo->KeyBuf=", (UINT8 *)pKeyInfo->KeyBuf, pKeyInfo->KeyLen);
 			MTWF_LOG(DBG_CAT_SEC, DBG_SUBCAT_ALL, DBG_LVL_ERROR,("PMF IGTK pKeyInfo->KeyId=%d\n", pKeyInfo->KeyId));
 
-#if defined(MT7615) || defined(MT7622)
-			if (IS_MT7615(pAd) || IS_MT7622(pAd)) {
+#ifdef MT7615
+			if (IS_MT7615(pAd))
+			{
 				PPMF_CFG pPmfCfg = &pWdev->SecConfig.PmfCfg;
 				ASIC_SEC_INFO Info = {0};
 				USHORT Wcid;
@@ -1722,14 +1714,10 @@ VOID CFG80211_ApClientConnectResultInform(
 	UCHAR *pRspIe, UINT32 RspIeLen, UCHAR FlgIsSuccess)
 {
 	PRTMP_ADAPTER pAd = (PRTMP_ADAPTER)pAdCB;
-	struct wifi_dev *wdev = &pAd->ApCfg.ApCliTab[MAIN_MBSSID].wdev;
 
-	if ((wdev->open_state == TRUE) && (pAd->cfg80211_ctrl.FlgCfg80211Connecting == TRUE)) {
-		CFG80211OS_P2pClientConnectResultInform(wdev->if_dev, pBSSID,
+	CFG80211OS_P2pClientConnectResultInform(pAd->ApCfg.ApCliTab[MAIN_MBSSID].wdev.if_dev, pBSSID,
 					pReqIe, ReqIeLen, pRspIe, RspIeLen, FlgIsSuccess);
-        }
 
-	pAd->ApCfg.ApCliTab[0].ReadyToConnect = FALSE;
 	pAd->cfg80211_ctrl.FlgCfg80211Connecting = FALSE;
 }
 #endif /* APCLI_CFG80211_SUPPORT */

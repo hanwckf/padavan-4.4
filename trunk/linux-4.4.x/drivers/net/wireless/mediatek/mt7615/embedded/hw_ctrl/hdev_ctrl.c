@@ -146,11 +146,7 @@ INT32 HcAcquireRadioForWdev(RTMP_ADAPTER *pAd, struct wifi_dev *wdev)
 		wdev->channel = RcGetChannel(rdev);
 	}
 
-#ifdef EXT_BUILD_CHANNEL_LIST
-	BuildChannelListEx(pAd);
-#else
 	BuildChannelList(pAd, wdev);
-#endif
 	/*temporal set, will be repaced by HcGetOmacIdx*/
 	wdev->OmacIdx = obj->OmacIdx;
 	/* Initialize the pDot11H of wdev */
@@ -288,13 +284,6 @@ BOOLEAN IsHcRadioCurStatOffByWdev(struct wifi_dev *wdev)
 	if (!hdev_obj_state_ready(obj)) {
 		MTWF_LOG(DBG_CAT_HW, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
 			("%s(): wdev_idx %d obj is not ready, return TRUE !!!\n",
-			__func__, wdev->wdev_idx));
-		return TRUE;
-	}
-
-	if (!obj->rdev) {
-		MTWF_LOG(DBG_CAT_HW, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
-			("%s(): no hdev parking on wdev_idx:%d!!!\n",
 			__func__, wdev->wdev_idx));
 		return TRUE;
 	}
@@ -550,7 +539,6 @@ INT32 HcUpdateCsaCntByChannel(RTMP_ADAPTER *pAd, UCHAR Channel)
 		} else
 #endif
 			if (pDot11h->RDMode != RD_SILENCE_MODE) {
-				pAd->CommonCfg.set_ch_async_flag = TRUE;
 				pDot11h->wdev_count++;
 				wdev->csa_count = pDot11h->CSPeriod;
 				UpdateBeaconHandler(pAd, wdev, BCN_UPDATE_IE_CHG);
@@ -873,16 +861,6 @@ AUTO_CH_CTRL *HcGetAutoChCtrlbyBandIdx(RTMP_ADAPTER *pAd, UCHAR BandIdx)
 }
 #endif
 
-#ifdef CHANNEL_SWITCH_MONITOR_CONFIG
-struct ch_switch_cfg *HcGetChanSwitchMonbyBandIdx(RTMP_ADAPTER *pAd, UCHAR BandIdx)
-{
-	struct hdev_ctrl *ctrl = pAd->hdev_ctrl;
-	HD_RESOURCE_CFG *pHwResource =  &ctrl->HwResourceCfg;
-
-	return &pHwResource->PhyCtrl[BandIdx].ch_sw_cfg;
-}
-#endif
-
 /*
 *
 */
@@ -1163,11 +1141,7 @@ UCHAR HcReleaseUcastWcid(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, UCHAR idx)
 	if (!hdev_obj_state_ready(obj)) {
 		MTWF_LOG(DBG_CAT_HW, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
 			("%s(): wdev=%d, hobj is not ready!\n", __func__, wdev->wdev_idx));
-		if (idx > 0) {
-		     MTWF_LOG(DBG_CAT_HW, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
-			("%s(): releasing wcid %d, hobj is not ready!\n", __func__, idx));
-		} else
-			return INVAILD_WCID;
+		return INVAILD_WCID;
 	}
 
 	return WtcReleaseUcastWcid(pAd->hdev_ctrl, obj, idx);
@@ -1277,12 +1251,6 @@ BOOLEAN hc_radio_res_request(struct wifi_dev *wdev, struct radio_res *res)
 {
 	struct hdev_obj *obj = wdev->pHObj;
 	struct radio_dev *rdev;
-#ifdef ANTENNA_CONTROL_SUPPORT
-	UINT8 BandIdx = 0;
-	struct _RTMP_ADAPTER *pAd = (struct _RTMP_ADAPTER *)wdev->sys_handle;
-
-	BandIdx = HcGetBandByWdev(wdev);
-#endif /* ANTENNA_CONTROL_SUPPORT */
 #ifdef MT_WOW_SUPPORT
 	struct _RTMP_ADAPTER *ad = (struct _RTMP_ADAPTER *)wdev->sys_handle;
 #endif /*MT_WOW_SUPPORT*/
@@ -1303,11 +1271,8 @@ BOOLEAN hc_radio_res_request(struct wifi_dev *wdev, struct radio_res *res)
 	}
 
 	rdev = obj->rdev;
-	if (
-#ifdef ANTENNA_CONTROL_SUPPORT
-		(!pAd->bAntennaSetAPEnable[BandIdx]) &&
-#endif /* ANTENNA_CONTROL_SUPPORT */
-		(rc_radio_equal(rdev, res->oper))) {
+
+	if (rc_radio_equal(rdev, res->oper)) {
 		MTWF_LOG(DBG_CAT_HW, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("%s(): radio is equal, prim_ch=%d!\n", __func__, res->oper->prim_ch));
 		return TRUE;
 	}
@@ -1498,9 +1463,7 @@ inline struct _RTMP_CHIP_CAP *hc_get_chip_cap(void *hdev_ctrl)
 	struct hdev_ctrl *ctrl = hdev_ctrl;
 	return &ctrl->chip_cap;
 }
-#ifndef MT76XX_COMBO_DUAL_DRIVER_SUPPORT
 EXPORT_SYMBOL(hc_get_chip_cap);
-#endif /* MT76XX_COMBO_DUAL_DRIVER_SUPPORT */
 
 /*
 *
@@ -1511,9 +1474,8 @@ struct _RTMP_CHIP_OP *hc_get_chip_ops(void *hdev_ctrl)
 
 	return &ctrl->chip_ops;
 }
-#ifndef MT76XX_COMBO_DUAL_DRIVER_SUPPORT
 EXPORT_SYMBOL(hc_get_chip_ops);
-#endif /* MT76XX_COMBO_DUAL_DRIVER_SUPPORT */
+
 /*
 *
 */

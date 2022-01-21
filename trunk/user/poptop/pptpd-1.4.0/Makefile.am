@@ -85,9 +85,9 @@ configfile.o: configfile.c config.h defaults.h configfile.h our_syslog.h
 ctrlpacket.o: ctrlpacket.c config.h our_syslog.h pptpdefs.h pptpctrl.h \
  ctrlpacket.h compat.h
 
-getopt1.o: getopt1.c config.h our_getopt.h
-
 getopt.o: getopt.c config.h our_getopt.h
+
+getopt1.o: getopt1.c config.h our_getopt.h
 
 inststr.o: inststr.c config.h inststr.h compat.h
 

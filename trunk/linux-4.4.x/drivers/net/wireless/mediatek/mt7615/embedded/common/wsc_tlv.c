@@ -1992,27 +1992,25 @@ int BuildMessageM8(
 	if (CurOpMode == AP_MODE) {
 #ifdef CONFIG_MAP_SUPPORT
 		if (pReg->PeerInfo.map_DevPeerRole & BIT(MAP_ROLE_BACKHAUL_STA)) {
-			if (!IS_MAP_TURNKEY_ENABLE(pAdapter)) {
-				PWSC_CTRL		pBhWscControl = NULL;
-				UCHAR			apidx = (pWscControl->EntryIfIdx & 0x0F);
-				UCHAR			band_idx = HcGetBandByWdev(&pAdapter->ApCfg.MBSSID[apidx].wdev);
-				struct wifi_dev		*bh_wdev = NULL;
+			PWSC_CTRL			pBhWscControl = NULL;
+			UCHAR				apidx = (pWscControl->EntryIfIdx & 0x0F);
+			UCHAR				band_idx = HcGetBandByWdev(&pAdapter->ApCfg.MBSSID[apidx].wdev);
+			struct wifi_dev		*bh_wdev = NULL;
 
-				bh_wdev = pAdapter->bh_bss_wdev[band_idx];
-				if (bh_wdev) {
-					pBhWscControl = &bh_wdev->WscControl;
-					MTWF_LOG(DBG_CAT_PROTO, CATPROTO_RRM, DBG_LVL_TRACE,
-							("band_idx %d  bh_bss_wdev [%s]\n", band_idx, bh_wdev->if_dev->name));
-					pBhWscControl->WscConfStatus = WSC_SCSTATE_CONFIGURED;
-					COPY_MAC_ADDR(pBhWscControl->EntryAddr, pWscControl->EntryAddr);
-					WscCreateProfileFromCfg(pAdapter,
-											REGISTRAR_ACTION | AP_MODE,
-											pBhWscControl,
-											&pBhWscControl->WscProfile);
-					pCredential = &pBhWscControl->WscProfile.Profile[0];
-				} else
-					goto LabelErr;
-			}
+			bh_wdev = pAdapter->bh_bss_wdev[band_idx];
+			if (bh_wdev) {
+				pBhWscControl = &bh_wdev->WscControl;
+				MTWF_LOG(DBG_CAT_PROTO, CATPROTO_RRM, DBG_LVL_TRACE,
+						("band_idx %d  bh_bss_wdev [%s]\n", band_idx, bh_wdev->if_dev->name));
+				pBhWscControl->WscConfStatus = WSC_SCSTATE_CONFIGURED;
+				COPY_MAC_ADDR(pBhWscControl->EntryAddr, pWscControl->EntryAddr);
+				WscCreateProfileFromCfg(pAdapter,
+										REGISTRAR_ACTION | AP_MODE,
+										pBhWscControl,
+										&pBhWscControl->WscProfile);
+				pCredential = &pBhWscControl->WscProfile.Profile[0];
+			} else
+				goto LabelErr;
 		} else
 #endif /* CONFIG_MAP_SUPPORT */
 		{
@@ -2029,21 +2027,17 @@ int BuildMessageM8(
 	if ((IS_MAP_TURNKEY_ENABLE(pAdapter)) && (pReg->PeerInfo.map_DevPeerRole & BIT(MAP_ROLE_BACKHAUL_STA))) {
 		int i = 0;
 		unsigned char profile_count = 0;
-		BOOLEAN same_band_profile_missing = FALSE;
-APPEND_CONFIGS:
+
 		for (i = 0; i < pWscControl->WscBhProfiles.ProfileCnt; i++) {
 			pCredential = &pWscControl->WscBhProfiles.Profile[i];
 
 			if (pWscControl->WscBhProfiles.Profile[i].bss_role & BIT(MAP_ROLE_BACKHAUL_BSS)) {
-				if (same_band_profile(pWscControl, i)
-					&& profile_count == 0
-					&& same_band_profile_missing == FALSE) {
+				if (same_band_profile(pWscControl, i) && profile_count == 0) {
 					i = -1;
 					profile_count++;
 				} else if (same_band_profile(pWscControl, i)) {
 					continue;
-				} else if (profile_count == 0
-				&& same_band_profile_missing == FALSE) {
+				} else if (profile_count == 0) {
 					continue;
 				} else {
 					profile_count++;
@@ -2082,11 +2076,6 @@ APPEND_CONFIGS:
 				pCredential->Key, pCredential->KeyLength);
 			CerLen += AppendWSCTLV(WSC_ID_MAC_ADDR, &TB[CerLen], pCredential->MacAddr, 0);
 			/*	  Prepare plain text */
-		}
-		if (profile_count == 0 &&
-			same_band_profile_missing == FALSE) {
-			same_band_profile_missing = TRUE;
-			goto APPEND_CONFIGS;
 		}
 	} else
 #endif

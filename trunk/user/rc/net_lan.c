@@ -764,6 +764,7 @@ full_restart_lan(void)
 	start_networkmap(1);
 
 	/* force httpd logout */
+	system("/usr/bin/iappd.sh restart");
 	doSystem("killall %s %s", "-SIGUSR1", "httpd");
 }
 
@@ -931,7 +932,7 @@ udhcpc_lan_deconfig(char *lan_ifname)
 		 nvram_safe_get("lan_netmask"));
 
 	lan_down_auto(lan_ifname);
-
+	
 	logmessage("DHCP LAN Client", "%s: lease is lost", udhcpc_lan_state);
 
 	return 0;
@@ -995,7 +996,7 @@ udhcpc_lan_bound(char *lan_ifname, int is_renew)
 		create_hosts_lan(lan_ipaddr, lan_domain);
 		
 		lan_up_auto(lan_ifname, lan_gateway, lan_domain);
-		
+		system("/usr/bin/iappd.sh restart");
 		logmessage("DHCP LAN Client", "%s, IP: %s/%s, GW: %s, lease time: %d",
 			udhcpc_lan_state, lan_ipaddr, lan_ipmask, lan_gateway, lease_dur);
 	}

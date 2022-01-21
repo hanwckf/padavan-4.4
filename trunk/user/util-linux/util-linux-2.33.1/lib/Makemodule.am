@@ -1,0 +1,175 @@
+
+noinst_LTLIBRARIES += libcommon.la
+libcommon_la_CFLAGS = $(AM_CFLAGS)
+libcommon_la_SOURCES = \
+	lib/blkdev.c \
+	lib/canonicalize.c \
+	lib/crc32.c \
+	lib/crc32c.c \
+	lib/env.c \
+	lib/idcache.c \
+	lib/fileutils.c \
+	lib/ismounted.c \
+	lib/color-names.c \
+	lib/mangle.c \
+	lib/match.c \
+	lib/mbsalign.c \
+	lib/mbsedit.c\
+	lib/md5.c \
+	lib/pager.c \
+	lib/parse-date.y \
+	lib/pwdutils.c \
+	lib/randutils.c \
+	lib/setproctitle.c \
+	lib/strutils.c \
+	lib/timeutils.c \
+	lib/ttyutils.c \
+	lib/exec_shell.c \
+	lib/strv.c \
+	lib/sha1.c \
+	lib/signames.c
+
+if LINUX
+libcommon_la_SOURCES += \
+	lib/linux_version.c \
+	lib/loopdev.c
+endif
+
+if USE_PLYMOUTH_SUPPORT
+libcommon_la_SOURCES += lib/plymouth-ctrl.c
+endif
+
+if !HAVE_LANGINFO
+libcommon_la_SOURCES += lib/langinfo.c
+endif
+
+if HAVE_CPU_SET_T
+libcommon_la_SOURCES += lib/cpuset.c
+endif
+
+if HAVE_OPENAT
+if HAVE_DIRFD
+libcommon_la_SOURCES += lib/path.c
+libcommon_la_SOURCES += lib/procutils.c
+libcommon_la_SOURCES += lib/sysfs.c
+endif
+endif
+
+noinst_LTLIBRARIES += libtcolors.la
+libtcolors_la_CFLAGS = $(AM_CFLAGS)
+libtcolors_la_SOURCES = lib/colors.c lib/color-names.c include/colors.h include/color-names.h
+libtcolors_la_LIBADD =
+# tinfo or ncurses are optional
+if HAVE_TINFO
+libtcolors_la_LIBADD += $(TINFO_LIBS)
+libtcolors_la_CFLAGS += $(TINFO_CFLAGS)
+else
+if HAVE_NCURSES
+libtcolors_la_LIBADD += $(NCURSES_LIBS)
+libtcolors_la_CFLAGS += $(NCURSES_CFLAGS)
+endif
+endif # !HAVE_TINFO
+
+dist_man_MANS += lib/terminal-colors.d.5
+
+
+check_PROGRAMS += \
+	test_blkdev \
+	test_canonicalize \
+	test_colors \
+	test_fileutils \
+	test_ismounted \
+	test_pwdutils \
+	test_mangle \
+	test_randutils \
+	test_strutils \
+	test_ttyutils \
+	test_timeutils
+
+
+
+if LINUX
+if HAVE_CPU_SET_T
+check_PROGRAMS += test_cpuset
+endif
+check_PROGRAMS += \
+	test_sysfs \
+	test_pager
+endif
+
+if HAVE_OPENAT
+if HAVE_DIRFD
+check_PROGRAMS += test_procutils
+check_PROGRAMS += test_path
+endif
+endif
+
+test_ttyutils_SOURCES = lib/ttyutils.c
+test_ttyutils_CFLAGS = $(AM_CFLAGS) -DTEST_PROGRAM_TTYUTILS
+test_ttyutils_LDADD = $(LDADD) libcommon.la
+
+test_blkdev_SOURCES = lib/blkdev.c
+test_blkdev_CFLAGS = $(AM_CFLAGS) -DTEST_PROGRAM_BLKDEV
+test_blkdev_LDADD = $(LDADD) libcommon.la
+
+test_ismounted_SOURCES = lib/ismounted.c
+test_ismounted_CFLAGS = $(AM_CFLAGS) -DTEST_PROGRAM_ISMOUNTED
+test_ismounted_LDADD = libcommon.la $(LDADD)
+
+test_mangle_SOURCES = lib/mangle.c
+test_mangle_CFLAGS = $(AM_CFLAGS) -DTEST_PROGRAM_MANGLE
+
+test_strutils_SOURCES = lib/strutils.c
+test_strutils_CFLAGS = $(AM_CFLAGS) -DTEST_PROGRAM_STRUTILS
+
+test_colors_SOURCES = lib/colors.c lib/color-names.c
+test_colors_CFLAGS = $(AM_CFLAGS) -DTEST_PROGRAM_COLORS
+test_colors_LDADD = $(LDADD) libtcolors.la
+
+test_randutils_SOURCES = lib/randutils.c
+test_randutils_CFLAGS = $(AM_CFLAGS) -DTEST_PROGRAM_RANDUTILS
+
+if HAVE_OPENAT
+if HAVE_DIRFD
+test_procutils_SOURCES = lib/procutils.c
+test_procutils_CFLAGS = $(AM_CFLAGS) -DTEST_PROGRAM_PROCUTILS
+
+test_path_SOURCES = lib/path.c lib/fileutils.c
+if HAVE_CPU_SET_T
+test_path_SOURCES += lib/cpuset.c
+endif
+test_path_CFLAGS = $(AM_CFLAGS) -DTEST_PROGRAM_PATH
+test_path_LDADD = $(LDADD)
+endif
+endif
+
+if LINUX
+test_cpuset_SOURCES = lib/cpuset.c
+test_cpuset_CFLAGS = $(AM_CFLAGS) -DTEST_PROGRAM_CPUSET
+
+test_sysfs_SOURCES = lib/sysfs.c lib/path.c lib/fileutils.c
+if HAVE_CPU_SET_T
+test_sysfs_SOURCES += lib/cpuset.c
+endif
+test_sysfs_CFLAGS = $(AM_CFLAGS) -DTEST_PROGRAM_SYSFS
+test_sysfs_LDADD = $(LDADD)
+
+test_pager_SOURCES = lib/pager.c
+test_pager_CFLAGS = $(AM_CFLAGS) -DTEST_PROGRAM_PAGER
+
+check_PROGRAMS += test_linux_version
+test_linux_version_SOURCES = lib/linux_version.c
+test_linux_version_CFLAGS = $(AM_CFLAGS) -DTEST_PROGRAM_LINUXVERSION
+endif
+
+test_fileutils_SOURCES = lib/fileutils.c
+test_fileutils_CFLAGS = $(AM_CFLAGS) -DTEST_PROGRAM_FILEUTILS
+
+test_canonicalize_SOURCES = lib/canonicalize.c
+test_canonicalize_CFLAGS = $(AM_CFLAGS) -DTEST_PROGRAM_CANONICALIZE
+
+test_timeutils_SOURCES = lib/timeutils.c lib/strutils.c
+test_timeutils_CFLAGS = $(AM_CFLAGS) -DTEST_PROGRAM_TIMEUTILS
+
+test_pwdutils_SOURCES = lib/pwdutils.c
+test_pwdutils_CFLAGS = $(AM_CFLAGS) -DTEST_PROGRAM

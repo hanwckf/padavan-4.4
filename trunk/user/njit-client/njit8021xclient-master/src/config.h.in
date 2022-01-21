@@ -1,0 +1,55 @@
+/* config.h.in.  Generated from configure.ac by autoheader.  */
+
+/* Define to 1 if you have the `pcap_breakloop' function. */
+#undef HAVE_PCAP_BREAKLOOP
+
+/* pcap_datalink_name_to_val() */
+#undef HAVE_PCAP_DATALINK_NAME_TO_VAL
+
+/* pcap_datalink_val_to_description() */
+#undef HAVE_PCAP_DATALINK_VAL_TO_DESCRIPTION
+
+/* pcap_dump_ftell() */
+#undef HAVE_PCAP_DUMP_FTELL
+
+/* pcap_list_datalinks() */
+#undef HAVE_PCAP_LIST_DATALINKS
+
+/* pcap_set_datalink() */
+#undef HAVE_PCAP_SET_DATALINK
+
+/* Define to 1 if you have the `pfopen' function. */
+#undef HAVE_PFOPEN
+
+/* Name of package */
+#undef PACKAGE
+
+/* Define to the address where bug reports for this package should be sent. */
+#undef PACKAGE_BUGREPORT
+
+/* Define to the full name of this package. */
+#undef PACKAGE_NAME
+
+/* Define to the full name and version of this package. */
+#undef PACKAGE_STRING
+
+/* Define to the one symbol short name of this package. */
+#undef PACKAGE_TARNAME
+
+/* Define to the home page for this package. */
+#undef PACKAGE_URL
+
+/* Define to the version of this package. */
+#undef PACKAGE_VERSION
+
+/* Version number of package */
+#undef VERSION
+
+/* needed on HP-UX */
+#undef _HPUX_SOURCE
+
+/* to handle Ultrix compilers that don't support const in prototypes */
+#undef const
+
+/* Define as token for inline if inlining supported */
+#undef inline

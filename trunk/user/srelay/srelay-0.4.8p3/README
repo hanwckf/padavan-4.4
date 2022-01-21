@@ -1,0 +1,41 @@
+
+srelay	-- SOCKS protocol server with proxy chaining capability.
+									2017/09/01 Tomo.M
+
+Features
+	Simple SOCKS protocol v4, v4a, v5 server
+	Can forward SOCKS request to another SOCKS server
+
+	You can talk to SOCKS server of at most 3-hop away from your PC, etc.
+	i.e.
+
+	Client-PC --> Srelay --> socks1 --> socsk2 --> TARGET
+
+	socks1 and socks2 are typical SOCKS servers, serving freely or
+	in some particular purposes..
+	How to set up this is a little bit complecated, but you can.
+
+	OTOH, Srelay as normal SOCKS server is extremely simple.
+	If you have binary, just start as
+	$ ./srelay
+	on your server host, then, use from your SOCKS clients (Browsers, Tor, ..
+	setting like,
+	   SOCKS_PROXY=serverhost:1080
+	or any other appropriate way of setting.
+	If you met some trouble, check out your FireWall setting, Virus Protections,
+	and so on.
+
+	Enjoy!!
+
+SOURCEFORGE
+	https://sourceforge.net/projects/socks-relay/
+
+
+HISTORY
+	Release 0.4.8 (2017/09/01)
+
+	Release 0.3   (2002/06/14)
+
+TODO
+KNOWN BUGS?
+LIMITATION

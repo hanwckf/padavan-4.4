@@ -44,9 +44,9 @@ configfile.o: configfile.c config.embed.h defaults.h configfile.h \
 ctrlpacket.o: ctrlpacket.c config.embed.h our_syslog.h pptpdefs.h \
  pptpctrl.h ctrlpacket.h compat.h
 
-getopt1.o: getopt1.c config.embed.h our_getopt.h
-
 getopt.o: getopt.c config.embed.h our_getopt.h
+
+getopt1.o: getopt1.c config.embed.h our_getopt.h
 
 inststr.o: inststr.c config.embed.h inststr.h compat.h
 

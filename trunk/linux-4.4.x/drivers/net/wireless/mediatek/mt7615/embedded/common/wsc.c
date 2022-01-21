@@ -2537,10 +2537,8 @@ VOID WscEapRegistrarAction(
 					RTMPSendWirelessEvent(pAdapter, IW_WSC_SEND_M8, NULL, (pWscControl->EntryIfIdx & 0x0F), 0);
 #ifdef CONFIG_AP_SUPPORT
 #ifdef WSC_V2_SUPPORT
-					if (pWscControl->WscV2Info.bEnableWpsV2 && (CurOpMode == AP_MODE)) {
+					if (pWscControl->WscV2Info.bEnableWpsV2 && (CurOpMode == AP_MODE))
 						WscAddEntryToAclList(pAdapter, pEntry->func_tb_idx, pEntry->Addr);
-						WscDeleteEntryFromAclList(pAdapter, pEntry->func_tb_idx, pEntry->Addr);
-					}
 #endif /* WSC_V2_SUPPORT */
 
 					/*
@@ -2571,7 +2569,7 @@ VOID WscEapRegistrarAction(
 			if (CurOpMode == AP_MODE) {
 				pWscControl->WscStatus = STATUS_WSC_EAP_RAP_RSP_DONE_SENT;
 				/* Send EAP-Fail */
-				WscSendEapFail(pAdapter, pWscControl, TRUE);
+				WscSendEapFail(pAdapter, pWscControl, FALSE);
 				pWscControl->WscStatus = STATUS_WSC_CONFIGURED;
 #ifdef CON_WPS
 
@@ -2809,16 +2807,9 @@ Fail:
 					/*
 					*	Use ApplyProfileIdx to inform WscUpdatePortCfgTimer AP acts registrar.
 					*/
-#if defined(CONFIG_MAP_SUPPORT)
-				if (!(IS_MAP_TURNKEY_ENABLE(pAdapter) ||
-					(pEntry && (pEntry->DevPeerRole & BIT(MAP_ROLE_BACKHAUL_STA)))))
-#endif
-					{
-
-						pWscControl->WscProfile.ApplyProfileIdx |= 0x8000;
-						RTMPSetTimer(&pWscControl->WscUpdatePortCfgTimer, 1000);
-						pWscControl->WscUpdatePortCfgTimerRunning = TRUE;
-					}
+					pWscControl->WscProfile.ApplyProfileIdx |= 0x8000;
+					RTMPSetTimer(&pWscControl->WscUpdatePortCfgTimer, 1000);
+					pWscControl->WscUpdatePortCfgTimerRunning = TRUE;
 				}
 			}
 
@@ -3139,9 +3130,6 @@ VOID WscEAPOLTimeOutAction(
 			WscTimeOutProcess(pWscControl->pAd, pEntry, WSC_STATE_RX_M2D, pWscControl);
 		else {
 			pWscControl->WscRetryCount++;
-#ifdef WSC_STA_SUPPORT
-			WscSendEapolStart(pAd, sta_cfg->Bssid, CurOpMode, wdev);
-#endif
 			RTMPModTimer(&pWscControl->EapolTimer, WSC_EAP_MSG_TIME_OUT);
 		}
 
@@ -4008,15 +3996,9 @@ VOID WscSendEapolStart(
 	}
 
 	wsc_ctrl = &wdev->WscControl;
-	/* SAER1 is taking long time to connect, so instead of idle wait, retry */
-	/* EAPOL START frame after receiving M2D */
-#ifdef WSC_STA_SUPPORT
-	if (wsc_ctrl->WscState > WSC_STATE_RX_M2D)
-		return;
-#else
+
 	if (wsc_ctrl->WscState >= WSC_STATE_WAIT_WSC_START)
 		return;
-#endif
 
 	MTWF_LOG(DBG_CAT_SEC, CATSEC_WPS, DBG_LVL_TRACE, ("-----> WscSendEapolStart\n"));
 	if_idx = pEntry->func_tb_idx;
@@ -6202,18 +6184,10 @@ USHORT WscGetAuthType(
 		return WSC_AUTHTYPE_WPA;
 	else if (IS_AKM_WPA1PSK(authType))
 		return WSC_AUTHTYPE_WPAPSK;
-#ifdef APCLI_SAE_SUPPORT
-	else if (IS_AKM_WPA2PSK(authType) && IS_AKM_WPA3PSK(authType))
-		return WSC_AUTHTYPE_WPA2PSK | WSC_AUTHTYPE_SAE;
-#endif
 	else if (IS_AKM_WPA2(authType))
 		return WSC_AUTHTYPE_WPA2;
 	else if (IS_AKM_WPA2PSK(authType))
 		return WSC_AUTHTYPE_WPA2PSK;
-#ifdef APCLI_SAE_SUPPORT
-	else if (IS_AKM_WPA3PSK(authType))
-		return WSC_AUTHTYPE_SAE;
-#endif
 	else
 		return WSC_AUTHTYPE_OPEN;
 }
@@ -7159,13 +7133,7 @@ BOOLEAN	WscPBCExec(
 				  pAd->ApCfg.ApCliTab[apcli_idx].Enable));
 		{
 			/* at this point is disable, need to turn on it! */
-			/* For MAP in 2.4G first let the command exexute and do if down, then enable. No need to enable here*/
-#ifdef CONFIG_MAP_SUPPORT
-			if (IS_MAP_ENABLE(pAd))
-				pAd->ApCfg.ApCliTab[apcli_idx].Enable = FALSE;
-			else
-#endif
-				pAd->ApCfg.ApCliTab[apcli_idx].Enable = TRUE;
+			pAd->ApCfg.ApCliTab[apcli_idx].Enable = TRUE;
 			RTEnqueueInternalCmd(pAd, CMDTHREAD_APCLI_IF_DOWN, (VOID *)&apcli_idx, sizeof(UCHAR));
 		}
 	}
@@ -9148,12 +9116,10 @@ VOID WscWriteConfToDatFile(RTMP_ADAPTER *pAd, UCHAR CurOpMode)
 			if ((size_t)(offset - cfgData) < fileLen) {
 				ptr = (RTMP_STRING *) offset;
 
-				while (*ptr && *ptr != '\n') {
+				while (*ptr && *ptr != '\n')
 					pTempStr[i++] = *ptr++;
-					if (i >= 512)
-						break;
-				}
 
+				pTempStr[i] = 0x00;
 				offset += strlen(pTempStr) + 1;
 
 				if ((strncmp(pTempStr, "SSID=", strlen("SSID=")) == 0) ||

@@ -51,7 +51,7 @@ typedef NTSTATUS(*HwCmdCb)(struct _RTMP_ADAPTER *pAd, VOID * Args);
 #define ETSI_RXBLOCKER4R 4
 #define ETSI_RXBLOCKER1R 1
 
-#define MAX_LEN_OF_HWCTRL_QUEUE            (MAX_LEN_OF_MAC_TABLE<<1)
+
 
 /*for command classify*/
 enum {
@@ -155,10 +155,6 @@ enum {
 	HWCMD_ID_BSS_TERMINATION        = 59,
 #endif /* MBO_SUPPORT */
 	HWCMD_ID_SET_EDCA = 60,
-#ifdef OCE_SUPPORT
-	HWCMD_ID_SET_FD_FRAME_OFFLOAD	= 62,
-#endif /* OCE_SUPPORT */
-
 #ifdef MBSS_AS_WDS_AP_SUPPORT
     HWCMD_ID_UPDATE_4ADDR_HDR_TRANS,
 #endif
@@ -420,17 +416,6 @@ typedef struct _MT_SET_BCN_OFFLOAD {
 } MT_SET_BCN_OFFLOAD, *PMT_SET_BCN_OFFLOAD;
 #endif
 
-#ifdef OCE_SUPPORT
-typedef struct _MT_SET_FD_FRAME_OFFLOAD {
-	UINT8 WdevIdx;
-	UINT8 ucEnable;
-	UINT16 u2PktLength;
-	UINT16 u2TimestampFieldPos;
-
-	UINT8 acPktContent[1520];
-} MT_SET_FD_FRAME_OFFLOAD, *PMT_SET_FD_FRAME_OFFLOAD;
-#endif /* OCE_SUPPORT */
-
 typedef struct _MT_UPDATE_BEACON {
 	struct wifi_dev *wdev;
 	UCHAR UpdateReason;
@@ -588,14 +573,6 @@ VOID HW_SET_ASIC_WCID_AAD_OM(struct _RTMP_ADAPTER *pAd, ULONG Wcid, UCHAR value)
 VOID HW_SET_ASIC_WCID_4ADDR_HDR_TRANS(struct _RTMP_ADAPTER *pAd, ULONG Wcid, UCHAR IsEnable);
 #endif
 
-#ifdef OCE_SUPPORT
-VOID HW_SET_FD_FRAME_OFFLOAD(struct _RTMP_ADAPTER *pAd,
-				UINT8 WdevIdx,
-				ULONG WholeLength,
-				BOOLEAN Enable,
-				UINT16 TimestampPos,
-				UCHAR *Buf);
-#endif /* OCE_SUPPORT */
 VOID RTMP_GET_TEMPERATURE(struct _RTMP_ADAPTER *pAd, UINT32 *pTemperature);
 VOID RTMP_RADIO_ON_OFF_CTRL(struct _RTMP_ADAPTER *pAd, UINT8 ucDbdcIdx, UINT8 ucRadio);
 

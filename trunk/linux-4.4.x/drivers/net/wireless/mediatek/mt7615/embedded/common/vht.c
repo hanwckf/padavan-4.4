@@ -646,7 +646,6 @@ INT build_vht_op_ie(RTMP_ADAPTER *pAd, UCHAR bw, UCHAR Channel, struct wifi_dev 
 	vht_op.basic_mcs_set.mcs_ss7 = VHT_MCS_CAP_NA;
 	vht_op.basic_mcs_set.mcs_ss8 = VHT_MCS_CAP_NA;
 
-	/* BW 80M or 40M is the default setting*/
 	switch  (wlan_operate_get_rx_stream(wdev)) {
 	case 4:
 		vht_op.basic_mcs_set.mcs_ss4 = max_vht_mcs;
@@ -657,39 +656,6 @@ INT build_vht_op_ie(RTMP_ADAPTER *pAd, UCHAR bw, UCHAR Channel, struct wifi_dev 
 	case 1:
 		vht_op.basic_mcs_set.mcs_ss1 = max_vht_mcs;
 		break;
-	}
-
-	/* BW 20M only */
-	if (wlan_config_get_vht_bw(wdev) == VHT_BW_2040
-		&& wlan_config_get_ht_bw(wdev) == HT_BW_20
-		&& max_vht_mcs == VHT_MCS_CAP_9) {
-		switch	(wlan_operate_get_rx_stream(wdev)) {
-		case 4:
-			vht_op.basic_mcs_set.mcs_ss4 = VHT_MCS_CAP_8;
-		case 3:
-			vht_op.basic_mcs_set.mcs_ss3 = VHT_MCS_CAP_9;
-		case 2:
-			vht_op.basic_mcs_set.mcs_ss2 = VHT_MCS_CAP_8;
-		case 1:
-			vht_op.basic_mcs_set.mcs_ss1 = VHT_MCS_CAP_8;
-			break;
-		}
-	}
-	/* BW 160M or 80M+80M */
-	if ((wlan_config_get_vht_bw(wdev) == VHT_BW_160 || wlan_config_get_vht_bw(wdev) == VHT_BW_8080)
-		&& wlan_config_get_ht_bw(wdev) == HT_BW_40
-		&& max_vht_mcs == VHT_MCS_CAP_9) {
-		switch	(wlan_operate_get_rx_stream(wdev)) {
-		case 4:
-			vht_op.basic_mcs_set.mcs_ss4 = VHT_MCS_CAP_9;
-		case 3:
-			vht_op.basic_mcs_set.mcs_ss3 = VHT_MCS_CAP_8;
-		case 2:
-			vht_op.basic_mcs_set.mcs_ss2 = VHT_MCS_CAP_9;
-		case 1:
-			vht_op.basic_mcs_set.mcs_ss1 = VHT_MCS_CAP_9;
-			break;
-		}
 	}
 
 #ifdef RT_BIG_ENDIAN
@@ -714,25 +680,6 @@ static UINT16 VHT_HIGH_RATE_BW80[3][4] = {
 	{351, 702, 1053, 1404},
 	{390, 780, 1170, 1560},
 };
-
-static UINT16 VHT_HIGH_RATE_BW20[3][4] = {
-	{65, 130, 195, 260},
-	{78, 156, 234, 312},
-	{0, 0, 260, 0},
-};
-
-static UINT16 VHT_HIGH_RATE_BW40[3][4] = {
-	{135, 270, 405, 540},
-	{162, 324, 486, 648},
-	{180, 360, 540, 720},
-};
-
-static UINT16 VHT_HIGH_RATE_BW160_BW8080[3][4] = {
-	{585, 1170, 1755, 2340},
-	{702, 1404, 2106, 2808},
-	{780, 1560, 0, 3120},
-};
-
 
 INT build_vht_cap_ie(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, UCHAR *buf)
 {
@@ -847,10 +794,9 @@ INT build_vht_cap_ie(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, UCHAR *buf)
 	if ((mcs_cap <= VHT_MCS_CAP_9)
 		&& ((rx_nss > 0) && (rx_nss <= 4))
 		&& ((tx_nss > 0) && (tx_nss <= 4))) {
-
-		/* BW 80M is the default setting*/
 		vht_cap_ie.mcs_set.rx_high_rate = VHT_HIGH_RATE_BW80[mcs_cap][rx_nss - 1];
 		vht_cap_ie.mcs_set.tx_high_rate = VHT_HIGH_RATE_BW80[mcs_cap][tx_nss - 1];
+
 		if (rx_nss >= 1)
 			vht_cap_ie.mcs_set.rx_mcs_map.mcs_ss1 = mcs_cap;
 
@@ -874,124 +820,6 @@ INT build_vht_cap_ie(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, UCHAR *buf)
 
 		if (tx_nss >= 4)
 			vht_cap_ie.mcs_set.tx_mcs_map.mcs_ss4 = mcs_cap;
-
-		if (wlan_config_get_vht_bw(wdev) == VHT_BW_2040
-			&& wlan_config_get_ht_bw(wdev) == HT_BW_20) {
-			/* BW 20M only */
-
-			vht_cap_ie.mcs_set.rx_high_rate = VHT_HIGH_RATE_BW20[mcs_cap][rx_nss - 1];
-			vht_cap_ie.mcs_set.tx_high_rate = VHT_HIGH_RATE_BW20[mcs_cap][rx_nss - 1];
-
-			if (mcs_cap == VHT_MCS_CAP_9) {
-
-				if (vht_cap_ie.mcs_set.rx_high_rate == 0)
-					vht_cap_ie.mcs_set.rx_high_rate = VHT_HIGH_RATE_BW20[VHT_MCS_CAP_8][rx_nss - 1];
-
-				if (vht_cap_ie.mcs_set.tx_high_rate == 0)
-					vht_cap_ie.mcs_set.tx_high_rate = VHT_HIGH_RATE_BW20[VHT_MCS_CAP_8][rx_nss - 1];
-
-				if (rx_nss >= 1)
-					vht_cap_ie.mcs_set.rx_mcs_map.mcs_ss1 = VHT_MCS_CAP_8;
-
-				if (rx_nss >= 2)
-					vht_cap_ie.mcs_set.rx_mcs_map.mcs_ss2 = VHT_MCS_CAP_8;
-
-				if (rx_nss >= 3)
-					vht_cap_ie.mcs_set.rx_mcs_map.mcs_ss3 = VHT_MCS_CAP_9;
-
-				if (rx_nss >= 4)
-					vht_cap_ie.mcs_set.rx_mcs_map.mcs_ss4 = VHT_MCS_CAP_8;
-
-				if (tx_nss >= 1)
-					vht_cap_ie.mcs_set.tx_mcs_map.mcs_ss1 = VHT_MCS_CAP_8;
-
-				if (tx_nss >= 2)
-					vht_cap_ie.mcs_set.tx_mcs_map.mcs_ss2 = VHT_MCS_CAP_8;
-
-				if (tx_nss >= 3)
-					vht_cap_ie.mcs_set.tx_mcs_map.mcs_ss3 = VHT_MCS_CAP_9;
-
-				if (tx_nss >= 4)
-					vht_cap_ie.mcs_set.tx_mcs_map.mcs_ss4 = VHT_MCS_CAP_8;
-			}
-		} else if (wlan_config_get_vht_bw(wdev) == VHT_BW_2040
-			&& wlan_config_get_ht_bw(wdev) == HT_BW_40) {
-			/* BW 40M */
-
-			vht_cap_ie.mcs_set.rx_high_rate = VHT_HIGH_RATE_BW40[mcs_cap][rx_nss - 1];
-			vht_cap_ie.mcs_set.tx_high_rate = VHT_HIGH_RATE_BW40[mcs_cap][rx_nss - 1];
-
-		} else if ((wlan_config_get_vht_bw(wdev) == VHT_BW_160 || wlan_config_get_vht_bw(wdev) == VHT_BW_8080)
-			&& wlan_config_get_ht_bw(wdev) == HT_BW_40) {
-			/* BW 160M or 80M+80M */
-
-			vht_cap_ie.mcs_set.rx_high_rate = VHT_HIGH_RATE_BW160_BW8080[mcs_cap][rx_nss - 1];
-			vht_cap_ie.mcs_set.tx_high_rate = VHT_HIGH_RATE_BW160_BW8080[mcs_cap][rx_nss - 1];
-
-			if (mcs_cap == VHT_MCS_CAP_9) {
-
-				if (vht_cap_ie.mcs_set.rx_high_rate == 0)
-					vht_cap_ie.mcs_set.rx_high_rate = VHT_HIGH_RATE_BW160_BW8080[VHT_MCS_CAP_8][rx_nss - 1];
-
-				if (vht_cap_ie.mcs_set.tx_high_rate == 0)
-					vht_cap_ie.mcs_set.tx_high_rate = VHT_HIGH_RATE_BW160_BW8080[VHT_MCS_CAP_8][rx_nss - 1];
-
-				if (rx_nss >= 1)
-					vht_cap_ie.mcs_set.rx_mcs_map.mcs_ss1 = VHT_MCS_CAP_9;
-
-				if (rx_nss >= 2)
-					vht_cap_ie.mcs_set.rx_mcs_map.mcs_ss2 = VHT_MCS_CAP_9;
-
-				if (rx_nss >= 3)
-					vht_cap_ie.mcs_set.rx_mcs_map.mcs_ss3 = VHT_MCS_CAP_8;
-
-				if (rx_nss >= 4)
-					vht_cap_ie.mcs_set.rx_mcs_map.mcs_ss4 = VHT_MCS_CAP_9;
-
-				if (tx_nss >= 1)
-					vht_cap_ie.mcs_set.tx_mcs_map.mcs_ss1 = VHT_MCS_CAP_9;
-
-				if (tx_nss >= 2)
-					vht_cap_ie.mcs_set.tx_mcs_map.mcs_ss2 = VHT_MCS_CAP_9;
-
-				if (tx_nss >= 3)
-					vht_cap_ie.mcs_set.tx_mcs_map.mcs_ss3 = VHT_MCS_CAP_8;
-
-				if (tx_nss >= 4)
-					vht_cap_ie.mcs_set.tx_mcs_map.mcs_ss4 = VHT_MCS_CAP_9;
-			}
-		}
-
-
-#ifdef CONFIG_RA_PHY_RATE_SUPPORT
-		if (wdev->rate.Eap_VhtSupRate_En == TRUE) {
-			if (rx_nss >= 1)
-				vht_cap_ie.mcs_set.rx_mcs_map.mcs_ss1 = wdev->rate.rx_mcs_map.mcs_ss1;
-
-			if (rx_nss >= 2)
-				vht_cap_ie.mcs_set.rx_mcs_map.mcs_ss2 = wdev->rate.rx_mcs_map.mcs_ss2;
-
-			if (rx_nss >= 3)
-				vht_cap_ie.mcs_set.rx_mcs_map.mcs_ss3 = wdev->rate.rx_mcs_map.mcs_ss3;
-
-			if (rx_nss >= 4)
-				vht_cap_ie.mcs_set.rx_mcs_map.mcs_ss4 = wdev->rate.rx_mcs_map.mcs_ss4;
-
-			if (tx_nss >= 1)
-				vht_cap_ie.mcs_set.tx_mcs_map.mcs_ss1 = wdev->rate.tx_mcs_map.mcs_ss1;
-
-			if (tx_nss >= 2)
-				vht_cap_ie.mcs_set.tx_mcs_map.mcs_ss2 = wdev->rate.tx_mcs_map.mcs_ss2;
-
-			if (tx_nss >= 3)
-				vht_cap_ie.mcs_set.tx_mcs_map.mcs_ss3 = wdev->rate.tx_mcs_map.mcs_ss3;
-
-			if (tx_nss >= 4)
-				vht_cap_ie.mcs_set.tx_mcs_map.mcs_ss4 = wdev->rate.tx_mcs_map.mcs_ss4;
-
-		}
-#endif /* CONFIG_RA_PHY_RATE_SUPPORT */
-
 	} else {
 		vht_cap_ie.mcs_set.rx_high_rate = 0;
 		vht_cap_ie.mcs_set.tx_high_rate = 0;
@@ -1253,20 +1081,14 @@ BOOLEAN vht80_channel_group(RTMP_ADAPTER *pAd, UCHAR channel)
 	while (vht_ch_80M[idx].ch_up_bnd != 0) {
 		if (channel >= vht_ch_80M[idx].ch_low_bnd &&
 			channel <= vht_ch_80M[idx].ch_up_bnd) {
-			
 			if (
-				(((pAd->CommonCfg.RDDurRegion == JAP ||
+				((pAd->CommonCfg.RDDurRegion == JAP ||
 				  pAd->CommonCfg.RDDurRegion == JAP_W53 ||
 				  pAd->CommonCfg.RDDurRegion == JAP_W56) &&
 				 vht_ch_80M[idx].cent_freq_idx == 138)
 				||
 				((region == JAP || region == CE) &&
-				 vht_ch_80M[idx].cent_freq_idx == 138))
-#ifdef DFS_VENDOR10_CUSTOM_FEATURE
-				&& (!pAd->CommonCfg.bCh144Enabled)
-#endif
-
-				 
+				 vht_ch_80M[idx].cent_freq_idx == 138)
 			) {
 				/* prevent using 132~144 while Region is JAP or CE */
 				idx++;

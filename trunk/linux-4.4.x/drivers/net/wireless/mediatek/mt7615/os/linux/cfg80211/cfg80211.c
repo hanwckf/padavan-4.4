@@ -317,13 +317,7 @@ static int CFG80211_OpsChannelSet(
  *	For iw utility: set type, set monitor
  * ========================================================================
  */
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
-static int CFG80211_OpsVirtualInfChg(
-	IN struct wiphy					*pWiphy,
-	IN struct net_device			*pNetDevIn,
-	IN enum nl80211_iftype			Type,
-		struct vif_params				*pParams)
-#elif (KERNEL_VERSION(2, 6, 32) <= LINUX_VERSION_CODE)
+#if (KERNEL_VERSION(2, 6, 32) <= LINUX_VERSION_CODE)
 static int CFG80211_OpsVirtualInfChg(
 	IN struct wiphy					*pWiphy,
 	IN struct net_device			*pNetDevIn,
@@ -368,23 +362,6 @@ static int CFG80211_OpsVirtualInfChg(
 	VifInfo.net_dev = pNetDev;
 	VifInfo.newIfType = Type;
 	VifInfo.oldIfType = oldType;
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
-	if (pParams != NULL) {
-		VifInfo.MonFilterFlag = 0;
-
-		if (((pParams->flags) & NL80211_MNTR_FLAG_FCSFAIL) == NL80211_MNTR_FLAG_FCSFAIL)
-			VifInfo.MonFilterFlag |= RT_CMD_80211_FILTER_FCSFAIL;
-
-		if (((pParams->flags) & NL80211_MNTR_FLAG_FCSFAIL) == NL80211_MNTR_FLAG_PLCPFAIL)
-			VifInfo.MonFilterFlag |= RT_CMD_80211_FILTER_PLCPFAIL;
-
-		if (((pParams->flags) & NL80211_MNTR_FLAG_CONTROL) == NL80211_MNTR_FLAG_CONTROL)
-			VifInfo.MonFilterFlag |= RT_CMD_80211_FILTER_CONTROL;
-
-		if (((pParams->flags) & NL80211_MNTR_FLAG_CONTROL) == NL80211_MNTR_FLAG_OTHER_BSS)
-			VifInfo.MonFilterFlag |= RT_CMD_80211_FILTER_OTHER_BSS;
-	}
-#else
 
 	if (pFlags != NULL) {
 		VifInfo.MonFilterFlag = 0;
@@ -401,7 +378,7 @@ static int CFG80211_OpsVirtualInfChg(
 		if (((*pFlags) & NL80211_MNTR_FLAG_CONTROL) == NL80211_MNTR_FLAG_OTHER_BSS)
 			VifInfo.MonFilterFlag |= RT_CMD_80211_FILTER_OTHER_BSS;
 	}
-#endif
+
 	/* Type transer from linux to driver defined */
 	if (Type == NL80211_IFTYPE_STATION)
 		Type = RT_CMD_80211_IFTYPE_STATION;
@@ -2056,21 +2033,11 @@ static int CFG80211_OpsStartAp(
 
 	if (settings->beacon.head_len > 0) {
 		os_alloc_mem(NULL, &beacon_head_buf, settings->beacon.head_len);
-		if (beacon_head_buf == NULL) {
-			MTWF_LOG(DBG_CAT_MLME, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("%s::Alloc memory fail\n", __func__));
-			return 0;
-		}
 		NdisCopyMemory(beacon_head_buf, settings->beacon.head, settings->beacon.head_len);
 	}
 
 	if (settings->beacon.tail_len > 0) {
 		os_alloc_mem(NULL, &beacon_tail_buf, settings->beacon.tail_len);
-		if (beacon_tail_buf == NULL) {
-			MTWF_LOG(DBG_CAT_MLME, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("%s::Alloc memory fail\n", __func__));
-			if (beacon_head_buf)
-				os_free_mem(beacon_head_buf);
-			return 0;
-		}
 		NdisCopyMemory(beacon_tail_buf, settings->beacon.tail, settings->beacon.tail_len);
 	}
 
@@ -2204,7 +2171,7 @@ static int CFG80211_OpsChangeBeacon(
 {
 	VOID *pAd;
 	CMD_RTPRIV_IOCTL_80211_BEACON bcn;
-	UCHAR *beacon_head_buf = NULL, *beacon_tail_buf = NULL;
+	UCHAR *beacon_head_buf, *beacon_tail_buf;
 	const UCHAR *ssid_ie = NULL;
 	memset(&bcn, 0, sizeof(CMD_RTPRIV_IOCTL_80211_BEACON));
 
@@ -2213,21 +2180,11 @@ static int CFG80211_OpsChangeBeacon(
 
 	if (info->head_len > 0) {
 		os_alloc_mem(NULL, &beacon_head_buf, info->head_len);
-		if (beacon_head_buf == NULL) {
-			MTWF_LOG(DBG_CAT_MLME, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("%s::Alloc memory fail\n", __func__));
-			return 0;
-		}
 		NdisCopyMemory(beacon_head_buf, info->head, info->head_len);
 	}
 
 	if (info->tail_len > 0) {
 		os_alloc_mem(NULL, &beacon_tail_buf, info->tail_len);
-		if (beacon_tail_buf == NULL) {
-			MTWF_LOG(DBG_CAT_MLME, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("%s::Alloc memory fail\n", __func__));
-			if (beacon_head_buf)
-				os_free_mem(beacon_head_buf);
-			return 0;
-		}
 		NdisCopyMemory(beacon_tail_buf, info->tail, info->tail_len);
 	}
 
@@ -2694,13 +2651,12 @@ static struct wireless_dev *CFG80211_WdevAlloc(
 	 * | pAd pointer			|
 	 * +------------------------+
 	 */
-	os_alloc_mem_suspend(NULL, (UCHAR **)&pWdev ,sizeof(*pWdev));
+	pWdev = kzalloc(sizeof(struct wireless_dev), GFP_KERNEL);
 
 	if (pWdev == NULL) {
 		MTWF_LOG(DBG_CAT_INIT, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("80211> Wireless device allocation fail!\n"));
 		return NULL;
 	} /* End of if */
-	os_zero_mem((PUCHAR)pWdev, sizeof(*pWdev));
 	
 #if defined(PLATFORM_M_STB)	
 #if (KERNEL_VERSION(3, 0, 0) <= LINUX_VERSION_CODE)

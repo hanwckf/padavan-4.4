@@ -1,9 +1,9 @@
 ##################################################################
 # Board PID # Board Name       # PRODUCT # Note
 ##################################################################
-# AC860M    # AC860M           # MT7621  #
+# MR2600   # MR2600          # MT7621  #
 ##################################################################
 
-CFLAGS += -DBOARD_AC860M
+CFLAGS += -DBOARD_MR2600
 BOARD_NUM_USB_PORTS=1
-CONFIG_BOARD_RAM_SIZE=256
+CONFIG_BOARD_RAM_SIZE=128

@@ -471,10 +471,8 @@ INT32 WfHifSysInit(RTMP_ADAPTER *pAd, HIF_INFO_T *pHifInfo)
 	status = RTMPAllocTxRxRingMemory(pAd);
 #endif /* RESOURCE_PRE_ALLOC */
 
-	if (cut_through_init(&pAd->PktTokenCb, pAd) != TRUE) {
-		MTWF_LOG(DBG_CAT_INIT, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("%s(): cut_through_init failed\n", __func__));
-		status = NDIS_STATUS_FAILURE;
-	}
+	cut_through_init(&pAd->PktTokenCb, pAd);
+
 	if (status != NDIS_STATUS_SUCCESS) {
 		MTWF_LOG(DBG_CAT_INIT, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("RTMPAllocTxRxMemory failed, Status[=0x%08x]\n", status));
 		goto err;
@@ -857,9 +855,6 @@ VOID UserCfgExit(RTMP_ADAPTER *pAd)
 #endif /* RADIUS_MAC_ACL_SUPPORT */
 	}
 #endif /* CONFIG_AP_SUPPORT */
-	pAd->CommonCfg.set_ch_async_flag = FALSE;
-	pAd->CommonCfg.iwpriv_event_flag = FALSE;
-	complete_all(&pAd->CommonCfg.set_ch_aync_done);
 	wdev_config_init(pAd);
 #ifdef DOT11_SAE_SUPPORT
 	sae_cfg_deinit(pAd, &pAd->SaeCfg);
@@ -868,9 +863,6 @@ VOID UserCfgExit(RTMP_ADAPTER *pAd)
 	group_info_bi_deinit();
 #endif
 
-#ifdef DOT11_SAE_PWD_ID_SUPPORT
-	sae_pwd_id_deinit(pAd);
-#endif
 #ifdef RATE_PRIOR_SUPPORT
 	RTMP_SEM_LOCK(&pAd->LowRateCtrl.BlackListLock);
 		DlListForEach(pBlackSta, &pAd->LowRateCtrl.BlackList, BLACK_STA, List) {
@@ -886,29 +878,6 @@ VOID UserCfgExit(RTMP_ADAPTER *pAd)
 	NdisFreeSpinLock(&pAd->LowRateCtrl.BlackListLock);
 #endif/*RATE_PRIOR_SUPPORT*/
 
-#if defined(CONFIG_MAP_SUPPORT) && defined(MAP_BL_SUPPORT)
-	{
-		PLIST_HEADER pListHeader = NULL;
-		RT_LIST_ENTRY *pListEntry = NULL;
-		UCHAR apidx = 0;
-
-		for (apidx = 0; apidx < pAd->ApCfg.BssidNum; apidx++) {
-			pListHeader = &pAd->ApCfg.MBSSID[apidx].BlackList;
-
-			if (pListHeader->size == 0)
-				continue;
-
-			pListEntry = pListHeader->pHead;
-
-			while (pListEntry != NULL) {
-				removeHeadList(pListHeader);
-				os_free_mem(pListEntry);
-				pListEntry = pListHeader->pHead;
-			}
-			MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("Clean [%d] BS Blacklist\n", apidx));
-		}
-	}
-#endif
 }
 
 
@@ -1078,6 +1047,10 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 	pAd->bGenOneHCCA = FALSE;
 	pAd->CommonCfg.Dsifs = 10;      /* in units of usec */
 	pAd->CommonCfg.TxPower = 100; /* mW*/
+#ifdef WIFI_EAP_FEATURE
+	pAd->CommonCfg.mgmt_txpwr_force_on = FALSE;
+	pAd->CommonCfg.txd_txpwr_offset = 0;
+#endif
 	pAd->CommonCfg.ucTxPowerPercentage[BAND0] = 100; /* AUTO*/
 #ifdef DBDC_MODE
 	pAd->CommonCfg.ucTxPowerPercentage[BAND1] = 100; /* AUTO*/
@@ -1094,9 +1067,6 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 	pAd->CommonCfg.SavedPhyMode = 0xff;
 	pAd->CommonCfg.BandState = UNKNOWN_BAND;
 	pAd->wmm_cw_min = 4;
-#ifdef VLAN_SUPPORT
-	pAd->CommonCfg.bEnableVlan = TRUE;	/* default enble vlan function */
-#endif /*VLAN_SUPPORT*/
 
 	switch (pAd->OpMode) {
 	case OPMODE_AP:
@@ -1211,11 +1181,12 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 	pAd->CommonCfg.TrainUpHighThrd = 110;
 #endif /* defined(NEW_RATE_ADAPT_SUPPORT) || defined(RATE_ADAPT_AGBS_SUPPORT) */
 #ifdef MCAST_RATE_SPECIFIC
+	pAd->CommonCfg.MCastPhyMode.word = pAd->MacTab.Content[MCAST_WCID].HTPhyMode.word;
+	pAd->CommonCfg.MCastPhyMode_5G.word = pAd->MacTab.Content[MCAST_WCID].HTPhyMode.word;
 #ifdef MCAST_BCAST_RATE_SET_SUPPORT
 	pAd->CommonCfg.McastType = MCAST_TYPE_BOTH_BCM_PKT;
 	pAd->CommonCfg.BCastPhyMode.word = pAd->CommonCfg.MCastPhyMode.word;
 	pAd->CommonCfg.BCastPhyMode_5G.word = pAd->CommonCfg.MCastPhyMode_5G.word;
-	pAd->CommonCfg.McastTypeFlag = FALSE;
 #endif /* MCAST_BCAST_RATE_SET_SUPPORT */
 #endif /* MCAST_RATE_SPECIFIC */
 	/* WFA policy - disallow TH rate in WEP or TKIP cipher */
@@ -1263,10 +1234,6 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 			struct wifi_dev *wdev = &pAd->ApCfg.MBSSID[j].wdev;
 #ifdef CONFIG_MAP_SUPPORT
 		MAP_Init(pAd, wdev, WDEV_TYPE_AP);
-#ifdef MAP_BL_SUPPORT
-		initList(&mbss->BlackList);
-		NdisAllocateSpinLock(pAd, &mbss->BlackListLock);
-#endif /*  MAP_BL_SUPPORT */
 #endif /* CONFIG_MAP_SUPPORT */
 #ifdef DOT1X_SUPPORT
 			/* PMK cache setting*/
@@ -1284,9 +1251,6 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 
 			/* dot1x related per BSS */
 			mbss->wdev.SecConfig.radius_srv_num = 0;
-#ifdef RADIUS_ACCOUNTING_SUPPORT
-			mbss->wdev.SecConfig.radius_acct_srv_num = 0;
-#endif
 			mbss->wdev.SecConfig.NasIdLen = 0;
 			mbss->wdev.SecConfig.IEEE8021X = FALSE;
 			mbss->wdev.SecConfig.PreAuth = FALSE;
@@ -1304,7 +1268,6 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 			/* Default is zero. It means no limit.*/
 			mbss->MaxStaNum = 0;
 			mbss->StaCount = 0;
-			mbss->ErpIeContent = 0;
 #ifdef WSC_AP_SUPPORT
 			wdev->WscSecurityMode = 0xff;
 			{
@@ -1389,23 +1352,6 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 
 			for (i = 0; i < WLAN_MAX_NUM_OF_TIM; i++)
 				mbss->wdev.bcn_buf.TimBitmaps[i] = 0;
-#ifdef CONFIG_RA_PHY_RATE_SUPPORT
-			wdev->rate.BcnPhyMode.field.MODE = MODE_CCK;
-			wdev->rate.BcnPhyMode.field.MCS = RATE_1;
-			wdev->rate.BcnPhyMode.field.BW = BW_20;
-			wdev->rate.BcnPhyMode_5G.field.MODE = MODE_OFDM;
-			wdev->rate.BcnPhyMode_5G.field.MCS = MCS_RATE_6;
-			wdev->rate.BcnPhyMode_5G.field.BW = BW_20;
-#endif /* CONFIG_RA_PHY_RATE_SUPPORT */
-#ifdef MCAST_RATE_SPECIFIC
-			wdev->rate.MCastPhyMode.word = pAd->MacTab.Content[MCAST_WCID].HTPhyMode.word;
-			wdev->rate.MCastPhyMode_5G.word = pAd->MacTab.Content[MCAST_WCID].HTPhyMode.word;
-#ifdef MCAST_BCAST_RATE_SET_SUPPORT
-			wdev->rate.McastType = MCAST_TYPE_BOTH_BCM_PKT;
-			wdev->rate.BCastPhyMode.word = wdev->rate.MCastPhyMode.word;
-			wdev->rate.BCastPhyMode_5G.word = wdev->rate.MCastPhyMode_5G.word;
-#endif /* MCAST_BCAST_RATE_SET_SUPPORT */
-#endif /* MCAST_RATE_SPECIFIC */
 
 #ifdef CUSTOMER_VENDOR_IE_SUPPORT
 			pAd->ApCfg.MBSSID[j].ap_vendor_ie.length = 0;
@@ -1427,8 +1373,7 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 			mbss->DtimCount = 0;
 			mbss->DtimPeriod = DEFAULT_DTIM_PERIOD;
 #endif
-			wdev->bUseShortSlotTime = TRUE;
-			wdev->SlotTimeValue = 9;
+
 		}
 
 #ifdef DOT1X_SUPPORT
@@ -1437,6 +1382,7 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 #endif /* DOT1X_SUPPORT */
 		pAd->ApCfg.DtimCount  = 0;
 		pAd->ApCfg.DtimPeriod = DEFAULT_DTIM_PERIOD;
+		pAd->ApCfg.ErpIeContent = 0;
 		pAd->ApCfg.StaIdleTimeout = MAC_TABLE_AGEOUT_TIME;
 		pAd->ApCfg.BANClass3Data = FALSE;
 #ifdef IDS_SUPPORT
@@ -1569,9 +1515,6 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 	FT_CfgInitial(pAd);
 #endif /* DOT11R_FT_SUPPORT */
 #endif /* CONFIG_AP_SUPPORT */
-	pAd->CommonCfg.set_ch_async_flag = FALSE;
-	pAd->CommonCfg.iwpriv_event_flag = FALSE;
-	RTMP_OS_INIT_COMPLETION(&pAd->CommonCfg.set_ch_aync_done);
 #ifdef DOT11_SAE_SUPPORT
 	sae_cfg_init(pAd, &pAd->SaeCfg);
 #endif /* DOT11_SAE_SUPPORT */
@@ -2002,10 +1945,6 @@ VOID UserCfgInit(RTMP_ADAPTER *pAd)
 	NdisAllocateSpinLock(pAd, &pAd->LowRateCtrl.BlackListLock);
 	MTWF_LOG(DBG_CAT_INIT, DBG_SUBCAT_ALL, DBG_LVL_OFF, ("\n<--RATE_PRIOR AllocateSpinLock\n"));
 #endif/*RATE_PRIOR_SUPPORT*/
-	pAd->CommonCfg.need_fallback = 0;
-#ifdef CONFIG_MAP_SUPPORT
-	pAd->get_all_sta_rate_wcid_idx = 0;
-#endif
 
 	MTWF_LOG(DBG_CAT_INIT, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("<-- UserCfgInit\n"));
 }
@@ -2112,9 +2051,6 @@ VOID RTMP_TimerListRelease(RTMP_ADAPTER *pAd, VOID *pRsc)
 	LIST_RESOURCE_OBJ_ENTRY *pObj;
 	RT_LIST_ENTRY *pListEntry;
 
-	if (pRscList == NULL || pRscList->pHead == NULL)
-		return;
-
 	pListEntry = pRscList->pHead;
 	pObj = (LIST_RESOURCE_OBJ_ENTRY *)pListEntry;
 
@@ -2132,11 +2068,7 @@ VOID RTMP_TimerListRelease(RTMP_ADAPTER *pAd, VOID *pRsc)
 		delEntryList(pRscList, pListEntry);
 		/* free a timer record entry */
 		MTWF_LOG(DBG_CAT_INIT, DBG_SUBCAT_ALL, DBG_LVL_INFO, ("%s: release timer obj %lx!\n", __func__, (ULONG)pRsc));
-		if (pObj == (LIST_RESOURCE_OBJ_ENTRY *)pListEntry)
-			os_free_mem(pObj);
-		else
-			MTWF_LOG(DBG_CAT_INIT, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
-					("Pointers mismatch in %s %d\n", __func__, __LINE__));
+		os_free_mem(pObj);
 	}
 }
 

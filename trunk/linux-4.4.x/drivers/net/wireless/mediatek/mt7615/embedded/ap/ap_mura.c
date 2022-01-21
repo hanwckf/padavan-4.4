@@ -255,21 +255,12 @@ INT GetMuraMonitorStateProc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 	}
 
 	if (index == MURA_STATE) {
-		P_EVENT_SHOW_ALGORITHM_STATE pstat_result = NULL;
+		EVENT_SHOW_ALGORITHM_STATE stat_result = {0};
 
-		os_alloc_mem(NULL, (UCHAR **)&pstat_result, sizeof(EVENT_SHOW_ALGORITHM_STATE));
-		if (!pstat_result) {
-			MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
-				("%s(): mem alloc failed\n", __func__));
-			Ret = 0;
-			goto error;
-		}
-		os_zero_mem(pstat_result, sizeof(EVENT_SHOW_ALGORITHM_STATE));
-		msg = AndesAllocCmdMsg(pAd, sizeof(cmd) + sizeof(EVENT_SHOW_ALGORITHM_STATE));
+		msg = AndesAllocCmdMsg(pAd, sizeof(cmd) + sizeof(stat_result));
 
 		if (!msg) {
 			Ret = 0;
-                        os_free_mem(pstat_result);
 			goto error;
 		}
 
@@ -278,8 +269,8 @@ INT GetMuraMonitorStateProc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 		SET_CMD_ATTR_EXT_TYPE(attr, EXT_CMD_ID_MU_MIMO_RA);
 		SET_CMD_ATTR_CTRL_FLAGS(attr, INIT_CMD_QUERY_AND_WAIT_RSP);
 		SET_CMD_ATTR_RSP_WAIT_MS_TIME(attr, 0);
-		SET_CMD_ATTR_RSP_EXPECT_SIZE(attr, sizeof(EVENT_SHOW_ALGORITHM_STATE));
-		SET_CMD_ATTR_RSP_WB_BUF_IN_CALBK(attr, pstat_result);
+		SET_CMD_ATTR_RSP_EXPECT_SIZE(attr, sizeof(stat_result));
+		SET_CMD_ATTR_RSP_WB_BUF_IN_CALBK(attr, &stat_result);
 		SET_CMD_ATTR_RSP_HANDLER(attr, MuraEventDispatcher);
 		AndesInitCmdMsg(msg, attr);
 #ifdef RT_BIG_ENDIAN
@@ -287,26 +278,14 @@ INT GetMuraMonitorStateProc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 #endif
 		AndesAppendCmdMsg(msg, (char *)&cmd, sizeof(cmd));
 		AndesSendCmdMsg(pAd, msg);
-
-		os_free_mem(pstat_result);
 	} else if (index == MURA_GROUP_STAT) {
-		P_EVENT_SHOW_ALGORITHM_GROUP_STATE pgroup_stat_result = NULL;
-
-		os_alloc_mem(NULL, (UCHAR **)&pgroup_stat_result, sizeof(EVENT_SHOW_ALGORITHM_GROUP_STATE));
-		if (!pgroup_stat_result) {
-			MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
-				("%s(): mem alloc failed\n", __func__));
-			Ret = 0;
-			goto error;
-		}
-		os_zero_mem(pgroup_stat_result, sizeof(EVENT_SHOW_ALGORITHM_GROUP_STATE));
+		EVENT_SHOW_ALGORITHM_GROUP_STATE grouop_stat_result = {0};
 
 		cmd = MURA_ALGORITHM_GROUP_STAT;
 		pch = strsep(&arg, "-");
 
 		if (pch == NULL) {
 			Ret = 0;
-                        os_free_mem(pgroup_stat_result);
 			goto error;
 		} else {
 			pch = strsep(&arg, "");
@@ -316,7 +295,6 @@ INT GetMuraMonitorStateProc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 
 				if (index2 >= MAX_MURA_GRP) {
 					Ret = 0;
-                                        os_free_mem(pgroup_stat_result);
 					goto error;
 				}
 
@@ -325,16 +303,14 @@ INT GetMuraMonitorStateProc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 #endif
 			} else {
 				Ret = 0;
-                                os_free_mem(pgroup_stat_result);
 				goto error;
 			}
 		}
 
-		msg = AndesAllocCmdMsg(pAd, sizeof(cmd) + sizeof(EVENT_SHOW_ALGORITHM_GROUP_STATE));
+		msg = AndesAllocCmdMsg(pAd, sizeof(cmd) + sizeof(grouop_stat_result));
 
 		if (!msg) {
 			Ret = 0;
-                        os_free_mem(pgroup_stat_result);
 			goto error;
 		}
 #ifdef RT_BIG_ENDIAN
@@ -345,32 +321,21 @@ INT GetMuraMonitorStateProc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 		SET_CMD_ATTR_EXT_TYPE(attr, EXT_CMD_ID_MU_MIMO_RA);
 		SET_CMD_ATTR_CTRL_FLAGS(attr, INIT_CMD_QUERY_AND_WAIT_RSP);
 		SET_CMD_ATTR_RSP_WAIT_MS_TIME(attr, 0);
-		SET_CMD_ATTR_RSP_EXPECT_SIZE(attr, sizeof(EVENT_SHOW_ALGORITHM_GROUP_STATE));
-		SET_CMD_ATTR_RSP_WB_BUF_IN_CALBK(attr, pgroup_stat_result);
+		SET_CMD_ATTR_RSP_EXPECT_SIZE(attr, sizeof(grouop_stat_result));
+		SET_CMD_ATTR_RSP_WB_BUF_IN_CALBK(attr, &grouop_stat_result);
 		SET_CMD_ATTR_RSP_HANDLER(attr, MuraEventDispatcher);
 		AndesInitCmdMsg(msg, attr);
 		AndesAppendCmdMsg(msg, (char *)&cmd, sizeof(cmd));
 		AndesAppendCmdMsg(msg, (char *)&index2, sizeof(index2));
 		AndesSendCmdMsg(pAd, msg);
-		os_free_mem(pgroup_stat_result);
 	} else if (index == MURA_HWFB_STAT) {
-		P_EVENT_SHOW_ALGORITHM_HWFB_STATE phwfb_stat_result = NULL;
-
-		os_alloc_mem(NULL, (UCHAR **)&phwfb_stat_result, sizeof(EVENT_SHOW_ALGORITHM_HWFB_STATE));
-		if (!phwfb_stat_result) {
-			MTWF_LOG(DBG_CAT_AP, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
-				("%s(): mem alloc failed\n", __func__));
-			Ret = 0;
-			goto error;
-		}
-		os_zero_mem(phwfb_stat_result, sizeof(EVENT_SHOW_ALGORITHM_HWFB_STATE));
+		EVENT_SHOW_ALGORITHM_HWFB_STATE hwfb_stat_result = {0};
 
 		cmd = MURA_ALGORITHM_HWFB_STAT;
-		msg = AndesAllocCmdMsg(pAd, sizeof(cmd) + sizeof(EVENT_SHOW_ALGORITHM_HWFB_STATE));
+		msg = AndesAllocCmdMsg(pAd, sizeof(cmd) + sizeof(hwfb_stat_result));
 
 		if (!msg) {
 			Ret = 0;
-                        os_free_mem(phwfb_stat_result);
 			goto error;
 		}
 
@@ -379,8 +344,8 @@ INT GetMuraMonitorStateProc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 		SET_CMD_ATTR_EXT_TYPE(attr, EXT_CMD_ID_MU_MIMO_RA);
 		SET_CMD_ATTR_CTRL_FLAGS(attr, INIT_CMD_QUERY_AND_WAIT_RSP);
 		SET_CMD_ATTR_RSP_WAIT_MS_TIME(attr, 0);
-		SET_CMD_ATTR_RSP_EXPECT_SIZE(attr, sizeof(EVENT_SHOW_ALGORITHM_HWFB_STATE));
-		SET_CMD_ATTR_RSP_WB_BUF_IN_CALBK(attr, phwfb_stat_result);
+		SET_CMD_ATTR_RSP_EXPECT_SIZE(attr, sizeof(hwfb_stat_result));
+		SET_CMD_ATTR_RSP_WB_BUF_IN_CALBK(attr, &hwfb_stat_result);
 		SET_CMD_ATTR_RSP_HANDLER(attr, MuraEventDispatcher);
 		AndesInitCmdMsg(msg, attr);
 #ifdef RT_BIG_ENDIAN
@@ -388,7 +353,6 @@ INT GetMuraMonitorStateProc(RTMP_ADAPTER *pAd, RTMP_STRING *arg)
 #endif
 		AndesAppendCmdMsg(msg, (char *)&cmd, sizeof(cmd));
 		AndesSendCmdMsg(pAd, msg);
-		os_free_mem(phwfb_stat_result);
 	} else
 		goto error;
 

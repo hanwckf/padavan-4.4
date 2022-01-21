@@ -741,7 +741,7 @@ BOOLEAN RTMPSoftDecryptTKIP(
 		NdisMoveMemory(SA, pFrame->Addr2, MAC_ADDR_LEN);
 		NdisMoveMemory(TA, pFrame->Addr2, MAC_ADDR_LEN);
 		NdisMoveMemory(DA, pFrame->Addr3, MAC_ADDR_LEN);
-	} else { /* (to_ds == 1 && from_ds == 1) - To Fix Coverity issue */
+	} else if (to_ds == 1 && from_ds == 1) {
 		NdisMoveMemory(TA, pFrame->Addr2, MAC_ADDR_LEN);
 		NdisMoveMemory(DA, pFrame->Addr3, MAC_ADDR_LEN);
 		NdisMoveMemory(SA, pFrame->Octet, MAC_ADDR_LEN);

@@ -10,8 +10,8 @@ if MT_WIFI
 menu "WiFi Generic Feature Options"
 	
 config MULTI_INF_SUPPORT
-		bool
-		default y if !FIRST_IF_NONE && !SECOND_IF_NONE
+	bool
+	default y if !FIRST_IF_NONE && !SECOND_IF_NONE
 		
 config WIFI_BASIC_FUNC
 	bool "Basic Functions"
@@ -40,6 +40,11 @@ config TPC_SUPPORT
 	depends on WIFI_DRIVER
 	default y
 
+config TXRX_STAT_SUPPORT
+	bool "TxRx Stats Support"
+	depends on WIFI_DRIVER
+	default n
+
 config ICAP_SUPPORT
 	bool "ICAP Support"
 	depends on WIFI_DRIVER
@@ -63,16 +68,9 @@ config SMART_CARRIER_SENSE_SUPPORT
 	default y
 	
 config MT_DFS_SUPPORT
-        bool "Dynamic Frequency Selection Support"	
-        depends on WIFI_DRIVER
-        default y
-
-config DPP_SUPPORT
-	bool "DPP Support"
-	depends on WIFI_DRIVER
-	depends on MT_AP_SUPPORT
-	select DOT11W_PMF_SUPPORT
-	default n
+    bool "Dynamic Frequency Selection Support"	
+    depends on WIFI_DRIVER
+    default y
 
 #config WFA_VHT_R2_PF
 #    bool "WFA VHT R2 Plugfest"
@@ -125,14 +123,14 @@ config DOT11W_PMF_SUPPORT
 	default y
 
 config TXBF_SUPPORT
-        bool "Tx Bean Forming Support"
-        depends on WIFI_DRIVER
-        default y
+    bool "Tx Bean Forming Support"
+    depends on WIFI_DRIVER
+    default y
 
 config FAST_NAT_SUPPORT
-       bool "Fast-NAT support"
-       depends on RA_HW_NAT_WIFI
-       default n
+   bool "Fast-NAT support"
+   depends on RA_HW_NAT_WIFI
+   default n
 
 config WHNAT_SUPPORT
 	tristate "Wifi Hardware NAT support"
@@ -266,6 +264,11 @@ config LINK_TEST_SUPPORT
 	bool "Link Test Support"
 	depends on WIFI_DRIVER
 	default y
+	
+config WIFI_EAP_FEATURE
+	bool "EAP Feature Support"
+	depends on WIFI_DRIVER
+	default y
 
 #config LED_CONTROL_SUPPORT
 #	bool "LED Support"
@@ -309,15 +312,15 @@ config TCP_RACK_SUPPORT
 #### PA_LNA_Type choice
 
 config RED_SUPPORT
-        bool "RED(Random Early Drop) support"
+	bool "RED(Random Early Drop) support"
 	depends on WIFI_DRIVER
 	depends on MT_AP_SUPPORT || MT_STA_SUPPORT
-        default y
+	default y
 
 config FDB_SUPPORT
-       bool "FW Debug Port"
-       depends on WIFI_DRIVER
-       default n
+   bool "FW Debug Port"
+   depends on WIFI_DRIVER
+   default n
 
 #
 # Section for chip architectures
@@ -341,28 +344,28 @@ config RTMP_MAC
 	default n
 
 config RTMP_BBP
-    	bool
+	bool
 
 config RTMP_RF
-    	bool
+	bool
 
 #
 # Section for interfaces
 #
 config RTMP_PCI_SUPPORT
-    	bool
+	bool
 
 config RTMP_USB_SUPPORT
-		bool
+	bool
 
 config RTMP_RBUS_SUPPORT
-    	bool
+	bool
 
 endmenu
 
 menu "WiFi Operation Modes"
     if WIFI_MODE_AP || WIFI_MODE_BOTH
-        source "drivers/net/wireless/mediatek/mt7615_ap/Kconfig"
+		source "drivers/net/wireless/mediatek/mt7615_ap/Kconfig"
     endif
 endmenu	
 

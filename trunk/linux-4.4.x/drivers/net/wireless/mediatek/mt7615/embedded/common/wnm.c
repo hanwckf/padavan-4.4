@@ -125,27 +125,7 @@ void SendBTMQueryEvent(PNET_DEV net_dev, const char *peer_mac_addr,
 								  btm_query_len);
 	}
 }
-#ifdef MAP_R2
-void SendWNMNotifyEvent(PNET_DEV net_dev, const char *peer_mac_addr,
-							  const char *wnm_req, UINT16 wnm_req_len)
-{
-	struct wnm_notify_req_data *req_data;
-	UINT16 buflen = 0;
-	char *buf;
 
-	buflen = sizeof(*req_data) + wnm_req_len;
-	os_alloc_mem(NULL, (UCHAR **)&buf, buflen);
-	NdisZeroMemory(buf, buflen);
-	req_data = (struct wnm_notify_req_data *)buf;
-	req_data->ifindex = RtmpOsGetNetIfIndex(net_dev);
-	memcpy(req_data->peer_mac_addr, peer_mac_addr, 6);
-	req_data->wnm_req_len	= wnm_req_len;
-	memcpy(req_data->wnm_req, wnm_req, wnm_req_len);
-	RtmpOSWrielessEventSend(net_dev, RT_WLAN_EVENT_CUSTOM,
-							OID_802_11_WNM_NOTIFY_REQ, NULL, (PUCHAR)buf, buflen);
-	os_free_mem(buf);
-}
-#endif
 #ifndef WAPP_SUPPORT/* #ifdef WNM_NEW_API */
 void wext_send_btm_cfm_event_newapi(PNET_DEV net_dev, const char *peer_mac_addr,
 							 const char *btm_rsp, UINT16 btm_rsp_len)
@@ -1440,11 +1420,10 @@ static VOID ReceiveBTMQuery(IN PRTMP_ADAPTER pAd,
 
 	RTMP_SEM_EVENT_WAIT(&pWNMCtrl->BTMPeerListLock, Ret);
 	DlListForEach(BTMPeerEntry, &pWNMCtrl->BTMPeerList, BTM_PEER_ENTRY, List) {
-		if (MAC_ADDR_EQUAL(BTMPeerEntry->PeerMACAddr, WNMFrame->Hdr.Addr2)) {
+		if (MAC_ADDR_EQUAL(BTMPeerEntry->PeerMACAddr, WNMFrame->Hdr.Addr2))
 			IsFound = TRUE;
 
-			break;
-		}
+		break;
 	}
 	RTMP_SEM_EVENT_UP(&pWNMCtrl->BTMPeerListLock);
 
@@ -1509,8 +1488,8 @@ static VOID ReceiveBTMQuery(IN PRTMP_ADAPTER pAd,
 
 	/* indicate to daemon - payload len = total pkt len - header len - 3:(category + action code + dialog token) */
 	Event->u.PEER_BTM_QUERY_DATA.BTMQueryLen = (UINT16)Elem->MsgLen - sizeof(HEADER_802_11) - 3;
-	NdisMoveMemory(Event->u.PEER_BTM_QUERY_DATA.BTMQuery, &WNMFrame->u.BTM_QUERY.DialogToken,
-							Event->u.PEER_BTM_QUERY_DATA.BTMQueryLen + 1);
+	NdisMoveMemory(Event->u.PEER_BTM_QUERY_DATA.BTMQuery, WNMFrame->u.BTM_QUERY.Variable,
+							Event->u.PEER_BTM_QUERY_DATA.BTMQueryLen);
 	MlmeEnqueue(pAd, BTM_STATE_MACHINE, PEER_BTM_QUERY, Elem->MsgLen, Buf, 0);
 
 	os_free_mem(Buf);
@@ -1561,11 +1540,10 @@ static VOID ReceiveBTMRsp(IN PRTMP_ADAPTER pAd,
 
 	RTMP_SEM_EVENT_WAIT(&pWNMCtrl->BTMPeerListLock, Ret);
 	DlListForEach(BTMPeerEntry, &pWNMCtrl->BTMPeerList, BTM_PEER_ENTRY, List) {
-		if (MAC_ADDR_EQUAL(BTMPeerEntry->PeerMACAddr, WNMFrame->Hdr.Addr2)) {
+		if (MAC_ADDR_EQUAL(BTMPeerEntry->PeerMACAddr, WNMFrame->Hdr.Addr2))
 			IsFound = TRUE;
 
-			break;
-		}
+		break;
 	}
 	RTMP_SEM_EVENT_UP(&pWNMCtrl->BTMPeerListLock);
 
@@ -1589,19 +1567,12 @@ static VOID ReceiveBTMRsp(IN PRTMP_ADAPTER pAd,
 	/* Send BTM confirm to daemon */
 	VarLen = Elem->MsgLen -
 		(sizeof(HEADER_802_11) + 1 + sizeof(WNMFrame->u.BTM_RSP)) + 1;
-#ifdef WAPP_SUPPORT
-	SendBTMConfirmEvent(NetDev,
-						WNMFrame->Hdr.Addr2,
-						(PUCHAR)&(WNMFrame->u.BTM_RSP.Variable),
-						VarLen,
-						RA_WEXT);
-#else
+
 	SendBTMConfirmEvent(NetDev,
 						WNMFrame->Hdr.Addr2,
 						(PUCHAR)&(WNMFrame->u.BTM_RSP.DialogToken),
 						VarLen,
 						RA_WEXT);
-#endif
 #else
 		VarLen = Elem->MsgLen - (sizeof(HEADER_802_11) + 1 + sizeof(WNMFrame->u.BTM_RSP));
 
@@ -1693,7 +1664,7 @@ static VOID SendBTMQueryIndication(
 	BTM_EVENT_DATA *Event = (BTM_EVENT_DATA *)Elem->Msg;
 	PNET_DEV NetDev = pAd->ApCfg.MBSSID[Event->ControlIndex].wdev.if_dev;
 
-	//printk("%s\n", __func__);
+	printk("%s\n", __func__);
 		/* Send BTM query indication to daemon */
 		SendBTMQueryEvent(NetDev,
 						  Event->PeerMACAddr,
@@ -1723,7 +1694,7 @@ VOID WaitPeerBTMReqTimeout(
 	BOOLEAN Cancelled;
 #endif /* CONFIG_11KV_API_SUPPORT */
 
-	MTWF_LOG(DBG_CAT_PROTO, CATPROTO_WNM, DBG_LVL_TRACE,
+	MTWF_LOG(DBG_CAT_PROTO, CATPROTO_WNM, DBG_LVL_OFF,
 		("%s\n", __func__));
 
 	if (!BTMPeerEntry)
@@ -1733,12 +1704,6 @@ VOID WaitPeerBTMReqTimeout(
 
 #ifndef CONFIG_11KV_API_SUPPORT
 	RTMPReleaseTimer(&BTMPeerEntry->WaitPeerBTMReqTimer, &Cancelled);
-	/* fix xiaomi time crash issue */
-	if (BTMPeerEntry->WaitPeerBTMRspTimer.Valid) {
-		MTWF_LOG(DBG_CAT_INIT, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("%s: WaitPeerBTMRspTimer isn't release, release it!!\n",
-						 __func__));
-		RTMPReleaseTimer(&BTMPeerEntry->WaitPeerBTMRspTimer, &Cancelled);
-	}
 #endif
 
 	if (RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_HALT_IN_PROGRESS
@@ -1965,8 +1930,6 @@ static VOID SendBTMReqIE(
 	MiniportMMRequest(pAd, (MGMT_USE_QUEUE_FLAG | QID_AC_BE), pOutBuffer, FrameLen);
 	RTMPCancelTimer(&BTMPeerEntry->WaitPeerBTMReqTimer, &Cancelled);
 	RTMPReleaseTimer(&BTMPeerEntry->WaitPeerBTMReqTimer, &Cancelled);
-	RTMPCancelTimer(&BTMPeerEntry->WaitPeerBTMRspTimer, &Cancelled);
-	RTMPReleaseTimer(&BTMPeerEntry->WaitPeerBTMRspTimer, &Cancelled);
 	RTMPInitTimer(pAd, &BTMPeerEntry->WaitPeerBTMRspTimer,
 				GET_TIMER_FUNCTION(WaitPeerBTMRspTimeout), BTMPeerEntry, FALSE);
 	RTMPSetTimer(&BTMPeerEntry->WaitPeerBTMRspTimer,
@@ -1994,8 +1957,6 @@ error:
 		MTWF_LOG(DBG_CAT_PROTO, CATPROTO_RRM, DBG_LVL_ERROR,
 			("%s(): BTMReqTimer is not valid, delete BTMPeerEntry now\n",
 			__func__));
-		RTMPCancelTimer(&BTMPeerEntry->WaitPeerBTMRspTimer, &Cancelled);
-		RTMPReleaseTimer(&BTMPeerEntry->WaitPeerBTMRspTimer, &Cancelled);
 		RTMP_SEM_EVENT_WAIT(&pWNMCtrl->BTMPeerListLock, Ret);
 		DlListDel(&BTMPeerEntry->List);
 		RTMP_SEM_EVENT_UP(&pWNMCtrl->BTMPeerListLock);
@@ -2081,8 +2042,6 @@ static VOID SendBTMReqParam(
 
 	RTMPCancelTimer(&BTMPeerEntry->WaitPeerBTMReqTimer, &Cancelled);
 	RTMPReleaseTimer(&BTMPeerEntry->WaitPeerBTMReqTimer, &Cancelled);
-	RTMPCancelTimer(&BTMPeerEntry->WaitPeerBTMRspTimer, &Cancelled);
-	RTMPReleaseTimer(&BTMPeerEntry->WaitPeerBTMRspTimer, &Cancelled);
 	RTMPInitTimer(pAd, &BTMPeerEntry->WaitPeerBTMRspTimer,
 				GET_TIMER_FUNCTION(WaitPeerBTMRspTimeout), BTMPeerEntry, FALSE);
 	RTMPSetTimer(&BTMPeerEntry->WaitPeerBTMRspTimer,
@@ -2114,8 +2073,6 @@ error:
 		MTWF_LOG(DBG_CAT_PROTO, CATPROTO_RRM, DBG_LVL_ERROR,
 			("%s()  BTMReqTimer is not valid,delete BTMPeerEntry now\n",
 			__func__));
-		RTMPCancelTimer(&BTMPeerEntry->WaitPeerBTMRspTimer, &Cancelled);
-		RTMPReleaseTimer(&BTMPeerEntry->WaitPeerBTMRspTimer, &Cancelled);
 		RTMP_SEM_EVENT_WAIT(&pWNMCtrl->BTMPeerListLock, Ret);
 		DlListDel(&BTMPeerEntry->List);
 		RTMP_SEM_EVENT_UP(&pWNMCtrl->BTMPeerListLock);
@@ -2343,7 +2300,7 @@ static VOID ReceiveBTMRspTimeout(
 #endif /* CONFIG_11KV_API_SUPPORT */
 
 
-
+#ifndef CONFIG_HOTSPOT_R2/* #ifdef WNM_NEW_API */
 NDIS_STATUS wnm_handle_command(IN PRTMP_ADAPTER pAd, IN struct wnm_command *pCmd_data)
 {
 	POS_COOKIE pObj = (POS_COOKIE)pAd->OS_Cookie;
@@ -2422,7 +2379,7 @@ NDIS_STATUS wnm_handle_command(IN PRTMP_ADAPTER pAd, IN struct wnm_command *pCmd
 	}
 	return status;
 }
-
+#endif
 void WNM_ReadParametersFromFile(
 	IN PRTMP_ADAPTER pAd,
 	RTMP_STRING *tmpbuf,
@@ -3178,7 +3135,7 @@ int compose_btm_req_ie(
 			(p_info->ap_reachability == 0)?3:p_info->ap_reachability;
 		BssidInfo.field.Security = p_info->security;
 		BssidInfo.field.KeyScope = p_info->key_scope;
-		BssidInfo.field.SpectrumMng = (p_info->capinfo & (1 << 8)) ? 1:0;
+		BssidInfo.field.SepctrumMng = (p_info->capinfo & (1 << 8)) ? 1:0;
 		BssidInfo.field.Qos = (p_info->capinfo & (1 << 9)) ? 1:0;
 		BssidInfo.field.APSD = (p_info->capinfo & (1 << 11)) ? 1:0;
 		BssidInfo.field.RRM = (p_info->capinfo & RRM_CAP_BIT) ? 1:0;
@@ -3196,7 +3153,7 @@ int compose_btm_req_ie(
 		NeighborRepInfo.PhyType = p_info->phytype;
 
 		RRM_InsertNeighborRepIE(pAd, (pos+TmpLen), (PULONG)&TmpLen,
-				sizeof(RRM_NEIGHBOR_REP_INFO) + (p_info->preference?3:0), &NeighborRepInfo);
+				sizeof(RRM_NEIGHBOR_REP_INFO), &NeighborRepInfo);
 		if (p_info->preference)
 			RRM_InsertPreferenceSubIE(pAd, (pos+TmpLen), &TmpLen,
 				p_info->preference);
@@ -3341,12 +3298,6 @@ VOID ReceiveWNMNotifyReq(IN PRTMP_ADAPTER pAd,
 	UINT	pos = 0;
 	UINT	OptionalElementLen = (UINT)Elem->MsgLen - sizeof(HEADER_802_11) - 4; /* skip  category, action, DialogToken, type */
 	UINT	ElementID = 0, ElementLen = 0;
-#ifdef MAP_R2
-	PNET_DEV NetDev = NULL;
-	ULONG VarLen = 0;
-	PWNM_CTRL pWNMCtrl = NULL;
-	UCHAR APIndex;
-#endif
 #ifdef MBO_SUPPORT
 	struct wifi_dev *pWdev = wdev_search_by_address(pAd, WNMFrame->Hdr.Addr1);
 
@@ -3367,30 +3318,6 @@ VOID ReceiveWNMNotifyReq(IN PRTMP_ADAPTER pAd,
 
 	MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("%s MsgLen %ld MBSS %02x:%02x:%02x:%02x:%02x:%02x\n",
 		__func__, Elem->MsgLen, PRINT_MAC(WNMFrame->Hdr.Addr1)));
-#ifdef MAP_R2
-
-	for (APIndex = 0; APIndex < MAX_MBSSID_NUM(pAd); APIndex++) {
-		if (MAC_ADDR_EQUAL(WNMFrame->Hdr.Addr3, pAd->ApCfg.MBSSID[APIndex].wdev.bssid)) {
-			pWNMCtrl = &pAd->ApCfg.MBSSID[APIndex].WNMCtrl;
-			break;
-		}
-	}
-
-	if (!pWNMCtrl) {
-		MTWF_LOG(DBG_CAT_PROTO, CATPROTO_WNM, DBG_LVL_ERROR, ("%s Can not find Peer Control\n", __func__));
-		return;
-	}
-
-	NetDev = pAd->ApCfg.MBSSID[APIndex].wdev.if_dev;
-
-	VarLen = Elem->MsgLen -
-		(sizeof(HEADER_802_11));
-
-	SendWNMNotifyEvent(NetDev,
-							 WNMFrame->Hdr.Addr2,
-							 (PUCHAR)&(WNMFrame->Category),
-							 VarLen);
-#endif
 
 	while ((pos+1) <= OptionalElementLen) {
 		ElementID = WNMFrame->u.WNM_NOTIFY_REQ.Variable[pos];
@@ -3480,11 +3407,10 @@ VOID ReceiveWNMNotifyRsp(IN PRTMP_ADAPTER pAd,
 
 	RTMP_SEM_EVENT_WAIT(&pWNMCtrl->WNMNotifyPeerListLock, Ret);
 	DlListForEach(WNMNotifyPeerEntry, &pWNMCtrl->WNMNotifyPeerList, WNM_NOTIFY_PEER_ENTRY, List) {
-		if (MAC_ADDR_EQUAL(WNMNotifyPeerEntry->PeerMACAddr, WNMFrame->Hdr.Addr2)) {
+		if (MAC_ADDR_EQUAL(WNMNotifyPeerEntry->PeerMACAddr, WNMFrame->Hdr.Addr2))
 			IsFound = TRUE;
 
-			break;
-		}
+		break;
 	}
 	RTMP_SEM_EVENT_UP(&pWNMCtrl->WNMNotifyPeerListLock);
 

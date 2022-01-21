@@ -300,9 +300,9 @@ VOID BssInfoArgumentLink(struct _RTMP_ADAPTER *ad, struct wifi_dev *wdev, struct
 #ifdef MCAST_RATE_SPECIFIC
 
 	if (wdev->channel > 14)
-		bssinfo->McTransmit = wdev->rate.MCastPhyMode_5G;
+		bssinfo->McTransmit = ad->CommonCfg.MCastPhyMode_5G;
 	else
-		bssinfo->McTransmit = wdev->rate.MCastPhyMode;
+		bssinfo->McTransmit = ad->CommonCfg.MCastPhyMode;
 
 #else
 	bssinfo->McTransmit = HTPhyMode;
@@ -310,13 +310,12 @@ VOID BssInfoArgumentLink(struct _RTMP_ADAPTER *ad, struct wifi_dev *wdev, struct
 
 #ifdef MCAST_BCAST_RATE_SET_SUPPORT
 	if (wdev->channel > 14)
-		bssinfo->BcTransmit = wdev->rate.BCastPhyMode_5G;
+		bssinfo->BcTransmit = ad->CommonCfg.BCastPhyMode_5G;
 	else
-		bssinfo->BcTransmit = wdev->rate.BCastPhyMode;
+		bssinfo->BcTransmit = ad->CommonCfg.BCastPhyMode;
 #else
 	bssinfo->BcTransmit = HTPhyMode;
 #endif /* MCAST_BCAST_RATE_SET_SUPPORT */
-
 #ifdef RACTRL_FW_OFFLOAD_SUPPORT
 	raWrapperConfigSet(ad, wdev, &bssinfo->ra_cfg);
 #endif /*RACTRL_FW_OFFLOAD_SUPPORT*/
@@ -729,22 +728,22 @@ void wdev_sync_prim_ch(struct _RTMP_ADAPTER *ad, struct wifi_dev *wdev)
 		tdev = ad->wdev_list[i];
 		if (tdev && HcIsRadioAcq(tdev) && (band_idx == HcGetBandByWdev(tdev))) {
 			tdev->channel = wdev->channel;
-		} else if ((wdev->wdev_type == WDEV_TYPE_AP) &&
-				(tdev != NULL) &&
-				(band_idx == HcGetBandByWdev(tdev))) {
-			tdev->channel = wdev->channel;
-/* Fix for Apcli linkdown issue when AP interface brinup happens after linkup */
-		} else if ((wdev->wdev_type == WDEV_TYPE_APCLI) &&
+#ifdef CONFIG_MAP_SUPPORT
+			if (tdev->wdev_type == WDEV_TYPE_AP)
+				tdev->quick_ch_change = wdev->quick_ch_change;
+#endif
+		}
+		else if ((wdev->wdev_type == WDEV_TYPE_APCLI) &&
 				(tdev != NULL) &&
 				(tdev->wdev_type == WDEV_TYPE_AP) &&
 				(tdev->if_up_down_state == 0) &&
 				(((tdev->channel > 14) && (wdev->channel > 14)) ||
 				 ((tdev->channel <= 14) && (wdev->channel <= 14)))) {
 			tdev->channel = wdev->channel;
-		}
-
-		if (tdev != NULL)
+#ifdef CONFIG_MAP_SUPPORT
 			tdev->quick_ch_change = wdev->quick_ch_change;
+#endif
+		}
 	}
 }
 
@@ -925,17 +924,3 @@ INT wdev_do_disconn_act(struct wifi_dev *wdev, struct _MAC_TABLE_ENTRY *entry)
 	return FALSE;
 }
 
-#ifdef MAP_R2
-
-int get_idx_from_channel(int chan)
-{
-#define MAX_CHAN_NUMBER_2G 14
-#define MAX_CHAN_5GL 100
-	if (chan < MAX_CHAN_NUMBER_2G)
-		return 1;
-	else if (chan < MAX_CHAN_5GL)
-		return 2;
-	else
-		return 3;
-}
-#endif

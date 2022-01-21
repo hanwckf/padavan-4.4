@@ -28,6 +28,7 @@
 
 #include "rt_config.h"
 
+
 enum DOT11U_ADVERTISMENT_PROTOCOL_ID dot11GASAdvertisementID[] = {
 	ACCESS_NETWORK_QUERY_PROTOCOL,
 };
@@ -325,28 +326,8 @@ VOID SendGASRsp(
 	MiniportMMRequest(pAd, 0, Buf, FrameLen);
 	os_free_mem(Buf);
 }
-#ifdef DPP_SUPPORT
-VOID DPP_ReceiveGASInitRsp(
-	IN PRTMP_ADAPTER pAd,
-	IN MLME_QUEUE_ELEM *Elem)
-{
-	GAS_FRAME *GASFrame = (GAS_FRAME *)Elem->Msg;
 
-	if ((GASFrame->u.GAS_INIT_RSP.Variable[GAS_WFA_DPP_Length_Index] > GAS_WFA_DPP_Min_Length) &&
-		NdisEqualMemory(&GASFrame->u.GAS_INIT_RSP.Variable[GAS_OUI_Index], DPP_OUI, OUI_LEN) &&
-		GASFrame->u.GAS_INIT_RSP.Variable[GAS_WFA_DPP_Subtype_Index] == WFA_DPP_SUBTYPE) {
-		if (pAd->bDppEnable) {
-			wext_send_dpp_action_frame(pAd, Elem->wdev, &Elem->Msg[10], Elem->Channel,
-						 Elem->Msg, Elem->MsgLen, 1);
-			MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
-					 ("%s, Sent received gas init Rsp frame to WAPP\n", __func__));
-		} else
-			MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
-					 ("%s, DPP disabled gas init Rsp not sent to WAPP\n", __func__));
-		return;
-	}
-}
-#endif /* DPP_SUPPORT */
+
 VOID ReceiveGASInitReq(
 	IN PRTMP_ADAPTER pAd,
 	IN MLME_QUEUE_ELEM * Elem)
@@ -360,24 +341,9 @@ VOID ReceiveGASInitReq(
 	UINT32 Len = 0;
 	BOOLEAN IsFound = FALSE, Cancelled;
 	GAS_QUERY_RSP_FRAGMENT *GASQueryRspFrag, *GASQueryRspFragTmp;
-	PNET_DEV NetDev;
 
 	MTWF_LOG(DBG_CAT_PROTO, CATPROTO_WNM, DBG_LVL_TRACE, ("%s\n", __func__));
-#ifdef DPP_SUPPORT
-	if ((GASFrame->u.GAS_INIT_REQ.Variable[GAS_WFA_DPP_Length_Index] > GAS_WFA_DPP_Min_Length) &&
-		NdisEqualMemory(&GASFrame->u.GAS_INIT_REQ.Variable[GAS_OUI_Index], DPP_OUI, OUI_LEN) &&
-		GASFrame->u.GAS_INIT_REQ.Variable[GAS_WFA_DPP_Subtype_Index] == WFA_DPP_SUBTYPE) {
-		if (pAd->bDppEnable) {
-			wext_send_dpp_action_frame(pAd, Elem->wdev, &Elem->Msg[10], Elem->Channel,
-						Elem->Msg, Elem->MsgLen, 1);
-			MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
-					("%s, Sent received gas init Req frame to WAPP\n", __func__));
-		} else
-			MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
-					("%s, DPP Disabled gas init Req not passed to WAPP\n", __func__));
-		return;
-	}
-#endif /* DPP_SUPPORT */
+
 	for (APIndex = 0; APIndex < MAX_MBSSID_NUM(pAd); APIndex++) {
 		/*
 		according to 802.11-2012, public action frame may have Wildcard BSSID in addr3,
@@ -388,7 +354,6 @@ VOID ReceiveGASInitReq(
 			break;
 		}
 	}
-	NetDev = pAd->ApCfg.MBSSID[APIndex].wdev.if_dev;
 
 	if (!pGASCtrl) {
 		MTWF_LOG(DBG_CAT_ALL, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
@@ -497,19 +462,10 @@ VOID ReceiveGASInitReq(
 	GASPeerEntry->AdvertisementProID = *Pos;
 	Len += 1;
 	Pos++;
-
 	NdisMoveMemory(&Event->u.PEER_GAS_REQ_DATA.QueryReqLen, Pos, 2);
 	Event->u.PEER_GAS_REQ_DATA.QueryReqLen = le2cpu16(Event->u.PEER_GAS_REQ_DATA.QueryReqLen);
 	Len += 2;
 	Pos += 2;
-	if (Event->u.PEER_GAS_REQ_DATA.AdvertisementProID == ACCESS_NETWORK_QUERY_PROTOCOL &&
-		!pGASCtrl->ExternalANQPServerTest) {
-		/* Send anqp request indication to daemon */
-		SendAnqpReqEvent(NetDev,
-				Event->PeerMACAddr,
-				&GASFrame->Category,
-				Event->u.PEER_GAS_REQ_DATA.QueryReqLen + 9);
-	}
 	NdisMoveMemory(Event->u.PEER_GAS_REQ_DATA.QueryReq, Pos, Event->u.PEER_GAS_REQ_DATA.QueryReqLen);
 	Len += Event->u.PEER_GAS_REQ_DATA.QueryReqLen;
 	SendGASIndication(pAd, (GAS_EVENT_DATA *)Buf);
@@ -951,6 +907,7 @@ static VOID SendGASIndication(
 	/* GAS_EVENT_DATA *Event = (GAS_EVENT_DATA *)Elem->Msg; */
 	GAS_EVENT_DATA *GASRspEvent;
 	PGAS_CTRL pGASCtrl = &pAd->ApCfg.MBSSID[Event->ControlIndex].GASCtrl;
+	PNET_DEV NetDev = pAd->ApCfg.MBSSID[Event->ControlIndex].wdev.if_dev;
 	UCHAR *Buf;
 	UINT32 Len = 0;
 
@@ -978,6 +935,13 @@ static VOID SendGASIndication(
 		/* GASSetPeerCurrentState(pAd, Elem, WAIT_GAS_RSP); */
 		GASSetPeerCurrentState(pAd, Event, WAIT_GAS_RSP);
 
+		if (Event->u.PEER_GAS_REQ_DATA.AdvertisementProID == ACCESS_NETWORK_QUERY_PROTOCOL) {
+			/* Send anqp request indication to daemon */
+			SendAnqpReqEvent(NetDev,
+							 Event->PeerMACAddr,
+							 Event->u.PEER_GAS_REQ_DATA.QueryReq,
+							 Event->u.PEER_GAS_REQ_DATA.QueryReqLen);
+		}
 	} else if (IsAdvertisementProIDValid(pAd, Event->u.PEER_GAS_REQ_DATA.AdvertisementProID) &&
 			   pGASCtrl->ExternalANQPServerTest == 1) { /* server not reachable for 2F test */
 		os_alloc_mem(NULL, (UCHAR **)&Buf, sizeof(*GASRspEvent));

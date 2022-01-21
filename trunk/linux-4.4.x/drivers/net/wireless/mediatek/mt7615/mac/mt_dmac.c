@@ -664,7 +664,6 @@ VOID Update_Mib_Bucket_One_Sec(RTMP_ADAPTER *pAd)
 
 	for (i = 0 ; i < concurrent_bands ; i++) {
 		if (pAd->OneSecMibBucket.Enabled[i] == TRUE) {
-			pAd->OneSecMibBucket.ChannelBusyTimeCcaNavTx[i] = 0;
 			pAd->OneSecMibBucket.ChannelBusyTime[i] = 0;
 			pAd->OneSecMibBucket.OBSSAirtime[i] = 0;
 			pAd->OneSecMibBucket.MyTxAirtime[i] = 0;
@@ -673,8 +672,6 @@ VOID Update_Mib_Bucket_One_Sec(RTMP_ADAPTER *pAd)
 			pAd->OneSecMibBucket.MdrdyCount[i] = 0;
 			pAd->OneSecMibBucket.PdCount[i] = 0;
 			for (j = 0 ; j < 2 ; j++) {
-				pAd->OneSecMibBucket.ChannelBusyTimeCcaNavTx[i] +=
-					pAd->MsMibBucket.ChannelBusyTimeCcaNavTx[i][j];
 				pAd->OneSecMibBucket.ChannelBusyTime[i] += pAd->MsMibBucket.ChannelBusyTime[i][j];
 				pAd->OneSecMibBucket.OBSSAirtime[i] += pAd->MsMibBucket.OBSSAirtime[i][j];
 				pAd->OneSecMibBucket.MyTxAirtime[i] += pAd->MsMibBucket.MyTxAirtime[i][j];
@@ -716,9 +713,6 @@ VOID Update_Mib_Bucket_500Ms(RTMP_ADAPTER *pAd)
 	for (i = 0; i < concurrent_bands; i++) {
 		if (pAd->MsMibBucket.Enabled == TRUE) {
 			/* Channel Busy Time */
-			HW_IO_READ32(pAd, MIB_M0SDR9 + (i * BandOffset), &CrValue);
-			pAd->MsMibBucket.ChannelBusyTimeCcaNavTx[i][CurrIdx] = CrValue;
-			/* Primary Channel Busy Time */
 			HW_IO_READ32(pAd, MIB_M0SDR16 + (i * BandOffset), &CrValue);
 			pAd->MsMibBucket.ChannelBusyTime[i][CurrIdx] = CrValue;
 
@@ -748,6 +742,11 @@ VOID Update_Mib_Bucket_500Ms(RTMP_ADAPTER *pAd)
 				/* EDCCA time */
 				HW_IO_READ32(pAd, MIB_M0SDR18 + (i * BandOffset), &CrValue);
 				pAd->MsMibBucket.EDCCAtime[i][CurrIdx] = CrValue;
+				/* Reset OBSS Air time */
+				HW_IO_READ32(pAd, RMAC_MIBTIME0, &CrValue);
+				CrValue |= 1 << RX_MIBTIME_CLR_OFFSET;
+				CrValue |= 1 << RX_MIBTIME_EN_OFFSET;
+				HW_IO_WRITE32(pAd, RMAC_MIBTIME0, CrValue);
 
 				HW_IO_READ32(pAd, RO_BAND0_PHYCTRL_STS0 + (i * BandOffset), &CrValue); /* PD count */
 				pAd->MsMibBucket.PdCount[i][CurrIdx] = CrValue;
@@ -761,11 +760,6 @@ VOID Update_Mib_Bucket_500Ms(RTMP_ADAPTER *pAd)
 			}
 		}
 	}
-	/* Reset OBSS Air time */
-	HW_IO_READ32(pAd, RMAC_MIBTIME0, &CrValue);
-	CrValue |= 1 << RX_MIBTIME_CLR_OFFSET;
-	CrValue |= 1 << RX_MIBTIME_EN_OFFSET;
-	HW_IO_WRITE32(pAd, RMAC_MIBTIME0, CrValue);
 }
 
 static RTMP_REG_PAIR mac_cr_seg[] = {
@@ -1368,20 +1362,10 @@ VOID mtd_write_tmac_info_fixed_rate(
 	UINT32 *txd_7 = &txd.TxD7;
 	INT txd_size = sizeof(TMAC_TXD_S);
 	STA_TR_ENTRY *tr_entry = NULL;
-	RTMP_CHIP_CAP *cap = hc_get_chip_cap(pAd->hdev_ctrl);
-
 #ifdef CONFIG_AP_SUPPORT
 	struct wifi_dev *wdev = NULL;
-#ifdef WIFI_EAP_FEATURE
-	POS_COOKIE pObj = (POS_COOKIE) pAd->OS_Cookie;
-	UCHAR apidx = pObj->ioctl_if;
-	/* obtain Band index */
-	if (apidx >= HW_BEACON_MAX_NUM)
-		return;
-
-	wdev = &pAd->ApCfg.MBSSID[apidx].wdev;
-#endif /* WIFI_EAP_FEATURE */
-#endif /* CONFIG_AP_SUPPORT */
+#endif
+	RTMP_CHIP_CAP *cap = hc_get_chip_cap(pAd->hdev_ctrl);
 
 	if (VALID_UCAST_ENTRY_WCID(pAd, info->WCID))
 		mac_entry = &pAd->MacTab.Content[info->WCID];
@@ -1532,12 +1516,10 @@ VOID mtd_write_tmac_info_fixed_rate(
 		}
 
 #ifdef WIFI_EAP_FEATURE
-#ifdef CONFIG_AP_SUPPORT
-		if (wdev->mgmt_txpwr_force_on == TRUE) {
+		if (pAd->CommonCfg.mgmt_txpwr_force_on == TRUE) {
 			if (info->Type == FC_TYPE_MGMT)
-				txd_2->pwr_offset = wdev->txd_txpwr_offset;
+				txd_2->pwr_offset = pAd->CommonCfg.txd_txpwr_offset;
 		}
-#endif
 #endif
 
 #ifndef FTM_SUPPORT
@@ -1567,12 +1549,6 @@ VOID mtd_write_tmac_info_fixed_rate(
 
 		if (0 /* bar_sn_ctrl */)
 			txd_3->sn_vld = 1;
-#ifdef DPP_SUPPORT
-		if (mac_entry && info->PID == PID_MGMT_DPP_FRAME) {
-			txd_3->sn_vld = 1;
-			txd_3->sn = info->seq_no;
-		}
-#endif /* DPP_SUPPORT */
 
 		/* DWORD 4 */
 		/* DWORD 5 */
@@ -1587,14 +1563,7 @@ VOID mtd_write_tmac_info_fixed_rate(
 
 #endif /* FTM_SUPPORT */
 
-#ifdef DPP_SUPPORT
-		if (mac_entry && info->PID == PID_MGMT_DPP_FRAME) {
-			txd_5->pid = info->PID;
-			txd_5->tx_status_fmt = TXS_FORMAT0;
-			txd_5->tx_status_2_mcu = 0;
-			txd_5->tx_status_2_host = 1;
-		}
-#endif /* DPP_SUPPORT */
+
 #ifdef HDR_TRANS_TX_SUPPORT
 		/* txd_5->da_select = TMI_DAS_FROM_MPDU; */
 #endif /* HDR_TRANS_TX_SUPPORT */
@@ -1863,11 +1832,6 @@ VOID mtd_write_tmac_info_by_host(RTMP_ADAPTER *pAd, UCHAR *buf, TX_BLK *pTxBlk)
 		BOOLEAN is_etype = ((RTMP_GET_PACKET_PROTOCOL(pTxBlk->pPacket) <= 1500) ? 0 : 1);
 		BOOLEAN is_rmvl = 1;
 
-#if defined(APCLI_AS_WDS_STA_SUPPORT) || defined(MBSS_AS_WDS_AP_SUPPORT)
-		if(is_vlan)
-			is_rmvl = 0;
-#endif
-
 		txd_1->hdr_format = TMI_HDR_FT_NON_80211;
 		TMI_HDR_INFO_VAL(txd_1->hdr_format,
 						 TX_BLK_TEST_FLAG(pTxBlk, fTX_bMoreData),
@@ -1979,12 +1943,10 @@ VOID mtd_write_tmac_info_by_host(RTMP_ADAPTER *pAd, UCHAR *buf, TX_BLK *pTxBlk)
 	txd_l->TxD2.frag = pTxBlk->FragIdx;
 
 #ifdef WIFI_EAP_FEATURE
-#ifdef CONFIG_AP_SUPPORT
-	if (wdev->mgmt_txpwr_force_on == TRUE) {
+	if (pAd->CommonCfg.mgmt_txpwr_force_on == TRUE) {
 		if (txd_2->frm_type == FC_TYPE_MGMT)
-			txd_2->pwr_offset = wdev->txd_txpwr_offset;
+			txd_2->pwr_offset = pAd->CommonCfg.txd_txpwr_offset;
 	}
-#endif
 #endif
 
 	if (TX_BLK_TEST_FLAG(pTxBlk, fTX_bAckRequired)) {
@@ -2306,7 +2268,7 @@ INT32 mtd_write_txp_info_by_cr4(RTMP_ADAPTER *pAd, UCHAR *buf, TX_BLK *pTxBlk)
 	cr4_txp_msdu_info->buf_num = 1; /* os get scatter. */
 	cr4_txp_msdu_info->buf_len[0] = pTxBlk->SrcBufLen;
 #ifdef VLAN_SUPPORT
-	if ((pAd->CommonCfg.bEnableVlan) && RTMP_GET_PACKET_VLAN(pTxBlk->pPacket) != 0) {
+	if (RTMP_GET_PACKET_VLAN(pTxBlk->pPacket) != 0) {
 		UINT8 VlanPcp;
 		VlanPcp = RTMP_GET_VLAN_PCP(pTxBlk->pPacket);
 
@@ -2407,17 +2369,7 @@ VOID mt_write_tmac_info_beacon(RTMP_ADAPTER *pAd, struct wifi_dev *wdev, UCHAR *
 		mac_info.IsOffloadPkt = FALSE;
 
 	mac_info.Preamble = LONG_PREAMBLE;
-
-#ifdef MGMT_TXPWR_CTRL
-	if (wdev->bPwrCtrlEn == TRUE) {
-		mac_info.IsAutoRate = TRUE;
-		mac_info.WCID = wdev->tr_tb_idx;
-	} else {
-		mac_info.IsAutoRate = FALSE;
-	}
-#else
 	mac_info.IsAutoRate = FALSE;
-#endif
 
 	if (pAd->CommonCfg.bSeOff != TRUE) {
 		if (HcGetBandByWdev(wdev) == BAND0)
@@ -2834,7 +2786,7 @@ VOID dump_wtbl_info(RTMP_ADAPTER *pAd, UINT wtbl_idx)
 		wtbl_ent.wtbl_addr = pAd->mac_ctrl.wtbl_base_addr[0] + idx * pAd->mac_ctrl.wtbl_entry_size[0];
 
 		/* Read WTBL Entries */
-		for (wtbl_offset = 0; wtbl_offset < wtbl_len; wtbl_offset += 4) {
+		for (wtbl_offset = 0; wtbl_offset <= wtbl_len; wtbl_offset += 4) {
 			addr = wtbl_ent.wtbl_addr + wtbl_offset;
 			HW_IO_READ32(pAd, addr, (UINT32 *)(&wtbl_raw_dw[wtbl_offset]));
 		}
@@ -3200,56 +3152,5 @@ INT32 mtd_ate_hw_tx(RTMP_ADAPTER *pAd, TMAC_INFO *info, TX_BLK *tx_blk)
 
 	op->write_tx_resource(pAd, tx_blk, TRUE, &free_cnt);
 	return NDIS_STATUS_SUCCESS;
-}
-#endif
-
-#ifdef MGMT_TXPWR_CTRL
-#define WTBL_SPE_IDX_MASK ((0x1f) << 16)
-#define WTBL_SPE_IDX(p) (((p) & 0x1f) << 16)
-INT wtbl_update_pwr_offset(RTMP_ADAPTER *pAd, struct wifi_dev *wdev)
-{
-	INT wcid;
-	UINT32 addr, cr_value, offset_addr, PwrOffset_MASK;
-
-	PwrOffset_MASK = 0x1f;
-	wcid = wdev->tr_tb_idx;
-	addr = pAd->mac_ctrl.wtbl_base_addr[0] + wcid * pAd->mac_ctrl.wtbl_entry_size[0];
-
-	/* update tx power offset DW5*/
-	offset_addr = addr + 4*5;
-	HW_IO_READ32(pAd, offset_addr, &cr_value);
-	cr_value &= ~PwrOffset_MASK;
-	cr_value |= (wdev->TxPwrDelta & PwrOffset_MASK);
-	HW_IO_WRITE32(pAd, offset_addr, cr_value);
-
-	/* update RATE1~RATE8 for OFDM mode*/
-	if (wdev->channel > 14) {
-		 /* OFDM 6M rate*/
-		cr_value = wdev->bPwrCtrlEn ? 0x4B04B04B:0x00;
-		offset_addr = addr + 4*6; /*  DW6 */
-		HW_IO_WRITE32(pAd, offset_addr, cr_value);
-		cr_value = wdev->bPwrCtrlEn ? 0xB04B04B0:0x00;
-		offset_addr = addr + 4*7; /*  DW7 */
-		HW_IO_WRITE32(pAd, offset_addr, cr_value);
-		cr_value = wdev->bPwrCtrlEn ? 0x04B04B04:0x00;
-		offset_addr = addr + 4*8; /*  DW8 */
-		HW_IO_WRITE32(pAd, offset_addr, cr_value);
-	}
-
-	/* update SPE idx */
-	if (pAd->CommonCfg.bSeOff != TRUE) {
-		offset_addr = addr + 4*3;
-		HW_IO_READ32(pAd, offset_addr, &cr_value);
-		cr_value &= ~WTBL_SPE_IDX_MASK;
-		if (wdev->bPwrCtrlEn) {
-			if (HcGetBandByWdev(wdev) == BAND0)
-				cr_value |= WTBL_SPE_IDX(BAND0_SPE_IDX);
-			else if (HcGetBandByWdev(wdev) == BAND1)
-				cr_value |= WTBL_SPE_IDX(BAND1_SPE_IDX);
-		}
-		HW_IO_WRITE32(pAd, offset_addr, cr_value);
-	}
-
-	return TRUE;
 }
 #endif

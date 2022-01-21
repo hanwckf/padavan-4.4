@@ -1336,7 +1336,7 @@ void STA_MonPktSend(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk, UCHAR DevIdx)
 	if (sniffer_type == RADIOTAP_TYPE) {
 		if (pRxBlk->DataSize + sizeof(struct mtk_radiotap_header) > pAd->monitor_ctrl[DevIdx].FilterSize) {
 			MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
-					 ("%s : Size is too large! (%ld)\n", __func__,
+					 ("%s : Size is too large! (%d)\n", __func__,
 					  pRxBlk->DataSize + sizeof(struct mtk_radiotap_header)));
 			goto err_free_sk_buff;
 		}
@@ -1345,7 +1345,7 @@ void STA_MonPktSend(RTMP_ADAPTER *pAd, RX_BLK *pRxBlk, UCHAR DevIdx)
 	if (sniffer_type == PRISM_TYPE) {
 		if (pRxBlk->DataSize + sizeof(wlan_ng_prism2_header) > RX_BUFFER_AGGRESIZE) {
 			MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_ERROR,
-					 ("%s : Size is too large! (%ld)\n", __func__,
+					 ("%s : Size is too large! (%d)\n", __func__,
 					  pRxBlk->DataSize + sizeof(wlan_ng_prism2_header)));
 			goto err_free_sk_buff;
 		}
@@ -1691,7 +1691,9 @@ INT RTMP_AP_IoctlPrepare(RTMP_ADAPTER *pAd, VOID *pCB)
 	POS_COOKIE pObj;
 	USHORT index;
 	INT	Status = NDIS_STATUS_SUCCESS;
-
+#ifdef CONFIG_APSTA_MIXED_SUPPORT
+	INT cmd = 0xff;
+#endif /* CONFIG_APSTA_MIXED_SUPPORT */
 	pObj = (POS_COOKIE) pAd->OS_Cookie;
 
 	if ((pConfig->priv_flags == INT_MAIN) && !RTMP_TEST_FLAG(pAd, fRTMP_ADAPTER_INTERRUPT_REGISTER_TO_OS)) {
@@ -1903,10 +1905,8 @@ wf_drv_tbl.wf_fwd_set_bridge_hook = NULL;
 }
 
 #if defined(CONFIG_WIFI_PKT_FWD) || defined(CONFIG_WIFI_PKT_FWD_MODULE)
-#ifndef MT76XX_COMBO_DUAL_DRIVER_SUPPORT
 EXPORT_SYMBOL(wifi_fwd_register);
 EXPORT_SYMBOL(wifi_fwd_unregister);
-#endif /* MT76XX_COMBO_DUAL_DRIVER_SUPPORT */
 #endif
 
 #endif

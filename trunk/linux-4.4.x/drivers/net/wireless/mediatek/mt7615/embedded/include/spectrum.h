@@ -8,8 +8,7 @@
 
 UINT8 GetRegulatoryMaxTxPwr(
 	IN PRTMP_ADAPTER pAd,
-	IN UINT8 channel,
-	IN struct wifi_dev *wdev);
+	IN UINT8 channel);
 
 CHAR RTMP_GetTxPwr(
 	IN PRTMP_ADAPTER pAd,
@@ -190,8 +189,7 @@ VOID InsertChannelRepIE(
 	IN RTMP_STRING *pCountry,
 	IN UINT8 RegulatoryClass,
 	IN UINT8 *ChReptList,
-	IN UCHAR PhyMode,
-	IN UINT8 IfIdx
+	IN UCHAR PhyMode
 );
 
 VOID InsertBcnReportIndicationReqIE(
@@ -231,13 +229,12 @@ VOID RguClass_BuildBcnChList(
 	IN PRTMP_ADAPTER pAd,
 	OUT PUCHAR pBuf,
 	OUT	PULONG pBufLen,
-	IN struct wifi_dev *wdev,
+	IN UCHAR PhyMode,
 	IN UCHAR RegClass);
 #ifdef CUSTOMER_DCC_FEATURE
 INT NotifyChSwAnnToConnectedSTAs(
 	IN PRTMP_ADAPTER pAd,
 	IN UINT8 		ChSwMode,
-	IN UINT8        OriChannel,
 	IN UINT8 		Channel,
 	struct wifi_dev *wdev);
 

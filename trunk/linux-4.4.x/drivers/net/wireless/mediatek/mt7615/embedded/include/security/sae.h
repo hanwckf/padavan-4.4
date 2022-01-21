@@ -30,8 +30,6 @@
 #define	__SAE_H__
 #ifdef DOT11_SAE_SUPPORT
 
-#include "rt_config.h"
-
 INT show_sae_info_proc(RTMP_ADAPTER *pAd, RTMP_STRING *arg);
 
 VOID sae_cfg_init(
@@ -54,9 +52,7 @@ SAE_INSTANCE *create_sae_instance(
 	IN UCHAR * own_mac,
 	IN UCHAR * peer_mac,
 	IN UCHAR * bssid,
-	IN UCHAR *psk,
-	IN struct pwd_id_list *pwd_id_list_head,
-	IN UCHAR is_pwd_id_only);
+	IN UCHAR * psk);
 
 
 VOID delete_sae_instance(
@@ -74,9 +70,7 @@ VOID sae_ins_init(
 	IN UCHAR * own_mac,
 	IN UCHAR * peer_mac,
 	IN UCHAR * bssid,
-	IN UCHAR *psk,
-	IN struct pwd_id_list *pwd_id_list_head,
-	IN UCHAR is_pwd_id_only);
+	IN UCHAR * psk);
 
 /* partial */
 VOID sae_clear_data(
@@ -115,8 +109,8 @@ UCHAR sae_auth_init(
 	IN UCHAR *peer_mac,
 	IN UCHAR *bssid,
 	IN UCHAR *psk,
-	IN struct sae_pt *pt_list,
 	IN INT32 group);
+
 
 
 UCHAR sae_handle_auth(
@@ -125,15 +119,9 @@ UCHAR sae_handle_auth(
 	IN VOID *msg,
 	IN UINT32 msg_len,
 	IN UCHAR *psk,
-	IN struct sae_pt *pt_list,
-	IN struct sae_capability *sae_cap,
-#ifdef DOT11_SAE_PWD_ID_SUPPORT
-	IN struct pwd_id_list *pwd_id_list_head,
-#endif
 	IN USHORT auth_seq,
 	IN USHORT auth_status,
-	OUT UCHAR **pmk,
-	OUT UCHAR *is_h2e_connect);
+	OUT UCHAR** pmk);
 
 
 USHORT sae_sm_step(
@@ -190,32 +178,9 @@ USHORT sae_parse_commit_scalar(
 
 USHORT sae_parse_commit_element(
 	IN SAE_INSTANCE *pSaeIns,
-	IN UCHAR **pos,
-	IN UCHAR *end);
-
-UCHAR is_sae_pwd_id_element(
-	IN UCHAR *pos,
-	IN UCHAR *end,
-	OUT UINT32 * len);
-
-UCHAR is_sae_rejected_group_element(
-	IN UCHAR *pos,
-	IN UCHAR *end,
-	OUT UINT32 *len);
-
-USHORT sae_parse_password_identifier(
-	IN SAE_INSTANCE * pSaeIns,
-	IN UCHAR **pos,
-	IN UCHAR *end,
-	IN UCHAR is_pwd_id_only);
-
-USHORT sae_parse_rejected_groups(
-	IN SAE_INSTANCE * pSaeIns,
 	IN UCHAR *pos,
 	IN UCHAR *end);
 
-USHORT sae_check_rejected_group(
-	IN SAE_INSTANCE * pSaeIns);
 
 USHORT sae_prepare_commit(
 	IN SAE_INSTANCE *pSaeIns);
@@ -266,31 +231,16 @@ USHORT sae_check_confirm(
 	IN SAE_INSTANCE *pSaeIns,
 	IN UCHAR *peer_confirm);
 
+
 SAE_BN *sae_gen_rand(
 	IN SAE_INSTANCE *pSaeIns);
 
-INT sae_set_k_iteration(
-	IN struct _RTMP_ADAPTER *ad,
-	IN RTMP_STRING * arg);
-
-INT sae_set_anti_clogging_th(
-	IN struct _RTMP_ADAPTER *ad,
-	IN RTMP_STRING * arg);
 
 USHORT sae_group_allowed(
 	IN SAE_INSTANCE *pSaeIns,
 	IN UCHAR *allowed_groups,
 	IN INT32 group);
 
-VOID sae_derive_pt(
-	IN SAE_CFG *pSaeCfg,
-	IN UCHAR *psk,
-	IN CHAR * ssid,
-	IN UCHAR ssid_len,
-	OUT struct sae_pt **pt);
-
-VOID sae_pt_list_deinit(
-	INOUT struct sae_pt **pt_list);
 
 UCHAR is_sae_group_ecc(
 	IN INT32 group);
@@ -349,13 +299,13 @@ VOID sae_cn_confirm_cmm(
 
 USHORT sae_parse_commit_element_ecc(
 	IN SAE_INSTANCE *pSaeIns,
-	IN UCHAR **pos,
+	IN UCHAR *pos,
 	IN UCHAR *end);
 
 
 USHORT sae_parse_commit_element_ffc(
 	IN SAE_INSTANCE *pSaeIns,
-	IN UCHAR **pos,
+	IN UCHAR *pos,
 	IN UCHAR *end);
 
 
@@ -371,8 +321,6 @@ UCHAR sae_derive_commit_element_ffc(
 USHORT sae_derive_pwe_ecc(
 	IN SAE_INSTANCE *pSaeIns);
 
-USHORT sae_derive_pwe_pt_ecc(
-	IN SAE_INSTANCE *pSaeIns);
 
 USHORT sae_derive_pwe_ffc(
 	IN SAE_INSTANCE *pSaeIns);

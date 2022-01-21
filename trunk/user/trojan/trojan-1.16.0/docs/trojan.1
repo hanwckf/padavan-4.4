@@ -1,0 +1,36 @@
+.TH TROJAN 1 "June 2020" "version 1.16.0"
+.SH NAME
+trojan \- an unidentifiable mechanism that helps you bypass GFW
+.SH SYNOPSIS
+.B trojan
+[\fB\-htv\fR] [\fB\-l\fR \fILOG\fR] [\fB\-k\fR \fIKEYLOG\fR] [[\fB\-c\fR] \fICONFIG\fR]
+.SH DESCRIPTION
+.B trojan
+is an unidentifiable mechanism that helps you bypass GFW. It will load the config file located in
+.I CONFIG
+and start either a proxy client or a proxy server.
+.SH OPTIONS
+.TP
+.BR \-c, " " \-\-config=\fICONFIG\fR
+Set the config file to be loaded. Default is \fI/etc/trojan/config.json\fR.
+.TP
+.BR \-h, " " \-\-help
+Print help message.
+.TP
+.BR \-k, " " \-\-keylog=\fIKEYLOG\fR
+Set the keylog file to be written.
+.TP
+.BR \-l, " " \-\-log=\fILOG\fR
+Set the log file to be written. If not specified, the log will be outputted to stderr.
+.TP
+.BR \-t, " " \-\-test
+Test the config file, without starting a server.
+.TP
+.BR \-v, " " \-\-version
+Print version and build info.
+.SH FILES
+.TP
+.IR /etc/trojan/config.json
+The default config file. See <https://trojan\-gfw.github.io/trojan/config> for details.
+.SH SEE ALSO
+Full documentation at: <https://trojan\-gfw.github.io/trojan/>

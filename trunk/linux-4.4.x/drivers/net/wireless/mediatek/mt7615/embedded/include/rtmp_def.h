@@ -52,9 +52,8 @@
 #define BAND_5G		1
 #define BAND_24G	2
 #define BAND_BOTH	(BAND_5G | BAND_24G)
-#ifdef MAP_R2
-#define DFS_CAC_R2
-#endif
+
+
 #undef PS_QUEUE_INC_SUPPORT
 /*#define PS_QUEUE_INC_SUPPORT*/
 #ifdef SNMP_SUPPORT
@@ -165,10 +164,8 @@
 #ifdef IGMP_SNOOP_SUPPORT
 #ifdef MEMORY_OPTIMIZATION
 #define MAX_LEN_OF_MULTICAST_FILTER_TABLE 16
-#define MULTICAST_WHITE_LIST_SIZE_MAX	20
 #else
 #define MAX_LEN_OF_MULTICAST_FILTER_TABLE 64
-#define MULTICAST_WHITE_LIST_SIZE_MAX	20
 #endif
 #ifdef IGMP_TVM_SUPPORT
 #define MULTICAST_BLACK_LIST_STATIC_SIZE 3
@@ -180,10 +177,6 @@
 #define FREE_MEMBER_POOL_SIZE 64
 #endif /* IGMP_SNOOP_SUPPORT */
 #endif /* CONFIG_AP_SUPPORT */
-
-#ifndef IPV4_ADDR_LEN
-#define IPV4_ADDR_LEN 4
-#endif
 
 #define MAX_AGG_3SS_BALIMIT		31
 
@@ -255,7 +248,7 @@
 #define PHY_CAP_5G(_x)		(((_x) & fPHY_CAP_5G) == fPHY_CAP_5G)
 #define PHY_CAP_N(_x)		(((_x) & fPHY_CAP_HT) == fPHY_CAP_HT)
 #define PHY_CAP_AC(_x)		(((_x) & fPHY_CAP_VHT) == fPHY_CAP_VHT)
-#ifndef WAPP_SUPPORT
+
 enum WIFI_MODE {
 	WMODE_INVALID = 0,
 	WMODE_A = 1 << 0,
@@ -266,7 +259,6 @@ enum WIFI_MODE {
 	WMODE_AC = 1 << 5,
 	WMODE_COMP = 6,	/* total types of supported wireless mode, add this value once yow add new type */
 };
-#endif
 
 #define WMODE_CAP_5G(_x)			(((_x) & (WMODE_A | WMODE_AN | WMODE_AC)) != 0)
 #define WMODE_CAP_2G(_x)			(((_x) & (WMODE_B | WMODE_G | WMODE_GN)) != 0)
@@ -503,7 +495,6 @@ enum WIFI_MODE {
 #endif /* MBSS_SUPPORT */
 
 #define HW_BEACON_MAX_NUM			16
-#define MAX_BEACON_NUM 			32
 
 enum {
 	EXTEND_MBSS_MAC_0_1 = 0,
@@ -527,7 +518,7 @@ enum {
 
 
 #define WDEV_NUM_MAX		(HW_BEACON_MAX_NUM + MAX_WDS_ENTRY + \
-							 MAX_APCLI_NUM + MAX_P2P_NUM + MAX_MESH_NUM + MONITOR_MAX_DEV_NUM)
+							 MAX_APCLI_NUM + MAX_P2P_NUM + MAX_MESH_NUM)
 
 /*
     BSSINFO of WDS/Repeater is used for CR4 to do offload related matter.
@@ -676,7 +667,7 @@ enum {
 #define MAX_LEN_OF_BA_ORI_TABLE          ((NUM_OF_TID * MAX_LEN_OF_MAC_TABLE)/2)	/*   (NUM_OF_TID*MAX_AID_BA + 32)   // Block ACK originator */
 
 #ifdef MEMORY_OPTIMIZATION
-#define MAX_LEN_OF_BSS_TABLE             128
+#define MAX_LEN_OF_BSS_TABLE             1
 #define MAX_REORDERING_MPDU_NUM			 256
 #else
 #define MAX_LEN_OF_BSS_TABLE             256 /* 64 */
@@ -724,8 +715,6 @@ enum nl_msg_id {
 #define AUTH_MODE_KEY			0x01
 #define AUTH_MODE_FT			0x02
 #define AUTH_MODE_SAE			0x03
-#define AUTH_MODE_FILS			0x04
-#define AUTH_MODE_FILS_PFS		0x05
 #define AUTH_MODE_VENDOR		0xffff
 
 /* BSS Type definitions */
@@ -814,7 +803,6 @@ enum nl_msg_id {
 #define MLME_ROBUST_MGMT_POLICY_VIOLATION 31
 #endif /* DOT11W_PMF_SUPPORT */
 #define MLME_QOS_UNSPECIFY                32
-#define MLME_DISASSOC_LOW_ACK			  34
 #define MLME_REQUEST_DECLINED             37
 #define MLME_REQUEST_WITH_INVALID_PARAM   38
 #define MLME_INVALID_INFORMATION_ELEMENT  40
@@ -839,9 +827,6 @@ enum nl_msg_id {
 #define MLME_ANTI_CLOGGING_TOKEN_REQ           76
 #define MLME_FINITE_CYCLIC_GROUP_NOT_SUPPORTED 77
 
-
-#define MLME_UNKNOWN_PASSWORD_IDENTIFIER 123
-#define MLME_SAE_HASH_TO_ELEMENT         126
 
 /* IE code */
 #define IE_SSID                         0
@@ -908,31 +893,10 @@ enum nl_msg_id {
 #define IE_WPA                          221	/* WPA */
 #define IE_VENDOR_SPECIFIC              221	/* Wifi WMM (WME) */
 #define	IE_WFA_WSC							221
-#define	IE_FILS_INDICATION				240
-#define	IE_RSNXE                        244
 
 #define IE_WLAN_EXTENSION	255
 #define IE_EXTENSION_ID_ECDH	32
-#define IE_EXTENSION_ID_ESP     11
-#define IE_WLAN_EXTENSION 255
 
-/* Extended RSN Capabilities */
-/* bits 0-3: Field length (n-1) */
-#define IE_RSNXE_CAPAB_PROTECTED_TWT 4
-#define IE_RSNXE_CAPAB_SAE_H2E 5
-
-#define BSS_MEMBERSHIP_SELECTOR_HT_PHY 127
-#define BSS_MEMBERSHIP_SELECTOR_VHT_PHY 126
-#define BSS_MEMBERSHIP_SELECTOR_SAE_H2E_ONLY 123
-#define BSS_MEMBERSHIP_SELECTOR_HE_PHY 122
-
-#define BSS_MEMBERSHIP_SELECTOR_VALID 0x80
-
-typedef struct GNU_PACKED _EID_STRUCT {
-	UCHAR   Eid;
-	UCHAR   Len;
-	UCHAR   Octet[1];
-} EID_STRUCT, *PEID_STRUCT, BEACON_EID_STRUCT, *PBEACON_EID_STRUCT;
 
 #define OUI_P2P					0x09
 #define OUI_HS2_INDICATION		0x10
@@ -1229,12 +1193,7 @@ typedef struct GNU_PACKED _EID_STRUCT {
 #define ACTION_TDLS_DISCOVERY_RSP			14	/* 11z D13.0 */
 #define ACTION_FTM_REQUEST					32	/* 11mc D3.0 */
 #define ACTION_FTM							33	/* 11mc D3.0 */
-#define ACTION_FILS_DISCOVERY				34	/* 2016ai */
 #define ACTION_VENDOR_USAGE					221
-
-#ifdef DPP_SUPPORT
-#define WFA_DPP_SUBTYPE 0x1A
-#endif /* DPP_SUPPORT */
 
 /*HT  Action field value */
 #define NOTIFY_BW_ACTION				0
@@ -2294,12 +2253,6 @@ typedef enum {
 #define MCAST_HTMIX		3
 #define MCAST_VHT		4
 #endif /* MCAST_RATE_SPECIFIC */
-
-#ifdef CONFIG_RA_PHY_RATE_SUPPORT
-#define BCN_DISABLE		0
-#define BCN_CCK		1
-#define BCN_OFDM		2
-#endif /* CONFIG_RA_PHY_RATE_SUPPORT */
 
 /* For AsicRadioOff/AsicRadioOn function */
 /* TODO: shiang-usw, check those RADIO ON/OFF values here!!! */

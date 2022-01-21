@@ -201,12 +201,6 @@ VOID APAssocStateMachineInit(
 	IN  STATE_MACHINE * S,
 	OUT STATE_MACHINE_FUNC Trans[]);
 
-VOID ap_cmm_peer_assoc_req_action(
-	IN PRTMP_ADAPTER pAd,
-	IN MLME_QUEUE_ELEM *Elem,
-	IN BOOLEAN isReassoc);
-
-
 VOID MbssKickOutStas(RTMP_ADAPTER *pAd, INT apidx, USHORT Reason);
 VOID APMlmeKickOutSta(RTMP_ADAPTER *pAd, UCHAR *staAddr, UCHAR Wcid, USHORT Reason);
 
@@ -444,7 +438,7 @@ VOID QBSS_LoadAlarmResume(RTMP_ADAPTER *pAd);
 UINT32 QBSS_LoadBusyTimeGet(RTMP_ADAPTER *pAd);
 BOOLEAN QBSS_LoadIsAlarmIssued(RTMP_ADAPTER *pAd);
 BOOLEAN QBSS_LoadIsBusyTimeAccepted(RTMP_ADAPTER *pAd, UINT32 BusyTime);
-UINT32 QBSS_LoadElementAppend(RTMP_ADAPTER *pAd, UINT8 *pBeaconBuf, QLOAD_CTRL *pQloadCtrl, UCHAR apidx);
+UINT32 QBSS_LoadElementAppend(RTMP_ADAPTER *pAd, UINT8 *pBeaconBuf, QLOAD_CTRL *pQloadCtrl);
 VOID QBSS_LoadUpdate(RTMP_ADAPTER *pAd, ULONG UpTime);
 VOID QBSS_LoadStatusClear(RTMP_ADAPTER	*pAd, UCHAR	Channel);
 
@@ -473,7 +467,10 @@ BOOLEAN DOT1X_EapTriggerAction(RTMP_ADAPTER *pAd, MAC_TABLE_ENTRY *pEntry);
 VOID AP_E2PROM_IOCTL_PostCtrl(RTMP_IOCTL_INPUT_STRUCT *wrq, RTMP_STRING *msg);
 
 VOID IAPP_L2_UpdatePostCtrl(RTMP_ADAPTER *pAd, UINT8 *mac, INT wdev_idx);
-
+BOOLEAN IAPP_L2_Update_Frame_Send(
+	IN PRTMP_ADAPTER	pAd,
+    IN UINT8 *mac_p,
+    IN INT   wdev_idx);
 INT rtmp_ap_init(RTMP_ADAPTER *pAd);
 VOID rtmp_ap_exit(RTMP_ADAPTER *pAd);
 
