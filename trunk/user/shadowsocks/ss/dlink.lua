@@ -252,10 +252,16 @@ local function processData(szType, content)
 				result.tls = "1"
 				result.tls_host = params.host
 				result.insecure = 0
+				result.flow = "0"
 			elseif params.security == "xtls" or params.security == "2" then
 				result.tls = "2"
 				result.tls_host = params.host
 				result.insecure = 0
+				if params.flow == "xtls-rprx-splice" then
+					result.flow = "2"
+				else
+					result.flow = "1"
+				end
 			else
 				result.tls = "0"
 			end
@@ -433,8 +439,9 @@ end
 					end
 					nodes = servers
 				-- SS SIP008 直接使用 Json 格式
-				elseif jsonParse(raw) then
-					nodes = jsonParse(raw).servers or jsonParse(raw)
+					local info = cjson.decode(raw)
+				elseif info then
+					nodes = info.servers or info
 					if nodes[1].server and nodes[1].method then
 						szType = 'sip008'
 					end
@@ -541,4 +548,5 @@ end
 		log('新增节点数量: ' .. add, '删除节点数量: ' .. del)
 		log('订阅更新成功')
 		end
+
 

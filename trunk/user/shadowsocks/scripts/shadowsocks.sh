@@ -221,11 +221,11 @@ start_redir_tcp() {
 		echo "$(date "+%Y-%m-%d %H:%M:%S") $($bin --version 2>&1 | head -1) Started!" >>/tmp/ssrplus.log
 		;;
 	v2ray)
-		$bin -config $v2_json_file >/dev/null 2>&1 &
+		SSL_CERT_FILE=/usr/bin/cacert.pem $bin -config $v2_json_file >/dev/null 2>&1 &
 		echo "$(date "+%Y-%m-%d %H:%M:%S") $($bin -version | head -1) 启动成功!" >>/tmp/ssrplus.log
 		;;
 	xray)
-		$bin -config $v2_json_file >/dev/null 2>&1 &
+		SSL_CERT_FILE=/usr/bin/cacert.pem $bin -config $v2_json_file >/dev/null 2>&1 &
 		echo "$(date "+%Y-%m-%d %H:%M:%S") $($bin -version | head -1) 启动成功!" >>/tmp/ssrplus.log
 		;;	
 	socks5)

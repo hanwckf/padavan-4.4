@@ -48,7 +48,6 @@
 				function () {
 					var newHash = $j(this).attr('href').toLowerCase();
 					showTab(newHash);
-					location.reload(true);
 					return false;
 				});
 			$j("#tab_ss_add, #tab_ss_dlink, #tab_ss_ssl, #tab_ss_cli, #tab_ss_log, #tab_ss_help").click(
@@ -203,8 +202,6 @@ setTimeout('document.getElementById("btn_ctime").style.display="none";',1000);
 			showhide_div('row_ssp_insecure', 0);
 			showhide_div('row_tj_tls_host', 0);
 			showhide_div('row_v2_aid', 0);
-			showhide_div('row_v2_http_host', 0);
-			showhide_div('row_v2_http_path', 0);
 			showhide_div('row_v2_http2_host', 0);
 			showhide_div('row_v2_http2_path', 0);
 			showhide_div('row_v2_mkcp_congestion', 0);
@@ -218,6 +215,7 @@ setTimeout('document.getElementById("btn_ctime").style.display="none";',1000);
 			showhide_div('row_v2_net', 0);
 			showhide_div('row_v2_security', 0);
 			showhide_div('row_v2_tls', 0);
+			showhide_div('row_v2_flow', 0);
 			showhide_div('row_v2_type_tcp', 0);
 			showhide_div('row_v2_type', 0);
 			showhide_div('row_v2_vid', 0);
@@ -226,7 +224,8 @@ setTimeout('document.getElementById("btn_ctime").style.display="none";',1000);
 			showhide_div('row_s5_enable', 0);
 			showhide_div('row_s5_username', 0);
 			showhide_div('row_s5_password', 0);
-			
+			showhide_div('row_v2_http_host', 0);
+			showhide_div('row_v2_http_path', 0);
 			var b = document.form.ssp_type.value;
 			if (b == "ss") {
 				showhide_div('row_ss_password', 1);
@@ -253,6 +252,7 @@ setTimeout('document.getElementById("btn_ctime").style.display="none";',1000);
 				showhide_div('row_v2_net', 1);
 				showhide_div('row_v2_type', 1);
 				showhide_div('row_v2_tls', 1);
+				showhide_div('row_v2_flow', 1);
 				showhide_div('row_v2_mux', 1);
 				showhide_div('row_tj_tls_host', 1);
 				showhide_div('row_ssp_insecure', 1);
@@ -285,8 +285,8 @@ setTimeout('document.getElementById("btn_ctime").style.display="none";',1000);
 			showhide_div('v2_tcp_guise', 0);
 			var b = document.form.v2_transport.value;
 			if (b == "tcp") {
-				showhide_div('v2_tcp_guise', 1);
 				showhide_div('row_v2_type', 1);
+				showhide_div('v2_tcp_guise', 1);
 				showhide_div('row_v2_http_host', 1);
 				showhide_div('row_v2_http_path', 1);
 			} else if (b == "kcp") {
@@ -310,6 +310,7 @@ setTimeout('document.getElementById("btn_ctime").style.display="none";',1000);
 				showhide_div('row_quic_key', 1);
 				showhide_div('row_quic_header', 1);
 			}
+			
 		}
 		function switch_dns() {
 			var b = document.form.pdnsd_enable.value;
@@ -486,8 +487,7 @@ setTimeout('document.getElementById("btn_ctime").style.display="none";',1000);
 					for (var key in db_ss) { // 遍历对象
 						var optionObj = JSON.parse(db_ss[key]); // 字符串转为对象
 						//if(optionObj.ping != "failed"){   //过滤ping不通的节点
-						var text = '[ ' + (optionObj.type ? optionObj.type : "类型获取失败") + ' ] ' + (optionObj
-							.alias ? optionObj.alias : "名字获取失败"); // 判断下怕获取失败 ，括号是运算的问题
+					var text = '[ ' + (optionObj.type ? optionObj.type : "类型获取失败") + ' ] ' + (optionObj.alias ? optionObj.alias : "名字获取失败"); // 判断下怕获取失败 ，括号是运算的问题
 						// 添加 
 						nodeList.options.add(new Option(text, key.replace(keyStr, ''))); // 通过 replacce把不要的字符去掉
 						unodeList.options.add(new Option(text, key.replace(keyStr, ''))); // 通过 replacce把不要的字符去掉
@@ -681,12 +681,11 @@ setTimeout('document.getElementById("btn_ctime").style.display="none";',1000);
 			document.getElementById('ssp_prot').value = '';
 			document.getElementById("ss_password").value = '';
 			//ssr
-			document.getElementById("ss_method").value = 'none';
+			document.getElementById("ss_method").value = 'rc4-md5';
 			document.getElementById("ss_plugin").value = '';
 			document.getElementById("ss_plugin_opts").value = '';
 			document.getElementById("ss_protocol").value = 'origin';
 			document.getElementById("ss_protocol_param").value = '';
-			document.getElementById("ss_method").value = 'none';
 			document.getElementById("ss_obfs").value = 'plain';
 			document.getElementById("ss_obfs_param").value = '';
 			//v2
@@ -699,9 +698,10 @@ setTimeout('document.getElementById("btn_ctime").style.display="none";',1000);
 			document.getElementById("v2_alter_id").value = '';
 			document.getElementById("v2_transport").value = 'tcp';
 			document.getElementById("v2_tcp_guise").value = 'none';
-			document.getElementById("v2_http_host").value = '';
-			document.getElementById("v2_http_path").value = '';
 			document.getElementById("v2_tls").value = '0';
+			document.getElementById("v2_flow").value = '0';
+			document.getElementById("v2_http_host").value = '';
+			document.getElementById("v2_http_path").value = '/';
 			//document.getElementById("v2_tls").checked = false;
 			document.getElementById("ssp_tls_host").value = '';
 			//"v2 tcp"
@@ -722,12 +722,9 @@ setTimeout('document.getElementById("btn_ctime").style.display="none";',1000);
 			document.getElementById("v2_quic_key").value = '';
 			document.getElementById("v2_quic_guise").value = 'none';
 			document.getElementById("v2_quic_security").value = 'none';
-			//trojan				
-			// document.getElementById("ssp_insecure").value = 0;
-			// document.getElementById("ssp_insecure").checked = false;
-			// document.getElementById("v2_tls").value = 1;
-			// document.getElementById("v2_tls").checked = true;
-			// document.getElementById("ssp_tls_host").value = '';
+			//sock5
+			document.getElementById("s5_password").value = '';
+			document.getElementById("s5_username").value = '';
 			switch_ss_type();
 		}
 		//编辑节点
@@ -765,6 +762,7 @@ setTimeout('document.getElementById("btn_ctime").style.display="none";',1000);
 				document.getElementById("v2_http_host").value = getProperty(ss, 'http_host', '');
 				document.getElementById("v2_http_path").value = getProperty(ss, 'http_path', '');
 				document.getElementById("v2_tls").value = getProperty(ss, 'tls', '0');
+				document.getElementById("v2_flow").value = getProperty(ss, 'flow', '0');
 				//document.getElementById("v2_tls").checked =  document.getElementById("v2_tls").value != 0;
 				document.getElementById("ssp_tls_host").value = getProperty(ss, 'tls_host', '');
 				if (transport == "kcp") {
@@ -960,6 +958,7 @@ setTimeout('document.getElementById("btn_ctime").style.display="none";',1000);
 				s.innerHTML = "<font color='red'>用户取消</font>";
 				return false;
 			}
+			initSSParams();
 			s.innerHTML = "";
 			//var ssu = ssrurl.match(/ssr:\/\/([A-Za-z0-9_-]+)/i);
 			var ssu = ssrurl.split('://');
@@ -970,6 +969,7 @@ setTimeout('document.getElementById("btn_ctime").style.display="none";',1000);
 			}
 			var event = document.createEvent("HTMLEvents");
 			event.initEvent("change", true, true);
+			initSSParams();
 			if (ssu[0] == "ssr") {
 				var sstr = b64decsafe(ssu[1]);
 				var ploc = sstr.indexOf("/?");
@@ -1126,7 +1126,13 @@ setTimeout('document.getElementById("btn_ctime").style.display="none";',1000);
 					}
 					document.getElementById('v2_tcp_guise').value = ssm.type;
 					document.getElementById('v2_http_host').value = ssm.host;
-					document.getElementById('v2_http_path').value = ssm.path;
+					 if (ssm.path != undefined){
+					            document.getElementById('v2_http_path').value = ssm.path;
+						}
+					    else
+					    	{
+						    document.getElementById('v2_http_path').value = '/';
+						}
 				} 
 				if (ssm.net == "ws") {
 					document.getElementById('v2_ws_host').value = ssm.host;
@@ -1184,6 +1190,7 @@ setTimeout('document.getElementById("btn_ctime").style.display="none";',1000);
 				
 				if (queryParam.security == "tls") {
 					document.getElementById('v2_tls').value = '1';
+					document.getElementById('v2_flow').value = '0';
 					//document.getElementById('v2_tls').checked = true;
 					document.getElementById('ssp_insecure').value = 0;
 					document.getElementById('ssp_insecure').checked = false;
@@ -1201,6 +1208,23 @@ setTimeout('document.getElementById("btn_ctime").style.display="none";',1000);
 				
 				if (queryParam.security == "xtls") {
 					document.getElementById('v2_tls').value = '2';
+					if (queryParam.flow != undefined) {
+					    if(queryParam.flow == 'xtls-rprx-direct'){
+					    	document.getElementById('v2_flow').value = '1';
+					    }
+					    else if(queryParam.flow == 'xtls-rprx-splice'){
+					    	document.getElementById('v2_flow').value = '2';
+					    }
+					    else
+					    {
+					    	document.getElementById('v2_flow').value = '0';
+					    }
+					    
+					}
+					else
+					{
+					    document.getElementById('v2_flow').value = '1';
+					}
 					//document.getElementById('v2_tls').checked = true;
 					document.getElementById('ssp_insecure').value = 0;
 					document.getElementById('ssp_insecure').checked = false;
@@ -1304,6 +1328,8 @@ setTimeout('document.getElementById("btn_ctime").style.display="none";',1000);
 					coustom: "1",
 				}
 			} else if (type == "v2ray" || type == "xray") {
+				var http_pathnew = document.getElementById("v2_http_path").value;
+				if (http_pathnew == '') { document.getElementById("v2_http_path").value='/';}
 				var DataObj = {
 					type: document.getElementById("ssp_type").value,
 					alias: document.getElementById("ssp_name").value,
@@ -1319,6 +1345,7 @@ setTimeout('document.getElementById("btn_ctime").style.display="none";',1000);
 					http_host: document.getElementById("v2_http_host").value,
 					http_path: document.getElementById("v2_http_path").value,
 					tls: document.getElementById("v2_tls").value,
+					flow: document.getElementById("v2_flow").value,
 					tls_host: document.getElementById("ssp_tls_host").value,
 					coustom: "1",
 				}
@@ -2289,6 +2316,17 @@ setTimeout('document.getElementById("btn_ctime").style.display="none";',1000);
 																	<option value="2">xtls</option>
 																</select>
 																
+															</td>
+														</tr>
+														<tr id="row_v2_flow" style="display:none;">
+															<th>XTLS flow</th>
+															<td>
+																<select name="v2_flow" id="v2_flow" class="input" style="width: 200px;">
+																	<option value="0">未配置</option>
+																	<option value="1">xtls-rprx-direct</option>
+																	<option value="2">xtls-rprx-splice</option>
+																</select>
+
 															</td>
 														</tr>
 														<tr id="row_tj_tls_host" style="display:none;">

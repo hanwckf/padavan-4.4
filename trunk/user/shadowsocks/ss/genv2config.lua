@@ -55,17 +55,15 @@ log = {
 		},
 	-- 底层传输配置
 		streamSettings = {
-			network = server.transport,
+			network = server.transport or "tcp",
 			security = (server.tls == '1') and "tls" or "none",
 			tlsSettings = {allowInsecure = (server.insecure ~= "0") and true or false,serverName=server.tls_host,},
 		tcpSettings = (server.transport == "tcp") and {
 			header = {
 				type = server.tcp_guise,
 				request = {
-					path = server.http_path or {"/"},
-					headers = {
-						Host = server.http_host or {}
-					}
+					path = {server.http_path} or {"/"},
+					headers = {Host = {server.http_host} or {}}
 				} or {}
 			}
         } or nil,

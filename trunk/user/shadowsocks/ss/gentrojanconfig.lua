@@ -21,7 +21,7 @@ local trojan = {
 	ssl = {
 		verify = (server.insecure == "0") and true or false,
 		verify_hostname = (server.tls == "1") and true or false,
-		cert = "",
+		cert = "/usr/bin/cacert.pem",
 		cipher = "ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305",
 		cipher_tls13 = "TLS_CHACHA20_POLY1305_SHA256",
 		sni = server.tls_host,
