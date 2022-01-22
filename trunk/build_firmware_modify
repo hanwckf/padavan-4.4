@@ -38,6 +38,7 @@ echo "CONFIG_FIRMWARE_INCLUDE_ZEROTIER=y" >> .config #zerotier ~1.3M
 echo "CONFIG_FIRMWARE_INCLUDE_ALIDDNS=y" >> .config #aliddns
 ##内网穿透服务##
 
+echo "CONFIG_FIRMWARE_INCLUDE_MENTOHUST=n" >> .config #mentohust
 ROOTDIR=`pwd`
 export ROOTDIR=$ROOTDIR
 
