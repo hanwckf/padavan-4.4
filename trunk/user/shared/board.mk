@@ -1,9 +1,9 @@
 ##################################################################
 # Board PID # Board Name       # PRODUCT # Note
 ##################################################################
-# MR2600   # MR2600          # MT7621  #
+# K2P       # K2P              # MT7621  #
 ##################################################################
 
-CFLAGS += -DBOARD_MR2600
-BOARD_NUM_USB_PORTS=1
+CFLAGS += -DBOARD_K2P -DBOARD_MT7615_DBDC
+BOARD_NUM_USB_PORTS=0
 CONFIG_BOARD_RAM_SIZE=128
