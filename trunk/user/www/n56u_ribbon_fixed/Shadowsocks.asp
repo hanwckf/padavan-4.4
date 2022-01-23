@@ -44,13 +44,7 @@
 			init_itoggle('ss_turn');
 			init_itoggle('socks5_aenable');
 			init_itoggle('ss_schedule_enable', change_on);
-			$j("#tab_ss_cfg").click(
-				function () {
-					var newHash = $j(this).attr('href').toLowerCase();
-					showTab(newHash);
-					return false;
-				});
-			$j("#tab_ss_add, #tab_ss_dlink, #tab_ss_ssl, #tab_ss_cli, #tab_ss_log, #tab_ss_help").click(
+			$j("#tab_ss_cfg, #tab_ss_add, #tab_ss_dlink, #tab_ss_ssl, #tab_ss_cli, #tab_ss_log, #tab_ss_help").click(
 				function () {
 					var newHash = $j(this).attr('href').toLowerCase();
 					showTab(newHash);
@@ -347,7 +341,7 @@ setTimeout('document.getElementById("btn_ctime").style.display="none";',1000);
 			document.form.submit();
 		}
 		function submitInternet(v) {
-			applyRule();
+			showLoading();
 			$j.ajax({
 				type: "POST",
 				url: "/Shadowsocks_action.asp",
@@ -669,7 +663,6 @@ setTimeout('document.getElementById("btn_ctime").style.display="none";',1000);
 			'click .del_ss': function (e, value, row, index) {
 				if (confirm('确认删除' + row.alias + '吗？')) {
 					del(row.ids);
-					location.reload(true);
 				}
 			}
 		}
@@ -1548,7 +1541,7 @@ setTimeout('document.getElementById("btn_ctime").style.display="none";',1000);
 										一个兼容Shadowsocks、ShadowsocksR 、Vmess、Vless、Trojan、Sock5协议的游戏加速工具。
 										<div><span style="color:#E53333;">注意:</span></div>
 													<div><span
-															style="color:#E53333;">若被编辑的节点正在运行使用，请完成后点击“重连”或自行重启节点更新信息</span>
+															style="color:#E53333;">若被编辑的节点正在运行使用，请完成后点击“应用设置”更新节点信息</span>
 													</div>
 												</div>
 												<table width="100%" cellpadding="4" cellspacing="0" class="table">

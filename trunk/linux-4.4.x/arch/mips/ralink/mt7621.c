@@ -75,6 +75,8 @@
 #define MT7621_GPIO_MODE_SDHCI_SHIFT	18
 #define MT7621_GPIO_MODE_SDHCI_GPIO	1
 
+static void *detect_magic __initdata = detect_memory_region;
+
 static struct rt2880_pmx_func uart1_grp[] =  { FUNC("uart1", 0, 1, 2) };
 static struct rt2880_pmx_func i2c_grp[] =  { FUNC("i2c", 0, 3, 2) };
 static struct rt2880_pmx_func uart3_grp[] = {
@@ -133,8 +135,8 @@ static struct rt2880_pmx_group mt7621_pinmux_data[] = {
 
 static unsigned long cpu_rate;
 
-static void __init mt7621_detect_memory_region(struct ralink_soc_info *soc_info);
-static void *detect_magic __initdata = mt7621_detect_memory_region;
+
+
 
 phys_addr_t mips_cpc_default_phys_base(void)
 {
@@ -244,23 +246,25 @@ static int udelay_fixup(void)
 
 postcore_initcall(udelay_fixup);
 
-static void __init mt7621_detect_memory_region(struct ralink_soc_info *soc_info)
+void __init mt7621_memory_detect(void)
 {
 	void *dm = &detect_magic;
 	phys_addr_t size;
 
-	for (size = MT7621_DRAM_SIZE_MIN * SZ_1M;
-	     size < MT7621_DRAM_SIZE_MAX * SZ_1M;
-	     size <<= 1) {
+	for (size = 32 * SZ_1M; size < 256 * SZ_1M; size <<= 1) {
 		if (!memcmp(dm, dm + size, sizeof(detect_magic)))
 			break;
 	}
 
-	if (size < SZ_512M) {
-		add_memory_region(0, size, BOOT_MEM_RAM);
+	if ((size == 256 * SZ_1M) &&
+	    (CPHYSADDR(dm + size) < MT7621_LOWMEM_MAX_SIZE) &&
+	    memcmp(dm, dm + size, sizeof(detect_magic))) {
+		add_memory_region(MT7621_LOWMEM_BASE, MT7621_LOWMEM_MAX_SIZE,
+				  BOOT_MEM_RAM);
+		add_memory_region(MT7621_HIGHMEM_BASE, MT7621_HIGHMEM_SIZE,
+				  BOOT_MEM_RAM);
 	} else {
-		add_memory_region(0, SZ_512M - SZ_64M, BOOT_MEM_RAM);
-		add_memory_region(SZ_512M, SZ_64M, BOOT_MEM_RAM);
+		add_memory_region(MT7621_LOWMEM_BASE, size, BOOT_MEM_RAM);
 	}
 }
 
@@ -290,10 +294,8 @@ void prom_soc_init(struct ralink_soc_info *soc_info)
 		(rev >> CHIP_REV_VER_SHIFT) & CHIP_REV_VER_MASK,
 		(rev & CHIP_REV_ECO_MASK));
 
-	soc_info->mem_size_min = MT7621_DRAM_SIZE_MIN;
-	soc_info->mem_size_max = MT7621_DRAM_SIZE_MAX;
-	soc_info->mem_base = MT7621_DRAM_BASE;
-	soc_info->mem_detect = mt7621_detect_memory_region;
+	
+	soc_info->mem_detect = mt7621_memory_detect;
 
 	rt2880_pinmux_data = mt7621_pinmux_data;
 
