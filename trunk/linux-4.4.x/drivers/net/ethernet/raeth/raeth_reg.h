@@ -121,6 +121,9 @@ extern void __iomem *ethdma_frame_engine_base;
 #define RSTCTL_ETH_RST			BIT(23)
 #define RALINK_ETH_RST			RSTCTL_ETH_RST
 
+#define RSTCTL_PPE_RST			BIT(31)
+#define RALINK_PPE_RST			RSTCTL_PPE_RST
+
 /* FE_INT_STATUS */
 #define RX_COHERENT      BIT(31)
 #define RX_DLY_INT       BIT(30)

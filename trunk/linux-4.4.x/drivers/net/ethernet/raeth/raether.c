@@ -70,27 +70,30 @@ static const char *const mtk_clks_source_name[] = {
 /* reset frame engine */
 static void fe_reset(void)
 {
-	u32 val;
+	u32 val = 0;
 
 	val = sys_reg_read(RSTCTRL);
-	val = val | RALINK_FE_RST;
+	val = val | RALINK_FE_RST | RALINK_PPE_RST;
 	sys_reg_write(RSTCTRL, val);
+	udelay(10);
 
-	val = val & ~(RALINK_FE_RST);
+	val = val & ~(RALINK_FE_RST | RALINK_PPE_RST);
 	sys_reg_write(RSTCTRL, val);
+	udelay(1000);
 }
 
 static void fe_gmac_reset(void)
 {
-	u32 val;
-	/*Reset GMAC */
-	/* sys_reg_write(RALINK_SYSCTL_BASE + 0x34, 0x00800000); */
-	/* sys_reg_write(RALINK_SYSCTL_BASE + 0x34, 0x00000000); */
-	val = sys_reg_read(RALINK_SYSCTL_BASE + 0x34);
-	val |= (1 << 23);
-	sys_reg_write(RALINK_SYSCTL_BASE + 0x34, val);
-	val &= ~(1 << 23);
-	sys_reg_write(RALINK_SYSCTL_BASE + 0x34, val);
+	u32 val = 0;
+
+	val = sys_reg_read(RSTCTRL);
+	val |= RALINK_ETH_RST;
+	sys_reg_write(RSTCTRL, val);
+	udelay(10);
+
+	val &= ~(RALINK_ETH_RST);
+	sys_reg_write(RSTCTRL, val);
+	udelay(1000);
 }
 
 /* Set the hardware MAC address. */
@@ -3391,3 +3394,4 @@ static struct platform_driver raeth_driver = {
 
 module_platform_driver(raeth_driver);
 MODULE_LICENSE("GPL");
+

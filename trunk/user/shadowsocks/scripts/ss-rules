@@ -211,6 +211,7 @@ tp_rule() {
 	ip route add local 0.0.0.0/0 dev lo table 100
 
 	$ipt_m -N SS_SPEC_TPROXY
+	$ipt_m -A SS_SPEC_TPROXY -p udp --dport 80 -j RETURN
 	$ipt_m -A SS_SPEC_TPROXY -p udp --dport 443 -j RETURN
 	$ipt_m -A SS_SPEC_TPROXY -p udp --dport 53 -j RETURN
 	$ipt_m -A SS_SPEC_TPROXY -p udp -d 0.0.0.0/8 -j RETURN
@@ -230,10 +231,9 @@ tp_rule() {
 		#-j TPROXY --on-port "$LOCAL_PORT" --tproxy-mark 100
 
 	if [ "$RUNMODE" = "router" ] ;then
-	$ipt_m -A SS_SPEC_TPROXY -p udp $PROXY_PORTS -m set ! --match-set ss_spec_wan_ac dst \
-		-j TPROXY --on-port "$LOCAL_PORT" --tproxy-mark 0x01/0x01
-	$ipt_m -A SS_SPEC_TPROXY -p udp $PROXY_PORTS -m set ! --match-set china dst \
-		-j TPROXY --on-port "$LOCAL_PORT" --tproxy-mark 0x01/0x01
+	$ipt_m -A SS_SPEC_TPROXY -p udp -m set --match-set ss_spec_wan_ac dst -j RETURN
+	$ipt_m -A SS_SPEC_TPROXY -p udp -m set --match-set china dst -j RETURN
+	$ipt_m -A SS_SPEC_TPROXY -p udp -m set ! --match-set ss_spec_wan_ac dst -j TPROXY --on-port "$LOCAL_PORT" --tproxy-mark 0x01/0x01
 	$ipt_m -I SS_SPEC_TPROXY -p udp --dport 5353 -j RETURN
 	$ipt_m -A PREROUTING -p udp -j SS_SPEC_TPROXY
 

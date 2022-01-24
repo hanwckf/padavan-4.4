@@ -261,8 +261,6 @@ void __init mt7621_memory_detect(void)
 	    memcmp(dm, dm + size, sizeof(detect_magic))) {
 		add_memory_region(MT7621_LOWMEM_BASE, MT7621_LOWMEM_MAX_SIZE,
 				  BOOT_MEM_RAM);
-		add_memory_region(MT7621_HIGHMEM_BASE, MT7621_HIGHMEM_SIZE,
-				  BOOT_MEM_RAM);
 	} else {
 		add_memory_region(MT7621_LOWMEM_BASE, size, BOOT_MEM_RAM);
 	}

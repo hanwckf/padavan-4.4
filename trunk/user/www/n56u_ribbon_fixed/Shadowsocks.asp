@@ -1541,7 +1541,10 @@ setTimeout('document.getElementById("btn_ctime").style.display="none";',1000);
 										一个兼容Shadowsocks、ShadowsocksR 、Vmess、Vless、Trojan、Sock5协议的游戏加速工具。
 										<div><span style="color:#E53333;">注意:</span></div>
 													<div><span
-															style="color:#E53333;">若被编辑的节点正在运行使用，请完成后点击“应用设置”更新节点信息</span>
+															style="color:#E53333;">1.若被编辑的节点正在运行使用，请完成后点击“应用设置”更新节点信息</span>
+													</div>
+													<div><span
+															style="color:#E53333;">2.UDP服务器默认代理443 80等以外端口，代理端口模式仅对主服务器生效</span>
 													</div>
 												</div>
 												<table width="100%" cellpadding="4" cellspacing="0" class="table">
