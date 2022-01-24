@@ -100,6 +100,7 @@ ifeq ($(CONFIG_FIRMWARE_INCLUDE_SHADOWSOCKS),y)
 	$(ROMFSINST) /etc_ro/uss_dom.sh
 	$(ROMFSINST) /etc_ro/ss_ip.sh
 	$(ROMFSINST) /etc_ro/ss_lan_bip.sh
+	$(ROMFSINST) /etc_ro/ss_lan_gmip.sh
 	$(ROMFSINST) /etc_ro/ss_lan_ip.sh
 	$(ROMFSINST) /etc_ro/ss_wan_ip.sh
 	$(ROMFSINST) /etc_ro/ss_dlink.sh

@@ -85,6 +85,10 @@ if [ ! -f "/etc/storage/ss_lan_bip.sh" ] ; then
 cp -rf /etc_ro/ss_lan_bip.sh /etc/storage/
 chmod 755 "/etc/storage/ss_lan_bip..sh"
 fi
+if [ ! -f "/etc/storage/ss_lan_gmip.sh" ] ; then
+cp -rf /etc_ro/ss_lan_gmip.sh /etc/storage/
+chmod 755 "/etc/storage/ss_lan_gmip..sh"
+fi
 if [ ! -f "/etc/storage/ss_lan_ip.sh" ] ; then
 cp -rf /etc_ro/ss_lan_ip.sh /etc/storage/
 chmod 755 "/etc/storage/ss_lan_ip..sh"

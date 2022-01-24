@@ -27,6 +27,7 @@ chinadnsng_enable_flag=0
 wan_bp_ips="/tmp/whiteip.txt"
 wan_fw_ips="/tmp/blackip.txt"
 lan_fp_ips="/tmp/lan_ip.txt"
+lan_gm_ips="/tmp/lan_gmip.txt"
 run_mode=`nvram get ss_run_mode`
 ss_turn=`nvram get ss_turn`
 lan_con=`nvram get lan_con`
@@ -166,6 +167,8 @@ start_rules() {
 		lancons="指定IP走代理,请到规则管理页面添加需要走代理的IP。"
 		cat /etc/storage/ss_lan_bip.sh | grep -v '^!' | grep -v "^$" >$lan_fp_ips
 	fi
+		rm -f $lan_gm_ips
+		cat /etc/storage/ss_lan_gmip.sh | grep -v '^!' | grep -v "^$" >$lan_gm_ips
 	dports=$(nvram get s_dports)
 	if [ $dports = "0" ]; then
 		proxyport=" "
@@ -182,7 +185,6 @@ start_rules() {
 	-b "$wan_bp_ips" \
 	-w "$wan_fw_ips" \
 	-p "$lan_fp_ips" \
-	-G "$lan_gm_ips" \
 	-G "$lan_gm_ips" \
 	-D "$proxyport" \
 	-k "$lancon" \
@@ -285,13 +287,13 @@ start_redir_udp() {
 
 
 start_dns() {
-case "$run_mode" in
-	router)
 		echo "create china hash:net family inet hashsize 1024 maxelem 65536" >/tmp/china.ipset
 		awk '!/^$/&&!/^#/{printf("add china %s'" "'\n",$0)}' /etc/storage/chinadns/chnroute.txt >>/tmp/china.ipset
 		ipset -! flush china
 		ipset -! restore </tmp/china.ipset 2>/dev/null
 		rm -f /tmp/china.ipset
+case "$run_mode" in
+	router)
 		dnsstr="$(nvram get tunnel_forward)"
 		dnsserver=$(echo "$dnsstr" | awk -F '#' '{print $1}')
 		#dnsport=$(echo "$dnsstr" | awk -F '#' '{print $2}')

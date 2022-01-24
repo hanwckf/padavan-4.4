@@ -66,7 +66,7 @@ flush_r() {
 	sed -i '/dnsmasq.dom/d' /etc/storage/dnsmasq/dnsmasq.conf
 	flush_iptables nat
 	flush_iptables mangle
-	ip rule del fwmark 100 lookup 100 2>/dev/null
+	ip rule del fwmark 0x01/0x01 table 100 2>/dev/null
 	ip route del local 0.0.0.0/0 dev lo table 100 2>/dev/null
 	$ipt_m -D PREROUTING -p udp -j SS_SPEC_TPROXY
 	$ipt_n -D PREROUTING -j SS_SPEC_WAN_AC
@@ -92,6 +92,9 @@ flush_r() {
 
 ipset_r() {
     mkdir -p /tmp/dnsmasq.dom
+	ipset -N china hash:net 2>/dev/null
+	ipset -N gmlan hash:net 2>/dev/null
+	for ip in $LAN_GM_IP; do ipset -! add gmlan $ip; done
 	if [ "$RUNMODE" = "router" ] ;then
 	ipset -! -R <<-EOF || return 1
 		create ss_spec_wan_ac hash:net
@@ -101,6 +104,7 @@ EOF
 	$ipt_n -N SS_SPEC_WAN_AC
 	$ipt_n -A SS_SPEC_WAN_AC -m set --match-set ss_spec_wan_ac dst -j RETURN
 	$ipt_n -A SS_SPEC_WAN_AC -m set --match-set china dst -j RETURN
+	$ipt_n -A SS_SPEC_WAN_AC -m set --match-set gmlan src -m set ! --match-set china dst -j SS_SPEC_WAN_FW
 	$ipt_n -A SS_SPEC_WAN_AC -j SS_SPEC_WAN_FW
 	$ipt_n -I SS_SPEC_WAN_AC 1 -d $server -j RETURN
 	$ipt_n -I PREROUTING $SSNU -j SS_SPEC_WAN_AC
@@ -114,8 +118,9 @@ EOF
 	elif [ "$RUNMODE" = "gfw" ] ;then
 	ipset -N gfwlist hash:net 2>/dev/null
 	$ipt_n -N SS_SPEC_WAN_AC
+	$ipt_n -A SS_SPEC_WAN_AC -m set --match-set china dst -j RETURN
 	$ipt_n -A SS_SPEC_WAN_AC -m set --match-set gfwlist dst -j SS_SPEC_WAN_FW
-	$ipt_n -A SS_SPEC_WAN_AC -m set --match-set smartdns dst -j SS_SPEC_WAN_FW
+	$ipt_n -A SS_SPEC_WAN_AC -m set --match-set gmlan src -m set ! --match-set china dst -j SS_SPEC_WAN_FW
 	$ipt_n -I SS_SPEC_WAN_AC 1 -d $server -j RETURN
 	$ipt_n -I PREROUTING $SSNU -j SS_SPEC_WAN_AC
 	if [ ! -f "/etc/storage/gfwlist/gfwlist_listnew.conf" ] ; then
@@ -129,6 +134,8 @@ EOF
 	ipset -N oversea hash:net 2>/dev/null
 	$ipt_n -N SS_SPEC_WAN_AC
 	$ipt_n -A SS_SPEC_WAN_AC -m set --match-set oversea dst -j SS_SPEC_WAN_FW
+	$ipt_n -A SS_SPEC_WAN_AC -m set --match-set gmlan src -j SS_SPEC_WAN_FW
+	$ipt_n -A SS_SPEC_WAN_AC -m set --match-set china dst -j SS_SPEC_WAN_FW
 	$ipt_n -I SS_SPEC_WAN_AC 1 -d $server -j RETURN
 	$ipt_n -I PREROUTING $SSNU -j SS_SPEC_WAN_AC
 
@@ -181,6 +188,7 @@ fw_rule() {
 	for ip in $LAN_FP_IP; do ipset -! add fplan $ip ; done
 	lanbip="-m set --match-set fplan src"
 	fi
+
 	$ipt_n -A SS_SPEC_WAN_FW -p tcp $PROXY_PORTS $lanbip \
 		-j REDIRECT --to-ports $local_port 2>/dev/null || {
 		loger 3 "Can't redirect, please check the iptables."
@@ -233,18 +241,29 @@ tp_rule() {
 	if [ "$RUNMODE" = "router" ] ;then
 	$ipt_m -A SS_SPEC_TPROXY -p udp -m set --match-set ss_spec_wan_ac dst -j RETURN
 	$ipt_m -A SS_SPEC_TPROXY -p udp -m set --match-set china dst -j RETURN
-	$ipt_m -A SS_SPEC_TPROXY -p udp -m set ! --match-set ss_spec_wan_ac dst -j TPROXY --on-port "$LOCAL_PORT" --tproxy-mark 0x01/0x01
+	$ipt_m -A SS_SPEC_TPROXY -p udp -m set --match-set gmlan src -m set ! --match-set china dst -j TPROXY \
+	--on-port "$LOCAL_PORT" --tproxy-mark 0x01/0x01
+	$ipt_m -A SS_SPEC_TPROXY -p udp $PROXY_PORTS -m set ! --match-set ss_spec_wan_ac dst -j TPROXY \
+	--on-port "$LOCAL_PORT" --tproxy-mark 0x01/0x01
 	$ipt_m -I SS_SPEC_TPROXY -p udp --dport 5353 -j RETURN
 	$ipt_m -A PREROUTING -p udp -j SS_SPEC_TPROXY
 
 	elif [ "$RUNMODE" = "gfw" ] ;then
-	$ipt_m -A SS_SPEC_TPROXY -p udp -m set  $PROXY_PORTS --match-set gfwlist dst -j TPROXY --on-port "$LOCAL_PORT" --tproxy-mark 0x01/0x01
+	$ipt_m -A SS_SPEC_TPROXY -p udp -m set --match-set china dst -j RETURN
+	$ipt_m -A SS_SPEC_TPROXY -p udp -m set  $PROXY_PORTS --match-set gfwlist dst -j TPROXY \
+	--on-port "$LOCAL_PORT" --tproxy-mark 0x01/0x01
+	$ipt_m -A SS_SPEC_TPROXY -p udp -m set --match-set gmlan src -m set ! --match-set china dst -j TPROXY \
+	--on-port "$LOCAL_PORT" --tproxy-mark 0x01/0x01
 	$ipt_m -I SS_SPEC_TPROXY -p udp --dport 5353 -j RETURN
 	$ipt_m -A PREROUTING -p udp -j SS_SPEC_TPROXY
 
 	elif [ "$RUNMODE" = "oversea" ] ;then
 	$ipt_m -A SS_SPEC_TPROXY -p udp $PROXY_PORTS -m set --match-set oversea dst \
-		-j TPROXY --on-port "$LOCAL_PORT" --tproxy-mark 0x01/0x01
+	-j TPROXY --on-port "$LOCAL_PORT" --tproxy-mark 0x01/0x01
+	$ipt_m -A SS_SPEC_TPROXY -p udp -m set --match-set gmlan src -m set \
+	-j TPROXY --on-port "$LOCAL_PORT" --tproxy-mark 0x01/0x01
+	$ipt_m -A SS_SPEC_TPROXY -p udp $PROXY_PORTS -m set --match-set china dst \
+	-j TPROXY --on-port "$LOCAL_PORT" --tproxy-mark 0x01/0x01
 	$ipt_m -A PREROUTING -p udp -j SS_SPEC_TPROXY
 
 	elif [ "$RUNMODE" = "all" ] ;then
@@ -363,7 +382,7 @@ while getopts ":s:l:S:L:i:e:a:b:w:p:G:D:k:oOuUfgrczh" arg; do
 			LAN_FP_IP=$(while read ip; do echo $ip; done < $OPTARG)
 			;;
 		G)
-			LAN_GM_IP=$OPTARG
+			LAN_GM_IP=$(while read ip; do echo $ip; done < $OPTARG)
 			;;
 		D)
 		    PROXY_PORTS=$OPTARG

@@ -1541,10 +1541,7 @@ setTimeout('document.getElementById("btn_ctime").style.display="none";',1000);
 										一个兼容Shadowsocks、ShadowsocksR 、Vmess、Vless、Trojan、Sock5协议的游戏加速工具。
 										<div><span style="color:#E53333;">注意:</span></div>
 													<div><span
-															style="color:#E53333;">1.若被编辑的节点正在运行使用，请完成后点击“应用设置”更新节点信息</span>
-													</div>
-													<div><span
-															style="color:#E53333;">2.UDP服务器默认代理443 80等以外端口，代理端口模式仅对主服务器生效</span>
+															style="color:#E53333;">若被编辑的节点正在运行使用，请完成后点击“应用设置”更新节点信息</span>
 													</div>
 												</div>
 												<table width="100%" cellpadding="4" cellspacing="0" class="table">
@@ -2583,6 +2580,18 @@ setTimeout('document.getElementById("btn_ctime").style.display="none";',1000);
 																	maxlength="314571" class="span12"
 																	name="scripts.ss_lan_bip.sh"
 																	style="font-family:'Courier New'; font-size:12px;"><% nvram_dump("scripts.ss_lan_bip.sh",""); %></textarea>
+															</div>
+														</td>
+													</tr>
+													<tr>
+														<td colspan="3">
+															<i class="icon-hand-right"></i> <a
+																href="javascript:spoiler_toggle('script8')"><span>游戏模式LAN IP（客户端UDP所有端口,TCP跟随主服务器端口模式,强制走绕过大陆模式）:</span></a>
+															<div id="script8">
+																<textarea rows="8" wrap="off" spellcheck="false"
+																	maxlength="314571" class="span12"
+																	name="scripts.ss_lan_gmip.sh"
+																	style="font-family:'Courier New'; font-size:12px;"><% nvram_dump("scripts.ss_lan_gmip.sh",""); %></textarea>
 															</div>
 														</td>
 													</tr>
