@@ -24,7 +24,7 @@ struct ralink_soc_info {
 	unsigned long mem_size_min;
 	unsigned long mem_size_max;
 
-	void (*mem_detect)(void);
+	ralink_detect_memory_region_t mem_detect;
 };
 extern struct ralink_soc_info soc_info;
 

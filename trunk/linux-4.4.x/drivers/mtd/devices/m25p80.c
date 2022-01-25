@@ -298,6 +298,22 @@ static const struct of_device_id m25p_of_table[] = {
 };
 MODULE_DEVICE_TABLE(of, m25p_of_table);
 
+static void m25p_shutdown(struct spi_device *spi)
+{
+       struct m25p     *flash = spi_get_drvdata(spi);
+
+       if ((&flash->spi_nor)->addr_width > 3) {
+               printk(KERN_INFO "m25p80: exit 4-byte address mode\n");
+               flash->command[0] = SPINOR_OP_EX4B;  // exit 4-byte address mode: 0xe9
+               spi_write(flash->spi, flash->command, 1);
+               flash->command[0] = 0x66;  // enable reset
+               spi_write(flash->spi, flash->command, 1);
+               flash->command[0] = 0x99;  // reset
+               spi_write(flash->spi, flash->command, 1);
+       }
+}
+
+
 static struct spi_driver m25p80_driver = {
 	.driver = {
 		.name	= "m25p80",
@@ -306,6 +322,7 @@ static struct spi_driver m25p80_driver = {
 	.id_table	= m25p_ids,
 	.probe	= m25p_probe,
 	.remove	= m25p_remove,
+	.shutdown = m25p_shutdown,
 
 	/* REVISIT: many of these chips have deep power-down modes, which
 	 * should clearly be entered on suspend() to minimize power use.

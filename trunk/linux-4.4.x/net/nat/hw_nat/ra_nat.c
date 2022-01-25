@@ -287,8 +287,8 @@ uint16_t remove_vlan_tag(struct sk_buff *skb)
 	veth = (struct vlan_ethhdr *)skb_mac_header(skb);
 	/* something wrong */
 	if ((veth->h_vlan_proto != htons(ETH_P_8021Q)) && (veth->h_vlan_proto != 0x5678)) {
-		if (pr_debug_ratelimited())
-		pr_info("HNAT: Reentry packet is untagged frame?\n");
+		//if (pr_debug_ratelimited())
+		//	pr_info("HNAT: Reentry packet is untagged frame?\n");
 		return 65535;
 	}
 	/*we just want to get vid*/

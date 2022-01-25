@@ -105,7 +105,7 @@ void __init plat_mem_setup(void)
 				  soc_info.mem_size * SZ_1M,
 				  BOOT_MEM_RAM);
 	} else if (soc_info.mem_detect) {
-		soc_info.mem_detect();
+		soc_info.mem_detect(&soc_info);
 	} else {
 		detect_memory_region(soc_info.mem_base,
 				     soc_info.mem_size_min * SZ_1M,

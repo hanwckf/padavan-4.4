@@ -3394,4 +3394,3 @@ static struct platform_driver raeth_driver = {
 
 module_platform_driver(raeth_driver);
 MODULE_LICENSE("GPL");
-
