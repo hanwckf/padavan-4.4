@@ -461,17 +461,25 @@ static void compliance_mode_recovery(unsigned long arg)
 			xhci_dbg_trace(xhci, trace_xhci_dbg_quirks,
 					"Attempting compliance mode recovery");
 			hcd = xhci->shared_hcd;
-
+#ifdef CONFIG_SOC_MT7621
+			temp |= PORT_WR;
+			writel(temp, xhci->usb3_ports[i]);
+#endif
 			if (hcd->state == HC_STATE_SUSPENDED)
 				usb_hcd_resume_root_hub(hcd);
 
 			usb_hcd_poll_rh_status(hcd);
 		}
 	}
-
+#ifdef CONFIG_SOC_MT7621
+		mod_timer(&xhci->comp_mode_recovery_timer,
+		jiffies + msecs_to_jiffies(COMP_MODE_RCVRY_MSECS));
+#else
 	if (xhci->port_status_u0 != ((1 << xhci->num_usb3_ports)-1))
 		mod_timer(&xhci->comp_mode_recovery_timer,
 			jiffies + msecs_to_jiffies(COMP_MODE_RCVRY_MSECS));
+#endif
+
 }
 
 /*
@@ -508,6 +516,10 @@ static void compliance_mode_recovery_timer_init(struct xhci_hcd *xhci)
 static bool xhci_compliance_mode_recovery_timer_quirk_check(void)
 {
 	const char *dmi_product_name, *dmi_sys_vendor;
+
+#ifdef CONFIG_SOC_MT7621
+	return true;
+#endif
 
 	dmi_product_name = dmi_get_system_info(DMI_PRODUCT_NAME);
 	dmi_sys_vendor = dmi_get_system_info(DMI_SYS_VENDOR);
