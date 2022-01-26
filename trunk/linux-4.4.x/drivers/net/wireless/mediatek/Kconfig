@@ -15,8 +15,12 @@ if WIFI_DRIVER
 
 choice
 	prompt "Choose First WiFi Interface"
+
 	config FIRST_IF_NONE
 	bool "None"
+	
+	config FIRST_IF_MT7603E
+	bool "MT7603"
 
 	config FIRST_IF_MT7615E
 	bool "MT7615E"
@@ -37,6 +41,7 @@ choice
 	bool "MT7915"
 	select WIFI_MT_MAC
 	select MT_MAC
+
 
 endchoice
 
@@ -67,6 +72,7 @@ endchoice
 config RT_FIRST_CARD
 	int
 	depends on !FIRST_IF_NONE
+	default 7603 if FIRST_IF_MT7603E	
 	default 7615 if FIRST_IF_MT7615E
 	default 7622 if FIRST_IF_MT7622
 	default 7622 if FIRST_IF_MT7626
@@ -96,6 +102,12 @@ config RT_THIRD_IF_RF_OFFSET
 	hex
 	depends on !THIRD_IF_NONE
 	default 0x10000
+
+if (FIRST_IF_MT7603E)
+menu "MediaTek MT7603 PCIe Wireless driver"
+source "drivers/net/wireless/mediatek/mt76x3/Kconfig"
+endmenu
+endif
 
 if (FIRST_IF_MT7615E || SECOND_IF_MT7615E || FIRST_IF_MT7915)
 menu "MT7615/MT7915 common configs"
@@ -155,6 +167,7 @@ choice
 endchoice
 endmenu
 endif
+
 
 if (FIRST_IF_MT7615E || SECOND_IF_MT7615E)
 menu "MediaTek MT7615E PCIe Wireless driver"

@@ -1,0 +1,125 @@
+/dts-v1/;
+
+#include "mt7621.dtsi"
+#include <dt-bindings/input/input.h>
+#include "mt7621-raeth-gmac2.dtsi"
+#include "mt7621-pinctrl-default-gpio.dtsi"
+
+/ {
+	compatible = "mediatek,mt7621-soc";
+	model = "Redmi RM2100";
+
+	chosen {
+		bootargs = "console=ttyS0,115200";
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		sys_yellow {
+			label = "power_2";
+			gpios = <&gpio0 6 GPIO_ACTIVE_LOW>;
+		};
+
+		sys_blue {
+			label = "power";
+			gpios = <&gpio0 8 GPIO_ACTIVE_LOW>;
+		};
+
+		net_yellow {
+			label = "wan_2";
+			gpios = <&gpio0 10 GPIO_ACTIVE_LOW>;
+		};
+
+		net_blue {
+			label = "wan";
+			gpios = <&gpio0 12 GPIO_ACTIVE_LOW>;
+		};
+	};
+
+	gpio-keys-polled {
+		compatible = "gpio-keys-polled";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		poll-interval = <20>;
+
+		reset {
+			label = "reset";
+			gpios = <&gpio0 18 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_RESTART>;
+		};
+
+	};
+};
+
+&bch {
+	status = "okay";
+};
+
+&nand {
+	status = "okay";
+
+	flash@0 {
+		reg = <0>;
+		nand-ecc-mode = "hw";
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			partition@0 {
+				label = "Bootloader";
+				reg = <0x00000 0x80000>; /* 512k */
+			};
+
+			partition@80000 {
+				label = "CFG_Bdata";
+				reg = <0x80000 0x80000>; /* 512k */
+			};
+
+			partition@100000 {
+				label = "Factory";
+				reg = <0x100000 0x80000>; /* 512k */
+			};
+
+			partition@180000 {
+				label = "Crash";
+				reg = <0x180000 0x80000>; /* 512k */
+			};
+			
+			partition@200000 {
+				label = "kernel_stock";
+				reg = <0x200000 0x400000>;
+			
+			};
+			partition@600000 {
+				label = "firmware";
+				reg = <0x600000 0x1400000>;
+			};
+
+			partition@1a00000 {
+				label = "Config";
+				reg = <0x1a00000 0x80000>; /* 512K */
+			};
+
+			partition@1a80000 {
+				label = "Storage";
+				reg = <0x1a80000 0x400000>; /* 4096K */
+			};
+
+			partition@1e80000 {
+				label = "RWFS";
+				reg = <0x1e80000 0x6100000>;
+			};
+
+			partition@all {
+				label = "ALL";
+				reg = <0x0 0x7f80000>;
+			};
+		};
+	};
+};
+
+&pcie {
+	status = "okay";
+};

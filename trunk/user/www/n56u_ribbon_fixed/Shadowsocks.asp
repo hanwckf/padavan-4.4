@@ -1416,21 +1416,21 @@ setTimeout('document.getElementById("btn_ctime").style.display="none";',1000);
 		}
 		function showsdlinkList() {
 			var value = document.getElementById("nodeList").value;
-			if (value != "nil"){
+			if (value >0){
 			var key = "ssconf_basic_json_" + value;		
 			var result = JSON.parse(db_ss[key]);
 			document.getElementById("d_type").value = result.type;}
 		}
 		function showsudlinkList() {
 			var value = document.getElementById("u_nodeList").value;
-			if (value != "nil"){
+			if (value >0){
 			var key = "ssconf_basic_json_" + value;
 			var result = JSON.parse(db_ss[key]);
 			document.getElementById("ud_type").value = result.type;}
 		}
 		function shows5dlinkList() {
 			var value = document.getElementById("s5_nodeList").value;
-			if (value != "nil"){
+			if (value >0){
 			var key = "ssconf_basic_json_" + value
 			var result = JSON.parse(db_ss[key]);
 			document.getElementById("s5_type").value = result.type;}
