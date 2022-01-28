@@ -259,22 +259,30 @@ static inline int set_4byte(struct spi_nor *nor, const struct flash_info *info,
 			    int enable)
 {
 	int status;
-	bool need_wren = false;
 	u8 cmd;
 
 	switch (JEDEC_MFR(info)) {
 	case SNOR_MFR_MICRON:
-		/* Some Micron need WREN command; all will accept it */
-		need_wren = true;
 	case SNOR_MFR_MACRONIX:
 	case SNOR_MFR_WINBOND:
-		if (need_wren)
-			write_enable(nor);
-
+		write_enable(nor);
 		cmd = enable ? SPINOR_OP_EN4B : SPINOR_OP_EX4B;
 		status = nor->write_reg(nor, cmd, NULL, 0);
-		if (need_wren)
+		write_disable(nor);
+
+		if (!status && !enable &&
+		    JEDEC_MFR(info) == SNOR_MFR_WINBOND) {
+			/*
+			* On Winbond W25Q256FV, leaving 4byte mode causes
+			* the Extended Address Register to be set to 1, so all
+			* 3-byte-address reads come from the second 16M.
+			* We must clear the register to enable normal behavior.
+			*/
+			write_enable(nor);
+			nor->cmd_buf[0] = 0;
+			nor->write_reg(nor, SPINOR_OP_WREAR, nor->cmd_buf, 1);
 			write_disable(nor);
+		}
 
 		return status;
 	default:
