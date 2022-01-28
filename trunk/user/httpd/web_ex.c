@@ -3397,10 +3397,10 @@ apply_cgi(const char *url, webs_t wp)
 		sys_reboot();
 		return 0;
 	}
-	else if (!strcmp(value, " Shutdown "))
+	else if (!strcmp(value, " FreeMemory "))
 	{
-		system("shutdown");
-		websRedirect(wp, current_url);
+		doSystem("sync");
+		doSystem("echo 3 > /proc/sys/vm/drop_caches");
 		return 0;
 	}
 	else if (!strcmp(value, " RestoreNVRAM "))

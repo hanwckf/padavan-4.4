@@ -1853,7 +1853,6 @@ IPRemote=IP (remote)
 ChnRoute=ChnRoute
 GfwList=GfwList
 Login=Login
-BTN_SHUTDOWN=Shutdown
-JS_shutdown=You need manually power on after shutdown!!! Continue to shutdown?
+BTN_FREEMEMORY=FreeMemory
 
 

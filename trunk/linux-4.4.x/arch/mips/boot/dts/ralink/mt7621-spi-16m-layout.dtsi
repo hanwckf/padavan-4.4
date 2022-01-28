@@ -14,7 +14,7 @@
 		};
 
 		partition@30000 {
-			label = "u-boot-env";
+			label = "Config";
 			reg = <0x30000 0x10000>; /* 64K */
 		};
 
@@ -25,12 +25,7 @@
 
 		partition@50000 {
 			label = "firmware";
-			reg = <0x50000 0xf20000>;
-		};
-		
-		partition@f70000 {
-			label = "Config";
-			reg = <0xf70000 0x10000>; /* 64K */
+			reg = <0x50000 0xf30000>;
 		};
 
 		partition@f80000 {
