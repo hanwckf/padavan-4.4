@@ -1225,6 +1225,25 @@ static int spi_nor_check(struct spi_nor *nor)
 	return 0;
 }
 
+void spi_nor_restore(struct spi_nor *nor)
+{
+	/* restore the addressing mode */
+	if ((nor->addr_width == 4) &&
+		(JEDEC_MFR(nor->info) != SNOR_MFR_SPANSION) &&
+		!(nor->info->flags & SPI_NOR_4B_OPCODES)) {
+		set_4byte(nor, nor->info, 0);
+		pr_info("%s: restore spi nor to 3B mode.\n", __func__);
+
+		if (JEDEC_MFR(nor->info) == SNOR_MFR_WINBOND) {
+			nor->write_reg(nor, 0x66, NULL, 0);
+			nor->write_reg(nor, 0x99, NULL, 0);
+			pr_info("%s: reset spi-nor.\n", __func__);
+			udelay(100);
+		}
+	}
+}
+EXPORT_SYMBOL_GPL(spi_nor_restore);
+
 int spi_nor_scan(struct spi_nor *nor, const char *name, enum read_mode mode)
 {
 	const struct flash_info *info = NULL;
@@ -1407,6 +1426,8 @@ int spi_nor_scan(struct spi_nor *nor, const char *name, enum read_mode mode)
 	}
 
 	nor->read_dummy = spi_nor_read_dummy_cycles(nor);
+
+	nor->info = info;
 
 	dev_info(dev, "%s (%lld Kbytes)\n", info->name,
 			(long long)mtd->size >> 10);
