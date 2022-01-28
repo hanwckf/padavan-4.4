@@ -1252,6 +1252,28 @@ void spi_nor_restore(struct spi_nor *nor)
 }
 EXPORT_SYMBOL_GPL(spi_nor_restore);
 
+
+static void spi_set_wb_drive_strength(struct spi_nor *nor)
+{
+	int ret;
+	u8 code = 0;
+
+	ret = nor->read_reg(nor, 0x15, &code, 1);
+	if (ret < 0)
+		return;
+
+	pr_debug("winbond spi-nor SR3: %d\n", code);
+
+	/* set Winbond DVP[1:0] as 10 (driving strength 50%) */
+	if ((code & 0x60) == 0x60) {
+		code &= ~0x60;
+		code |= 0x40;
+		write_enable(nor);
+		nor->cmd_buf[0] = code;
+		nor->write_reg(nor, 0x11, nor->cmd_buf, 1);
+	}
+}
+
 int spi_nor_scan(struct spi_nor *nor, const char *name, enum read_mode mode)
 {
 	const struct flash_info *info = NULL;
@@ -1412,6 +1434,9 @@ int spi_nor_scan(struct spi_nor *nor, const char *name, enum read_mode mode)
 	}
 
 	nor->program_opcode = SPINOR_OP_PP;
+
+	if (JEDEC_MFR(info) == SNOR_MFR_WINBOND)
+		spi_set_wb_drive_strength(nor);
 
 	if (info->addr_width)
 		nor->addr_width = info->addr_width;
