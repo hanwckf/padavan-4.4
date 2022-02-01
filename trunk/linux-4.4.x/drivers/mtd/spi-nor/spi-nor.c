@@ -69,6 +69,7 @@ struct flash_info {
 #define	SPI_NOR_DUAL_READ	0x20    /* Flash supports Dual Read */
 #define	SPI_NOR_QUAD_READ	0x40    /* Flash supports Quad Read */
 #define	USE_FSR			0x80	/* use flag status register */
+#define	SPI_NOR_4B_OPCODES	0x200
 };
 
 #define JEDEC_MFR(info)	((info)->id[0])
@@ -182,27 +183,106 @@ static inline struct spi_nor *mtd_to_spi_nor(struct mtd_info *mtd)
 	return mtd->priv;
 }
 
+static u8 spi_nor_convert_opcode(u8 opcode, const u8 table[][2], size_t size)
+{
+	size_t i;
+
+	for (i = 0; i < size; i++)
+		if (table[i][0] == opcode)
+			return table[i][1];
+
+	/* No conversion found, keep input op code. */
+	return opcode;
+}
+
+static inline u8 spi_nor_convert_3to4_read(u8 opcode)
+{
+	static const u8 spi_nor_3to4_read[][2] = {
+		{ SPINOR_OP_READ,	SPINOR_OP_READ_4B },
+		{ SPINOR_OP_READ_FAST,	SPINOR_OP_READ_FAST_4B },
+		{ SPINOR_OP_READ_1_1_2,	SPINOR_OP_READ_1_1_2_4B },
+		{ SPINOR_OP_READ_1_2_2,	SPINOR_OP_READ_1_2_2_4B },
+		{ SPINOR_OP_READ_1_1_4,	SPINOR_OP_READ_1_1_4_4B },
+		{ SPINOR_OP_READ_1_4_4,	SPINOR_OP_READ_1_4_4_4B },
+	};
+
+	return spi_nor_convert_opcode(opcode, spi_nor_3to4_read,
+				      ARRAY_SIZE(spi_nor_3to4_read));
+}
+
+static inline u8 spi_nor_convert_3to4_program(u8 opcode)
+{
+	static const u8 spi_nor_3to4_program[][2] = {
+		{ SPINOR_OP_PP,		SPINOR_OP_PP_4B },
+		{ SPINOR_OP_PP_1_1_4,	SPINOR_OP_PP_1_1_4_4B },
+		{ SPINOR_OP_PP_1_4_4,	SPINOR_OP_PP_1_4_4_4B },
+	};
+
+	return spi_nor_convert_opcode(opcode, spi_nor_3to4_program,
+				      ARRAY_SIZE(spi_nor_3to4_program));
+}
+
+static inline u8 spi_nor_convert_3to4_erase(u8 opcode)
+{
+	static const u8 spi_nor_3to4_erase[][2] = {
+		{ SPINOR_OP_BE_4K,	SPINOR_OP_BE_4K_4B },
+		{ SPINOR_OP_BE_32K,	SPINOR_OP_BE_32K_4B },
+		{ SPINOR_OP_SE,		SPINOR_OP_SE_4B },
+	};
+
+	return spi_nor_convert_opcode(opcode, spi_nor_3to4_erase,
+				      ARRAY_SIZE(spi_nor_3to4_erase));
+}
+
+static void spi_nor_set_4byte_opcodes(struct spi_nor *nor,
+				      const struct flash_info *info)
+{
+	/* Do some manufacturer fixups first */
+	switch (JEDEC_MFR(info)) {
+	case SNOR_MFR_SPANSION:
+		/* No small sector erase for 4-byte command set */
+		nor->erase_opcode = SPINOR_OP_SE;
+		nor->mtd.erasesize = info->sector_size;
+		break;
+
+	default:
+		break;
+	}
+
+	nor->read_opcode = spi_nor_convert_3to4_read(nor->read_opcode);
+	nor->program_opcode = spi_nor_convert_3to4_program(nor->program_opcode);
+	nor->erase_opcode = spi_nor_convert_3to4_erase(nor->erase_opcode);
+}
+
 /* Enable/disable 4-byte addressing mode. */
 static inline int set_4byte(struct spi_nor *nor, const struct flash_info *info,
 			    int enable)
 {
 	int status;
-	bool need_wren = false;
 	u8 cmd;
 
 	switch (JEDEC_MFR(info)) {
 	case SNOR_MFR_MICRON:
-		/* Some Micron need WREN command; all will accept it */
-		need_wren = true;
 	case SNOR_MFR_MACRONIX:
 	case SNOR_MFR_WINBOND:
-		if (need_wren)
-			write_enable(nor);
-
+		write_enable(nor);
 		cmd = enable ? SPINOR_OP_EN4B : SPINOR_OP_EX4B;
 		status = nor->write_reg(nor, cmd, NULL, 0);
-		if (need_wren)
+		write_disable(nor);
+
+		if (!status && !enable &&
+		    JEDEC_MFR(info) == SNOR_MFR_WINBOND) {
+			/*
+			* On Winbond W25Q256FV, leaving 4byte mode causes
+			* the Extended Address Register to be set to 1, so all
+			* 3-byte-address reads come from the second 16M.
+			* We must clear the register to enable normal behavior.
+			*/
+			write_enable(nor);
+			nor->cmd_buf[0] = 0;
+			nor->write_reg(nor, SPINOR_OP_WREAR, nor->cmd_buf, 1);
 			write_disable(nor);
+		}
 
 		return status;
 	default:
@@ -726,7 +806,8 @@ static const struct flash_info spi_nor_ids[] = {
 	{ "gd25q32", INFO(0xc84016, 0, 64 * 1024,  64, SECT_4K) },
 	{ "gd25q64", INFO(0xc84017, 0, 64 * 1024, 128, SECT_4K) },
 	{ "gd25q128", INFO(0xc84018, 0, 64 * 1024, 256, SECT_4K) },
-	{ "gd25q256", INFO(0xc84019, 0, 64 * 1024, 512, SECT_4K) },
+	{ "gd25q256", INFO(0xc84019, 0, 64 * 1024, 512, SECT_4K | SPI_NOR_4B_OPCODES) },
+
 	/* Intel/Numonyx -- xxxs33b */
 	{ "160s33b",  INFO(0x898911, 0, 64 * 1024,  32, 0) },
 	{ "320s33b",  INFO(0x898912, 0, 64 * 1024,  64, 0) },
@@ -870,8 +951,15 @@ static const struct flash_info spi_nor_ids[] = {
 	{ "w25q80", INFO(0xef5014, 0, 64 * 1024,  16, SECT_4K) },
 	{ "w25q80bl", INFO(0xef4014, 0, 64 * 1024,  16, SECT_4K) },
 	{ "w25q128", INFO(0xef4018, 0, 64 * 1024, 256, SECT_4K) },
+	{ "w25q128fw", INFO(0xef6018, 0, 64 * 1024, 256, SECT_4K) },
+	{ "w25q128jv", INFO(0xef7018, 0, 64 * 1024, 256, SECT_4K) },
+	{ "w25q128jwm", INFO(0xef8018, 0, 64 * 1024, 256, SECT_4K) },
 	{ "w25q256", INFO(0xef4019, 0, 64 * 1024, 512, SECT_4K) },
+	{ "w25q256jw", INFO(0xef6019, 0, 64 * 1024, 512, SECT_4K) },
+	{ "w25q256jvm", INFO(0xef7019, 0, 64 * 1024, 512, 0) },
+	{ "w25q256jwm", INFO(0xef8019, 0, 64 * 1024, 512, SECT_4K) },
 	{ "w25q512", INFO(0xef4020, 0, 64 * 1024, 1024, SECT_4K) },
+
 	/* Catalyst / On Semiconductor -- non-JEDEC */
 	{ "cat25c11", CAT25_INFO(  16, 8, 16, 1, SPI_NOR_NO_ERASE | SPI_NOR_NO_FR) },
 	{ "cat25c03", CAT25_INFO(  32, 8, 16, 2, SPI_NOR_NO_ERASE | SPI_NOR_NO_FR) },
@@ -1145,6 +1233,47 @@ static int spi_nor_check(struct spi_nor *nor)
 	return 0;
 }
 
+void spi_nor_restore(struct spi_nor *nor)
+{
+	/* restore the addressing mode */
+	if ((nor->addr_width == 4) &&
+		(JEDEC_MFR(nor->info) != SNOR_MFR_SPANSION) &&
+		!(nor->info->flags & SPI_NOR_4B_OPCODES)) {
+		set_4byte(nor, nor->info, 0);
+		pr_info("%s: restore spi nor to 3B mode.\n", __func__);
+
+		if (JEDEC_MFR(nor->info) == SNOR_MFR_WINBOND) {
+			nor->write_reg(nor, 0x66, NULL, 0);
+			nor->write_reg(nor, 0x99, NULL, 0);
+			pr_info("%s: reset spi-nor.\n", __func__);
+			udelay(100);
+		}
+	}
+}
+EXPORT_SYMBOL_GPL(spi_nor_restore);
+
+
+static void spi_set_wb_drive_strength(struct spi_nor *nor)
+{
+	int ret;
+	u8 code = 0;
+
+	ret = nor->read_reg(nor, 0x15, &code, 1);
+	if (ret < 0)
+		return;
+
+	pr_debug("winbond spi-nor SR3: %d\n", code);
+
+	/* set Winbond DVP[1:0] as 10 (driving strength 50%) */
+	if ((code & 0x60) == 0x60) {
+		code &= ~0x60;
+		code |= 0x40;
+		write_enable(nor);
+		nor->cmd_buf[0] = code;
+		nor->write_reg(nor, 0x11, nor->cmd_buf, 1);
+	}
+}
+
 int spi_nor_scan(struct spi_nor *nor, const char *name, enum read_mode mode)
 {
 	const struct flash_info *info = NULL;
@@ -1306,32 +1435,18 @@ int spi_nor_scan(struct spi_nor *nor, const char *name, enum read_mode mode)
 
 	nor->program_opcode = SPINOR_OP_PP;
 
+	if (JEDEC_MFR(info) == SNOR_MFR_WINBOND)
+		spi_set_wb_drive_strength(nor);
+
 	if (info->addr_width)
 		nor->addr_width = info->addr_width;
 	else if (mtd->size > 0x1000000) {
 		/* enable 4-byte addressing if the device exceeds 16MiB */
 		nor->addr_width = 4;
-		if (JEDEC_MFR(info) == SNOR_MFR_SPANSION) {
-			/* Dedicated 4-byte command set */
-			switch (nor->flash_read) {
-			case SPI_NOR_QUAD:
-				nor->read_opcode = SPINOR_OP_READ4_1_1_4;
-				break;
-			case SPI_NOR_DUAL:
-				nor->read_opcode = SPINOR_OP_READ4_1_1_2;
-				break;
-			case SPI_NOR_FAST:
-				nor->read_opcode = SPINOR_OP_READ4_FAST;
-				break;
-			case SPI_NOR_NORMAL:
-				nor->read_opcode = SPINOR_OP_READ4;
-				break;
-			}
-			nor->program_opcode = SPINOR_OP_PP_4B;
-			/* No small sector erase for 4-byte command set */
-			nor->erase_opcode = SPINOR_OP_SE_4B;
-			mtd->erasesize = info->sector_size;
-		} else
+		if (JEDEC_MFR(info) == SNOR_MFR_SPANSION ||
+		    info->flags & SPI_NOR_4B_OPCODES)
+			spi_nor_set_4byte_opcodes(nor, info);
+		else
 			set_4byte(nor, info, 1);
 	} else {
 		nor->addr_width = 3;
@@ -1344,6 +1459,8 @@ int spi_nor_scan(struct spi_nor *nor, const char *name, enum read_mode mode)
 	}
 
 	nor->read_dummy = spi_nor_read_dummy_cycles(nor);
+
+	nor->info = info;
 
 	dev_info(dev, "%s (%lld Kbytes)\n", info->name,
 			(long long)mtd->size >> 10);

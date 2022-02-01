@@ -277,6 +277,9 @@ static int mt7621_spi_setup(struct spi_device *spi)
 		return -EINVAL;
 	}
 
+	dev_info(&spi->dev, "setup: max speed is %d Hz\n",
+		spi->max_speed_hz);
+
 	return 0;
 }
 
