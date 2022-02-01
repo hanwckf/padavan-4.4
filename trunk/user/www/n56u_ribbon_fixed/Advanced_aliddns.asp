@@ -39,7 +39,7 @@ function initial(){
 	show_menu(5,17,0);
 	show_footer();
 	showmenu();
-
+	showmenu1();
 	change_aliddns_enable_bridge(1);
 
 	if (!login_safe())
@@ -48,6 +48,9 @@ function initial(){
 
 function showmenu(){
 showhide_div('zelink', found_app_zerotier());
+}
+function showmenu1(){
+showhide_div('ddlink', found_app_ddnsto());
 }
 
 function textarea_scripts_enabled(v){
@@ -145,6 +148,9 @@ function change_aliddns_enable_bridge(mflag){
                                 </li>
 								<li id="zelink" style="display:none">
                                     <a href="Advanced_zerotier.asp"><#menu5_32_1#></a>
+                                </li>
+								<li id="ddlink" style="display:none">
+                                    <a href="Advanced_ddnsto.asp"><#menu5_34_1#></a>
                                 </li>
                             </ul>
                         </div>

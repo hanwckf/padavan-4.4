@@ -50,6 +50,7 @@ var isMenuopen = 0;
 function initial(){
 	show_banner(2);
 	show_menu(5,17,0);
+	showmenu2();
 showmenu();
 showMRULESList();
 	show_footer();
@@ -57,6 +58,9 @@ showMRULESList();
 }
 function showmenu(){
 showhide_div('allink', found_app_aliddns());
+}
+function showmenu2(){
+showhide_div('ddlink', found_app_ddnsto());
 }
 function applyRule(){
 //	if(validForm()){
@@ -197,6 +201,9 @@ function showMRULESList(){
 								<li class="active">
                                     <a href="Advanced_zerotier.asp"><#menu5_32_1#></a>
                                 </li>
+				    				<li id="ddlink" style="display:none">
+                                    <a href="Advanced_ddnsto.asp"><#menu5_34_1#></a>
+                                </li>
                             </ul>
                         </div>
 								<div class="row-fluid">
@@ -207,7 +214,28 @@ function showMRULESList(){
 									</div>
 
 									<table width="100%" align="center" cellpadding="4" cellspacing="0" class="table">
-										<tr>
+										<tr><th>ZeroTier 客户端 ID</th>
+				<td>
+					<input type="text" class="input" name="zerotier_id" id="zerotier_id" style="width: 200px" value="<% nvram_get_x("","zerotier_id"); %>" />
+				</td>
+											</tr>
+											<tr>
+											<th width="30%" style="border-top: 0 none;">允许客户端NAT</th>
+											<td style="border-top: 0 none;">
+													<div class="main_itoggle">
+													<div id="zerotier_nat_on_of">
+														<input type="checkbox" id="zerotier_nat_fake" <% nvram_match_x("", "zerotier_nat", "1", "value=1 checked"); %><% nvram_match_x("", "zerotier_nat", "0", "value=0"); %>  />
+													</div>
+												</div>
+												<div style="position: absolute; margin-left: -10000px;">
+													<input type="radio" value="1" name="zerotier_nat" id="zerotier_nat_1" class="input" value="1" <% nvram_match_x("", "zerotier_nat", "1", "checked"); %> /><#checkbox_Yes#>
+													<input type="radio" value="0" name="zerotier_nat" id="zerotier_nat_0" class="input" value="0" <% nvram_match_x("", "zerotier_nat", "0", "checked"); %> /><#checkbox_No#>
+												</div>
+												 允许Zerotier的拨入客户端访问路由器LAN资源（需要在 Zerotier管理页面设定到LAN网段的路由表）
+											</td>
+
+										</tr>
+											<tr>
 											<th width="30%" style="border-top: 0 none;">启用ZeroTier客户端</th>
 											<td style="border-top: 0 none;">
 													<div class="main_itoggle">
@@ -223,32 +251,12 @@ function showMRULESList(){
 
 										</tr>
 										
-<tr><th>ZeroTier World Network ID</th>
-				<td>
-					<input type="text" class="input" name="zerotier_id" id="zerotier_id" style="width: 200px" value="<% nvram_get_x("","zerotier_id"); %>" />
-				</td>
-			</tr>
+
 <tr><th>ZeroTier Moon Network ID</th>
 				<td>
 					<input type="text" class="input" name="zerotier_moonid" id="zerotier_moonid" style="width: 200px" value="<% nvram_get_x("","zerotier_moonid"); %>" />
 				</td>
 			</tr>			
-			<tr>
-											<th width="30%" style="border-top: 0 none;">自动允许客户端NAT</th>
-											<td style="border-top: 0 none;">
-													<div class="main_itoggle">
-													<div id="zerotier_nat_on_of">
-														<input type="checkbox" id="zerotier_nat_fake" <% nvram_match_x("", "zerotier_nat", "1", "value=1 checked"); %><% nvram_match_x("", "zerotier_nat", "0", "value=0"); %>  />
-													</div>
-												</div>
-												<div style="position: absolute; margin-left: -10000px;">
-													<input type="radio" value="1" name="zerotier_nat" id="zerotier_nat_1" class="input" value="1" <% nvram_match_x("", "zerotier_nat", "1", "checked"); %> /><#checkbox_Yes#>
-													<input type="radio" value="0" name="zerotier_nat" id="zerotier_nat_0" class="input" value="0" <% nvram_match_x("", "zerotier_nat", "0", "checked"); %> /><#checkbox_No#>
-												</div>
-												 允许Zerotier的拨入客户端访问路由器LAN资源（需要在 Zerotier管理页面设定到LAN网段的路由表）
-											</td>
-
-										</tr>
 										
 <tr>
 											<th width="30%" style="border-top: 0 none;">启用ZeroTier Moon服务器</th>

@@ -2273,6 +2273,14 @@ static int zerotier_status_hook(int eid, webs_t wp, int argc, char **argv)
 	return 0;
 }
 #endif
+#if defined (APP_DDNSTO)
+static int ddnsto_status_hook(int eid, webs_t wp, int argc, char **argv)
+{
+	int ddnsto_status_code = pids("ddnsto");
+	websWrite(wp, "function ddnsto_status() { return %d;}\n", ddnsto_status_code);
+	return 0;
+}
+#endif
 static int
 ej_detect_internet_hook(int eid, webs_t wp, int argc, char **argv)
 {
@@ -2469,6 +2477,11 @@ ej_firmware_caps_hook(int eid, webs_t wp, int argc, char **argv)
 #else
 	int found_app_zerotier = 0;
 #endif
+#if defined(APP_DDNSTO)
+	int found_app_ddnsto = 1;
+#else
+	int found_app_ddnsto = 0;
+#endif
 #if defined(APP_ADBYBY)
 	int found_app_adbyby = 1;
 #else
@@ -2650,6 +2663,7 @@ ej_firmware_caps_hook(int eid, webs_t wp, int argc, char **argv)
 		"function found_app_koolproxy() { return %d;}\n"
 		"function found_app_adbyby() { return %d;}\n"
 		"function found_app_zerotier() { return %d;}\n"
+		"function found_app_ddnsto() { return %d;}\n"
 		"function found_app_aliddns() { return %d;}\n"
 		"function found_app_adguardhome() { return %d;}\n",
 		found_utl_hdparm,
@@ -2676,6 +2690,7 @@ ej_firmware_caps_hook(int eid, webs_t wp, int argc, char **argv)
 		found_app_koolproxy,
 		found_app_adbyby,
 		found_app_zerotier,
+		found_app_ddnsto,
 		found_app_aliddns,
 		found_app_adguardhome
 	);

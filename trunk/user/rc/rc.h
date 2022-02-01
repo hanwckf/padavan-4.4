@@ -571,7 +571,11 @@ void stop_zerotier(void);
 void start_zerotier(void);
 void restart_zerotier(void);
 #endif
-
+#if defined(APP_DDNSTO)
+void stop_ddnsto(void);
+void start_ddnsto(void);
+void restart_ddnsto(void);
+#endif
 /* services_ex.c */
 int fill_dnsmasq_servers(void);
 int is_dns_dhcpd_run(void);

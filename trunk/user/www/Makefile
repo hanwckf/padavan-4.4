@@ -211,5 +211,8 @@ endif
 ifneq ($(CONFIG_FIRMWARE_INCLUDE_ZEROTIER),y)
 	rm -f $(INSTALLDIR)/www/Advanced_zerotier.asp
 endif
+ifneq ($(CONFIG_FIRMWARE_INCLUDE_DDNSTO),y)
+	rm -f $(INSTALLDIR)/www/Advanced_ddnsto.asp
+endif
 clean:
 	@echo "Clean www romfs"

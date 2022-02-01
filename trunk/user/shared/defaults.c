@@ -758,6 +758,10 @@ struct nvram_pair router_defaults[] = {
 	{ "zerotier_secret", "" },
 	{ "zero_staticnum_x", "0" },
 
+	/*DDNSTO*/
+	{ "ddnsto_enable", "0" },
+	{ "ddnsto_id", "" },
+
 	{ "ss_watchcat", "1" },
 	{ "ss_update_chnroute", "0" },
 	{ "ss_update_gfwlist", "0" },

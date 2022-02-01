@@ -662,7 +662,7 @@ reload_nat_modules(void)
 	if (hwnat_allow && !hwnat_loaded)
 	{
 		module_smart_load("hw_nat", NULL);
-#if defined (USE_MT7615_AP) || defined (USE_MT7915_AP)
+#if defined (USE_MT7615_AP) || defined (USE_MT7915_AP) || defined (USE_MT76X2_AP)
 		doSystem("iwpriv %s set hw_nat_register=%d", IFNAME_2G_MAIN, 1);
 		doSystem("iwpriv %s set hw_nat_register=%d", IFNAME_5G_MAIN, 1);
 #endif
