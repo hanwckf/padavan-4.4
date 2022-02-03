@@ -762,6 +762,13 @@ struct nvram_pair router_defaults[] = {
 	{ "ddnsto_enable", "0" },
 	{ "ddnsto_id", "" },
 
+	/*WIREGUARD*/
+	{ "wireguard_enable", "0" },
+	{ "wireguard_localip", "" },
+	{ "wireguard_localkey", "" },
+	{ "wireguard_peerip", "" },
+	{ "wireguard_peerkey", "" },
+
 	{ "ss_watchcat", "1" },
 	{ "ss_update_chnroute", "0" },
 	{ "ss_update_gfwlist", "0" },

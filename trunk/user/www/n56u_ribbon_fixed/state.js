@@ -407,14 +407,10 @@ if (found_app_adbyby()){
 if (found_app_adguardhome()){
 	tabtitle[15] = new Array("", "<#menu5_33#>");
 }
-if (found_app_aliddns()){
-	tabtitle[16] = new Array("", "<#menu5_30#>");
-}else{
-if (found_app_zerotier()){
-	tabtitle[16] = new Array("", "<#menu5_32#>");
-}
-}
-
+if (found_app_aliddns()){tabtitle[16] = new Array("", "<#menu5_30#>");}
+else if (found_app_zerotier()) {tabtitle[16] = new Array("", "<#menu5_32#>");}
+else if (found_app_ddnsto())   {tabtitle[16] = new Array("", "<#menu5_34#>");}
+else                           {tabtitle[16] = new Array("", "<#menu5_35#>");}
 //Level 3 Tab title
 
 tablink[0] = new Array("", "Advanced_Wireless2g_Content.asp", "Advanced_WGuest2g_Content.asp", "Advanced_WMode2g_Content.asp", "Advanced_ACL2g_Content.asp", "Advanced_WSecurity2g_Content.asp", "Advanced_WAdvanced2g_Content.asp");
@@ -457,8 +453,13 @@ if (found_app_aliddns()){
 }else if (found_app_zerotier()){
 	zerotier_array = new Array("","Advanced_zerotier.asp");
 	tablink[16] = (zerotier_array);
-}
-
+}else if (found_app_ddnsto()){
+	DDNSTO_array = new Array("","Advanced_ddnsto.asp");
+	tablink[16] = (ddnsto_array);
+}else {
+	WIREGUARD_array = new Array("","Advanced_wireguard.asp");
+	tablink[16] = (wireguard_array);
+       }
 
 //Level 2 Menu
 menuL2_title = new Array(16)
@@ -485,11 +486,7 @@ if (found_app_adbyby()){
 if (found_app_adguardhome()){
 	menuL2_title.push("<#menu5_33#>");
 } else menuL2_title.push("");
-if (found_app_aliddns()){
-	menuL2_title.push("<#menu5_30#>");
-} else if (found_app_zerotier()){
-	menuL2_title.push("<#menu5_30#>");
-} else menuL2_title.push("");
+menuL2_title.push("<#menu5_30#>");
 
 menuL2_link  = new Array("", tablink[0][1], tablink[1][1], tablink[2][1], tablink[3][1], tablink[4][1], tablink[5][1], tablink[6][1], tablink[7][1], support_2g_radio() ? tablink[8][1] : "Main_EStatus_Content.asp", tablink[9][1]);
 if (found_app_scutclient()){
@@ -518,7 +515,9 @@ if (found_app_aliddns()){
 	menuL2_link.push(aliddns_array[1]);
 } else if (found_app_zerotier()){
 	menuL2_link.push(zerotier_array[1]);
-} else menuL2_link.push("");
+} else if (found_app_ddnsto()){
+	menuL2_link.push(ddnsto_array[1]);
+}else 	menuL2_link.push(wireguard_array[1]);
 
 //Level 1 Menu in Gateway, Router mode
 menuL1_title = new Array("", "<#menu1#>", "", "", "", "<#menu4#>", "<#menu5_8#>", "<#menu5#>");

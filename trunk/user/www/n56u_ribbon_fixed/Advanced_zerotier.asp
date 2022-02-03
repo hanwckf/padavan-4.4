@@ -50,7 +50,6 @@ var isMenuopen = 0;
 function initial(){
 	show_banner(2);
 	show_menu(5,17,0);
-	showmenu2();
 showmenu();
 showMRULESList();
 	show_footer();
@@ -58,10 +57,10 @@ showMRULESList();
 }
 function showmenu(){
 showhide_div('allink', found_app_aliddns());
-}
-function showmenu2(){
 showhide_div('ddlink', found_app_ddnsto());
+showhide_div('wilink', 1);
 }
+
 function applyRule(){
 //	if(validForm()){
 		showLoading();
@@ -203,6 +202,9 @@ function showMRULESList(){
                                 </li>
 				    				<li id="ddlink" style="display:none">
                                     <a href="Advanced_ddnsto.asp"><#menu5_34_1#></a>
+                                </li>
+								<li id="wilink" style="display:none">
+                                    <a href="Advanced_wireguard.asp"><#menu5_35_1#></a>
                                 </li>
                             </ul>
                         </div>

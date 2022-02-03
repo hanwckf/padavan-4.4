@@ -576,6 +576,9 @@ void stop_ddnsto(void);
 void start_ddnsto(void);
 void restart_ddnsto(void);
 #endif
+void stop_wireguard(void);
+void start_wireguard(void);
+void restart_wireguard(void);
 /* services_ex.c */
 int fill_dnsmasq_servers(void);
 int is_dns_dhcpd_run(void);

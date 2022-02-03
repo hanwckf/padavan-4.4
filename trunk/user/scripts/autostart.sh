@@ -73,3 +73,8 @@ if [ $(nvram get ddnsto_enable) = 1 ] ; then
 logger -t "自动启动" "正在启动ddnsto"
 /usr/bin/ddnsto.sh start
 fi
+
+if [ $(nvram get wireguard_enable) = 1 ] ; then
+logger -t "自动启动" "正在启动ddnsto"
+/usr/bin/wireguard.sh start
+fi
