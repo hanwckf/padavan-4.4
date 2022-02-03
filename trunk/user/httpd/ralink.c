@@ -1670,6 +1670,22 @@ ej_wl_scan_5g(int eid, webs_t wp, int argc, char **argv)
 
 	empty = "[\"\", \"\", \"\", \"\"]";
 
+#if defined (BOARD_MT7615_DBDC)
+	memset(data, 0, 32);
+	strcpy(data, "ClearSiteSurvey=1");
+	wrq.u.data.length = strlen(data)+1; 
+	wrq.u.data.pointer = data;
+	wrq.u.data.flags = 0;
+
+	if (wl_ioctl(IFNAME_5G_MAIN, RTPRIV_IOCTL_SET, &wrq) < 0)
+	{
+		dbg("Clean Site Survey fails\n");
+		return websWrite(wp, "[%s]", empty);
+	}
+
+	sleep(1);
+#endif
+
 	memset(data, 0, 32);
 	strcpy(data, "SiteSurvey=1"); 
 	wrq.u.data.length = strlen(data)+1; 
@@ -1770,6 +1786,22 @@ ej_wl_scan_2g(int eid, webs_t wp, int argc, char **argv)
 	int len, line_len;
 
 	empty = "[\"\", \"\", \"\", \"\"]";
+
+#if defined (BOARD_MT7615_DBDC)
+	memset(data, 0, 32);
+	strcpy(data, "ClearSiteSurvey=1");
+	wrq.u.data.length = strlen(data)+1; 
+	wrq.u.data.pointer = data;
+	wrq.u.data.flags = 0;
+
+	if (wl_ioctl(IFNAME_2G_MAIN, RTPRIV_IOCTL_SET, &wrq) < 0)
+	{
+		dbg("Clean Site Survey fails\n");
+		return websWrite(wp, "[%s]", empty);
+	}
+
+	sleep(1);
+#endif
 
 	memset(data, 0, 32);
 	strcpy(data, "SiteSurvey=1"); 
