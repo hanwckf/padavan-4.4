@@ -181,14 +181,14 @@ function done_validating(action){
 										</tr>
 									
 										<tr>
-										<th>服务器密钥key </th>
+										<th>对端密钥key </th>
 				<td>
 					<input type="text" class="input" name="wireguard_peerkey" id="wireguard_peerkey" style="width: 200px" value="<% nvram_get_x("","wireguard_peerkey"); %>" />
 				</td>
 
 										</tr>
 										<tr>
-										<th>服务器IP（格式 10.0.0.1/24）</th>
+										<th>对端ip:端口（格式 223.5.6.6:4900)</th>
 				<td>
 					<input type="text" class="input" name="wireguard_peerip" id="wireguard_peerip" style="width: 200px" value="<% nvram_get_x("","wireguard_peerip"); %>" />
 				</td>
