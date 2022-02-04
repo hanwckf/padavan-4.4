@@ -3,7 +3,7 @@ THISDIR = $(shell pwd)
 #export GOPROXY=https://goproxy.bj.bcebos.com/
 Xray_VERSION := 1.5.3
 Xray_URL := https://codeload.github.com/XTLS/Xray-core/tar.gz/v$(Xray_VERSION)
-Xray_dir = Xray-core-$(Xray_VERSION)/main
+Xray_dir = xray-core/Xray-core-$(Xray_VERSION)/main
 
 all:download_v2 build_extract build_Xray
 
@@ -15,8 +15,9 @@ download_v2:
 build_extract:
 	mkdir -p $(THISDIR)/xray-core
 	mkdir -p $(THISDIR)/bin
-	( if [ ! -d $(THISDIR)/xray-core/core ]; then \
-	tar zxfv $(THISDIR)/Xray-core-$(Xray_VERSION).tar.gz ; \
+	( if [ ! -d $(THISDIR)/xray-core/Xray-core-$(Xray_VERSION) ]; then \
+	rm -rf $(THISDIR)/xray-core/* ; \
+	tar zxfv $(THISDIR)/Xray-core-$(Xray_VERSION).tar.gz -C $(THISDIR)/xray-core ; \
 	fi )
 
 build_Xray:
@@ -26,7 +27,7 @@ build_Xray:
 	)
 
 clean:
-	rm -rf $(THISDIR)/Xray-core-$(Xray_VERSION)
+	rm -rf $(THISDIR)/xray-core
 	rm -rf $(THISDIR)/bin
 
 romfs:
