@@ -32,6 +32,9 @@ go_build:
 	mkdir -p $(THISDIR)/go
 	( if [ ! -f $(THISDIR)/go/go1.17.6.linux-amd64.tar.gz ]; then \
 	curl --create-dirs -L https://studygolang.com/dl/golang/go1.17.6.linux-amd64.tar.gz -o $(THISDIR)/go/go1.17.6.linux-amd64.tar.gz ; \
+	if [ ! -f $(THISDIR)/go/go1.17.6.linux-amd64.tar.gz ]; then \
+	curl --create-dirs -L https://golang.google.cn/dl/go1.17.6.linux-amd64.tar.gz -o $(THISDIR)/go/go1.17.6.linux-amd64.tar.gz ; \
+	fi ; \
 	fi )
 	( if [ ! -d $(THISDIR)/go/go ]; then \
 	tar zxfv $(THISDIR)/go/go1.17.6.linux-amd64.tar.gz -C go ; \
