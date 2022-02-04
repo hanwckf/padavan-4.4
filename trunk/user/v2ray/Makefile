@@ -1,3 +1,4 @@
+include $(ROOTDIR)/coustom
 THISDIR = $(shell pwd)
 v2ray_dir="v2ray.com/core/main"
 #export GO111MODULE=on
@@ -31,7 +32,9 @@ build_extract:
 
 build_v2ray:
 	( cd $(THISDIR)/$(v2ray_dir); \
+	if [ $(GOPROXY_ON) = "y" ]; then \
 	go env -w GOPROXY=https://goproxy.cn,direct ; \
+	fi ; \
 	GOOS=linux GOARCH=mipsle go build -ldflags "-w -s" -o $(THISDIR)/bin/v2ray; \
 	)
 
