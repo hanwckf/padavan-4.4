@@ -1,4 +1,4 @@
-SRC_NAME = ddnsto
+SRC_NAME = wireguard
 THISDIR = $(shell pwd)
 
 all: 
