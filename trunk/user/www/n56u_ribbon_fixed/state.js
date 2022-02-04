@@ -407,12 +407,11 @@ if (found_app_adbyby()){
 if (found_app_adguardhome()){
 	tabtitle[15] = new Array("", "<#menu5_33#>");
 }
-if (found_app_aliddns()){
+if (found_app_aliddns()||found_app_zerotier()||found_app_ddnsto){
 	tabtitle[16] = new Array("", "<#menu5_30#>");
-}else{
-if (found_app_zerotier()){
-	tabtitle[16] = new Array("", "<#menu5_32#>");
 }
+if (found_app_aldriver()){
+	tabtitle[17] = new Array("", "<#menu5_35#>");
 }
 
 //Level 3 Tab title
@@ -457,8 +456,14 @@ if (found_app_aliddns()){
 }else if (found_app_zerotier()){
 	zerotier_array = new Array("","Advanced_zerotier.asp");
 	tablink[16] = (zerotier_array);
+}else if (found_app_ddnsto()){
+	ddnsto_array = new Array("","Advanced_ddnsto.asp");
+	tablink[16] = (ddnsto_array);
 }
-
+if (found_app_aldriver()){
+	aldriver_arry = new Array("","Advanced_aliyundrive.asp");
+	tablink[17] = (aldriver_arry);
+}
 
 //Level 2 Menu
 menuL2_title = new Array(16)
@@ -485,10 +490,11 @@ if (found_app_adbyby()){
 if (found_app_adguardhome()){
 	menuL2_title.push("<#menu5_33#>");
 } else menuL2_title.push("");
-if (found_app_aliddns()){
+if (found_app_aliddns()||found_app_zerotier()||found_app_ddnsto()){
 	menuL2_title.push("<#menu5_30#>");
-} else if (found_app_zerotier()){
-	menuL2_title.push("<#menu5_30#>");
+} else menuL2_title.push("");
+if (found_app_aldriver()){
+	menuL2_title.push("<#menu5_35#>");
 } else menuL2_title.push("");
 
 menuL2_link  = new Array("", tablink[0][1], tablink[1][1], tablink[2][1], tablink[3][1], tablink[4][1], tablink[5][1], tablink[6][1], tablink[7][1], support_2g_radio() ? tablink[8][1] : "Main_EStatus_Content.asp", tablink[9][1]);
@@ -518,6 +524,11 @@ if (found_app_aliddns()){
 	menuL2_link.push(aliddns_array[1]);
 } else if (found_app_zerotier()){
 	menuL2_link.push(zerotier_array[1]);
+} else if (found_app_ddnsto()){
+	menuL2_link.push(ddnsto_array[1]);
+} else menuL2_link.push("");
+if (found_app_aldriver()){
+	menuL2_link.push(aldriver_arry[1]);
 } else menuL2_link.push("");
 
 //Level 1 Menu in Gateway, Router mode

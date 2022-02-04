@@ -96,6 +96,7 @@ typedef u_int8_t u8;
 #define EVM_RESTART_ADGUARDHOME		    (1ULL << 57)
 #define EVM_RESTART_ZEROTIER		    (1ULL << 59)
 #define EVM_RESTART_DDNSTO		    (1ULL << 60)
+#define EVM_RESTART_ALDRIVER		    (1ULL << 61)
 #define EVM_RESTART_REBOOT		(1ULL << 62)
 
 #define EVM_BLOCK_UNSAFE		(1ULL << 63) /* special case */
@@ -155,6 +156,7 @@ typedef u_int8_t u8;
 #define EVT_RESTART_ADBYBY	2
 #define EVT_RESTART_ZEROTIER    2
 #define EVT_RESTART_DDNSTO     	2
+#define EVT_RESTART_ALDRIVER     	2
 #define EVT_RESTART_ALIDDNS	2
 #define EVT_RESTART_SS_TUNNEL		2
 #define EVT_RESTART_DNSFORWARDER	1

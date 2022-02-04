@@ -84,6 +84,7 @@
 #define RCN_RESTART_WYY		"restart_wyy"
 #define RCN_RESTART_ZEROTIER	"restart_zerotier"
 #define RCN_RESTART_DDNSTO	"restart_ddnsto"
+#define RCN_RESTART_ALDRIVER	"restart_aldriver"
 #define RCN_RESTART_REBOOT		"restart_reboot"
 
 ////////////////////////////////////////////////////////////

@@ -2482,6 +2482,11 @@ ej_firmware_caps_hook(int eid, webs_t wp, int argc, char **argv)
 #else
 	int found_app_ddnsto = 0;
 #endif
+#if defined(APP_ALDRIVER)
+	int found_app_aldriver = 1;
+#else
+	int found_app_aldriver = 0;
+#endif
 #if defined(APP_ADBYBY)
 	int found_app_adbyby = 1;
 #else
@@ -2664,6 +2669,7 @@ ej_firmware_caps_hook(int eid, webs_t wp, int argc, char **argv)
 		"function found_app_adbyby() { return %d;}\n"
 		"function found_app_zerotier() { return %d;}\n"
 		"function found_app_ddnsto() { return %d;}\n"
+		"function found_app_aldriver() { return %d;}\n"
 		"function found_app_aliddns() { return %d;}\n"
 		"function found_app_adguardhome() { return %d;}\n",
 		found_utl_hdparm,
@@ -2691,6 +2697,7 @@ ej_firmware_caps_hook(int eid, webs_t wp, int argc, char **argv)
 		found_app_adbyby,
 		found_app_zerotier,
 		found_app_ddnsto,
+		found_app_aldriver,
 		found_app_aliddns,
 		found_app_adguardhome
 	);

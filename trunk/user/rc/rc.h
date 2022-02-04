@@ -576,6 +576,11 @@ void stop_ddnsto(void);
 void start_ddnsto(void);
 void restart_ddnsto(void);
 #endif
+#if defined(APP_ALDRIVER)
+void stop_aldriver(void);
+void start_aldriver(void);
+void restart_aldriver(void);
+#endif
 /* services_ex.c */
 int fill_dnsmasq_servers(void);
 int is_dns_dhcpd_run(void);
