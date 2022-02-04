@@ -456,6 +456,21 @@ void restart_aldriver(void){
 }
 #endif
 
+void stop_wireguard(void){
+	eval("/usr/bin/wireguard.sh","stop");
+}
+
+void start_wireguard(void){
+	int wireguard_enable = nvram_get_int("wireguard_enable");
+	if ( wireguard_enable == 1)
+		eval("/usr/bin/wireguard.sh","start");
+}
+
+void restart_wireguard(void){
+	stop_wireguard();
+	start_wireguard();
+}
+
 #if defined(APP_ADBYBY)
 void stop_adbyby(void){
 	eval("/usr/bin/adbyby.sh","stop");
@@ -744,12 +759,13 @@ stop_services(int stopall)
 #if defined(APP_DDNSTO)
 	stop_ddnsto();
 #endif
+
 #if defined(APP_ALDRIVER)
 	stop_aldriver();
 #endif
-#if defined(APP_ddnsto)
-	stop_ddnsto();
-#endif
+
+	stop_wireguard();
+
 #if defined(APP_ALIDDNS)
 	stop_aliddns();
 #endif

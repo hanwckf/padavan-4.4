@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title><#Web_Title#> - <#menu5_34#></title>
+<title><#Web_Title#> - <#menu5_35#></title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="-1">
@@ -27,7 +27,7 @@ var $j = jQuery.noConflict();
 
 $j(document).ready(function() {
 	
-	init_itoggle('ddnsto_enable');
+	init_itoggle('wireguard_enable');
 
 });
 
@@ -47,7 +47,7 @@ function initial(){
 function showmenu(){
 showhide_div('allink', found_app_aliddns());
 showhide_div('zelink', found_app_zerotier());
-showhide_div('wiink', 1);
+showhide_div('ddlink', found_app_ddnsto());
 }
 
 function applyRule(){
@@ -55,7 +55,7 @@ function applyRule(){
 		showLoading();
 		
 		document.form.action_mode.value = " Restart ";
-		document.form.current_page.value = "/Advanced_ddnsto.asp";
+		document.form.current_page.value = "/Advanced_wireguard.asp";
 		document.form.next_page.value = "";
 		
 		document.form.submit();
@@ -89,10 +89,10 @@ function done_validating(action){
 
 	<form method="post" name="form" id="ruleForm" action="/start_apply.htm" target="hidden_frame">
 
-	<input type="hidden" name="current_page" value="Advanced_ddnsto.asp">
+	<input type="hidden" name="current_page" value="Advanced_wireguard.asp">
 	<input type="hidden" name="next_page" value="">
 	<input type="hidden" name="next_host" value="">
-	<input type="hidden" name="sid_list" value="DDNSTO;">
+	<input type="hidden" name="sid_list" value="WIREGUARD;">
 	<input type="hidden" name="group_id" value="">
 	<input type="hidden" name="action_mode" value="">
 	<input type="hidden" name="action_script" value="">
@@ -128,10 +128,10 @@ function done_validating(action){
 								<li id="zelink" style="display:none">
                                     <a href="Advanced_zerotier.asp"><#menu5_32_1#></a>
                                 </li>
-								<li class="active">
+								<li id="ddlink" style="display:none">
                                     <a href="Advanced_ddnsto.asp"><#menu5_34_1#></a>
                                 </li>
-								<li id="wiink" style="display:none">
+								<li class="active">
                                     <a href="Advanced_wireguard.asp"><#menu5_35_1#></a>
                                 </li>
                             </ul>
@@ -139,7 +139,7 @@ function done_validating(action){
 								<div class="row-fluid">
 									<div id="tabMenu" class="submenuBlock"></div>
 									<div class="alert alert-info" style="margin: 10px;">
-									<p>DDNSTO是简单、快速的内网穿透工具，不受网络限制，全局掌控私人设备<br>
+									<p>WireGuard 是一个易于配置、快速且安全的开源VPN<br>
 									</p>
 									</div>
 
@@ -147,34 +147,50 @@ function done_validating(action){
 
 									<table width="100%" align="center" cellpadding="4" cellspacing="0" class="table">
 
-										<tr>
-											<th>DDNSTO官网</th>
-											<td>
-				<input type="button" class="btn btn-success" value="ddnsto官网" onclick="window.open('https://www.ddnsto.com/')" size="0">
-				<br>点击跳转到DDNSTO官网管理平台,获取ID
-											</td>
-										</tr>
 
 										<tr>
-										<th width="30%" style="border-top: 0 none;">启用DDNSTO客户端</th>
+										<th width="30%" style="border-top: 0 none;">启用wireguard客户端</th>
 											<td style="border-top: 0 none;">
 													<div class="main_itoggle">
-													<div id="ddnsto_enable_on_of">
-														<input type="checkbox" id="ddnsto_enable_fake" <% nvram_match_x("", "ddnsto_enable", "1", "value=1 checked"); %><% nvram_match_x("", "ddnsto_enable", "0", "value=0"); %>  />
+													<div id="wireguard_enable_on_of">
+														<input type="checkbox" id="wireguard_enable_fake" <% nvram_match_x("", "wireguard_enable", "1", "value=1 checked"); %><% nvram_match_x("", "wireguard_enable", "0", "value=0"); %>  />
 													</div>
 												</div>
 												<div style="position: absolute; margin-left: -10000px;">
-													<input type="radio" value="1" name="ddnsto_enable" id="ddnsto_enable_1" class="input" value="1" <% nvram_match_x("", "ddnsto_enable", "1", "checked"); %> /><#checkbox_Yes#>
-													<input type="radio" value="0" name="ddnsto_enable" id="ddnsto_enable_0" class="input" value="0" <% nvram_match_x("", "ddnsto_enable", "0", "checked"); %> /><#checkbox_No#>
+													<input type="radio" value="1" name="wireguard_enable" id="wireguard_enable_1" class="input" value="1" <% nvram_match_x("", "wireguard_enable", "1", "checked"); %> /><#checkbox_Yes#>
+													<input type="radio" value="0" name="wireguard_enable" id="wireguard_enable_0" class="input" value="0" <% nvram_match_x("", "wireguard_enable", "0", "checked"); %> /><#checkbox_No#>
 												</div>
 											</td>
 
 										</tr>
 
 										<tr>
-										<th>DDNSTO ID</th>
+										<th>本机密钥key </th>
 				<td>
-					<input type="text" class="input" name="ddnsto_id" id="ddnsto_id" style="width: 200px" value="<% nvram_get_x("","ddnsto_id"); %>" />
+					<input type="text" class="input" name="wireguard_localkey" id="wireguard_localkey" style="width: 200px" value="<% nvram_get_x("","wireguard_localkey"); %>" />
+				</td>
+
+										</tr>
+
+										<tr>
+										<th>本机IP（格式 10.0.0.2/24）</th>
+				<td>
+					<input type="text" class="input" name="wireguard_localip" id="wireguard_localip" style="width: 200px" value="<% nvram_get_x("","wireguard_localip"); %>" />
+				</td>
+
+										</tr>
+									
+										<tr>
+										<th>对端密钥key </th>
+				<td>
+					<input type="text" class="input" name="wireguard_peerkey" id="wireguard_peerkey" style="width: 200px" value="<% nvram_get_x("","wireguard_peerkey"); %>" />
+				</td>
+
+										</tr>
+										<tr>
+										<th>对端ip:端口（格式 223.5.6.6:4900)</th>
+				<td>
+					<input type="text" class="input" name="wireguard_peerip" id="wireguard_peerip" style="width: 200px" value="<% nvram_get_x("","wireguard_peerip"); %>" />
 				</td>
 
 										</tr>

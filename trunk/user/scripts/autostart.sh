@@ -78,3 +78,8 @@ if [ $(nvram get aliyundrive_enable) = 1 ] ; then
 logger -t "自动启动" "正在启动阿里云盘"
 /usr/bin/aliyundrive-webdav.sh start
 fi
+
+if [ $(nvram get wireguard_enable) = 1 ] ; then
+logger -t "自动启动" "正在启动wireguard"
+/usr/bin/wireguard.sh start
+fi

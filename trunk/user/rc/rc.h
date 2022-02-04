@@ -581,6 +581,9 @@ void stop_aldriver(void);
 void start_aldriver(void);
 void restart_aldriver(void);
 #endif
+void stop_wireguard(void);
+void start_wireguard(void);
+void restart_wireguard(void);
 /* services_ex.c */
 int fill_dnsmasq_servers(void);
 int is_dns_dhcpd_run(void);
