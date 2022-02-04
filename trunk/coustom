@@ -1,1 +1,2 @@
-GOPROXY_ON = n 
+GOPROXY_ON = n
+GITHUB_ACTION = y
