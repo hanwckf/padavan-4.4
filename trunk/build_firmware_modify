@@ -6,8 +6,9 @@ if [ -z "$1" ] || [ "$EUID" != 0 ]; then
 	exit 1
 fi
 
+if [ -z "$2" ];then
 if [ ! -f configs/templates/$1.config ] ; then
-	echo "configs/templates/$1.config not found!"
+	echo "configs/templates/$1.config not found "
 	exit 1
 fi
 
@@ -41,6 +42,9 @@ echo "CONFIG_FIRMWARE_INCLUDE_DDNSTO=y" >> .config #ddnsto
 ##内网穿透服务##
 echo "CONFIG_FIRMWARE_INCLUDE_ALDRIVER=y" >> .config
 echo "CONFIG_FIRMWARE_INCLUDE_MENTOHUST=n" >> .config #mentohust
+
+fi
+
 ROOTDIR=`pwd`
 export ROOTDIR=$ROOTDIR
 
