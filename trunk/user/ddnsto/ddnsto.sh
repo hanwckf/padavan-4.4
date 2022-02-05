@@ -3,7 +3,7 @@
 start_zero() {
 	logger -t "DDNSTO" "正在启动DDNSTO"
 	kill_z
-	SSL_CERT_FILE=/usr/bin/cacert.pem /usr/bin/ddnsto -u "$(nvram get ddnsto_id)" >/dev/null 2>&1 &
+	/usr/bin/ddnsto -u "$(nvram get ddnsto_id)" >/dev/null 2>&1 &
 
 }
 kill_z() {
