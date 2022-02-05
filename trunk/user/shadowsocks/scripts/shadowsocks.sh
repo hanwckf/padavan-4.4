@@ -46,12 +46,14 @@ find_bin() {
 			ret="/usr/bin/v2ray" 
 		else
 			ret="/usr/bin/xray" 
+		fi
 		;;
 	xray) 
 		if [ -f "/usr/bin/xray" ]; then
 			ret="/usr/bin/xray" 
 		else
 			ret="/usr/bin/v2ray"
+		fi
 		;;
 	trojan) ret="/usr/bin/trojan" ;;
 	socks5) ret="/usr/bin/ipt2socks" ;;
