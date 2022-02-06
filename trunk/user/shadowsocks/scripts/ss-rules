@@ -68,14 +68,6 @@ flush_r() {
 	flush_iptables mangle
 	ip rule del fwmark 0x01/0x01 table 100 2>/dev/null
 	ip route del local 0.0.0.0/0 dev lo table 100 2>/dev/null
-	$ipt_m -D PREROUTING -p udp -j SS_SPEC_TPROXY
-	$ipt_n -D PREROUTING -j SS_SPEC_WAN_AC
-	$ipt_n -X SS_SPEC_WAN_AC
-	$ipt_n -D PREROUTING -j SS_SPEC_WAN_FW
-	$ipt_n -X SS_SPEC_WAN_FW
-	$ipt_n -D PREROUTING -j SS_SPEC_WAN_DG
-	$ipt_n -D OUTPUT -p tcp -j SS_SPEC_WAN_DG
-	$ipt_n -X SS_SPEC_WAN_DG
 	ipset -X ss_spec_lan_ac 2>/dev/null
 	ipset -X ss_spec_wan_ac 2>/dev/null
 	ipset -X ssr_gen_router 2>/dev/null
