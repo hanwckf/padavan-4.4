@@ -372,6 +372,25 @@ svc_timecheck(void)
 				svcStatus[GUEST2_ACTIVE] = -1;
 		}
 	}
+	
+	char reboot_schedule[PATH_MAX];
+	if (nvram_match("reboot_schedule_enable", "1"))
+	{
+		if (nvram_match("ntp_ready", "1"))
+		{
+			snprintf(reboot_schedule, sizeof(reboot_schedule), "%s", nvram_safe_get("reboot_schedule"));
+			if (strlen(reboot_schedule) == 11 && atoi(reboot_schedule) > 2359)
+			{
+				if (timecheck_reboot(reboot_schedule))
+				{
+					logmessage("reboot scheduler", "[%s] The system is going down for reboot\n", __FUNCTION__);
+	                sys_exit();
+				}
+			}
+		}
+		//else
+		//	logmessage("reboot scheduler", "[%s] NTP sync error\n", __FUNCTION__);
+	}
 
 	char ss_schedule[PATH_MAX];
 	if (nvram_match("ss_schedule_enable", "1"))
