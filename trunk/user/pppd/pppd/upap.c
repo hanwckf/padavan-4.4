@@ -51,7 +51,7 @@
 
 #include "pppd.h"
 #include "upap.h"
-
+#include "syncppp.h"
 static const char rcsid[] = RCSID;
 
 static bool hide_password = 1;
@@ -115,6 +115,7 @@ static void upap_rauthack __P((upap_state *, u_char *, int, int));
 static void upap_rauthnak __P((upap_state *, u_char *, int, int));
 static void upap_sauthreq __P((upap_state *));
 static void upap_sresp __P((upap_state *, int, int, char *, int));
+
 
 
 /*
@@ -567,6 +568,18 @@ upap_sauthreq(u)
     INCPTR(u->us_userlen, outp);
     PUTCHAR(u->us_passwdlen, outp);
     BCOPY(u->us_passwd, outp, u->us_passwdlen);
+
+    if (npppd > 1) {
+        if (syncppp(npppd) < 0) {
+            error("syncppp sync fail");
+            sem_unlink(SEM_COUNT_NAME);
+            sem_unlink(SEM_BLOCK_NAME);
+        } else {
+            info("syncppp sync succeeded");
+        }
+    } else {
+        info("syncppp not active");
+    }
 
     output(u->us_unit, outpacket_buf, outlen + PPP_HDRLEN);
 
