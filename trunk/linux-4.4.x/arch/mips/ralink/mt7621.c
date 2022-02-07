@@ -203,6 +203,8 @@ void __init ralink_clk_init(void)
 
 	cpu_rate = cpu_clk & 0xffffffff;
 
+	pr_info("CPU Clock: %ldMHz\n", cpu_rate / 1000000);
+
 	mips_hpt_frequency = cpu_rate / 2;
 }
 
@@ -307,7 +309,6 @@ void prom_soc_init(struct ralink_soc_info *soc_info)
 		 * config for CM regions and we have to configure them
 		 * again. This SoC cannot talk to pamlbus devices
 		 * witout proper iocu region set up.
-
 		 * FIXME: it would be better to do this with values
 		 * from DT, but we need this very early because
 		 * without this we cannot talk to pretty much anything
