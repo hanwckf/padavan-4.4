@@ -771,7 +771,7 @@ struct nvram_pair router_defaults[] = {
 	{ "ald_cache_size", "1000" },
 	{ "ald_cache_ttl", "600" },
 	{ "ald_host", "0.0.0.0" },
-	{ "ald_port", "8080" },
+	{ "ald_port", "8089" },
 	{ "ald_root", "/" },
 	{ "ald_domain_id", "0" },
 	{ "ald_no_trash", "0" },

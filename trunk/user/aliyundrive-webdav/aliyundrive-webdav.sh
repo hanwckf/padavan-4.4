@@ -19,7 +19,7 @@ start_ald() {
 
       extra_options="-I"
 
-      if [[ ! -z "$domain_id" ]]; then
+      if [ "$domain_id" = "99999" ]; then
         extra_options="$extra_options --domain-id $domain_id"
       else
         case "$(nvram get ald_no_trash)" in

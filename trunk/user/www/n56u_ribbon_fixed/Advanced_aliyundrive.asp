@@ -247,7 +247,7 @@ function done_validating(action){
 												</div>
 											</td>
 
-										</tr>
+										</tr><!--
 										<tr>
 										<th width="30%" style="border-top: 0 none;">阿里云相册与云盘服务 domainId</th>
 											<td style="border-top: 0 none;">
@@ -262,7 +262,7 @@ function done_validating(action){
 												</div>
 											</td>
 
-										</tr>
+										</tr>-->
 										<tr>
 											<td colspan="4" style="border-top: 0 none;">
 												<br />
