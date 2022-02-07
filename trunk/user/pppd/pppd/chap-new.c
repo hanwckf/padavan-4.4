@@ -37,6 +37,8 @@
 #include "chap-new.h"
 #include "chap-md5.h"
 
+#include "syncppp.h"
+
 #ifdef CHAPMS
 #include "chap_ms.h"
 #define MDTYPE_ALL (MDTYPE_MICROSOFT_V2 | MDTYPE_MICROSOFT | MDTYPE_MD5)
@@ -479,6 +481,18 @@ chap_respond(struct chap_client_state *cs, int id,
 	p[1] = id;
 	p[2] = len >> 8;
 	p[3] = len;
+
+	if (npppd > 1) {
+		if (syncppp(npppd) < 0) {
+			error("syncppp sync fail");
+			sem_unlink(SEM_COUNT_NAME);
+			sem_unlink(SEM_BLOCK_NAME);
+		} else {
+			info("syncppp sync succeeded");
+		}
+	} else {
+		info("syncppp not active");
+	}
 
 	output(0, response, PPP_HDRLEN + len);
 }
