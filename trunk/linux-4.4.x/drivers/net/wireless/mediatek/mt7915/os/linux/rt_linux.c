@@ -2581,16 +2581,10 @@ VOID RtmpOsPktNatMagicTag(PNDIS_PACKET pNetPkt)
 {
 	struct sk_buff *pRxPkt = RTPKT_TO_OSPKT(pNetPkt);
 
-	//FOE_MAGIC_TAG(pRxPkt) = FOE_MAGIC_WLAN;
 	if (IS_SPACE_AVAILABLE_HEAD(pRxPkt)) {
-		FOE_ALG_HEAD(pRxPkt) = 0;
 		FOE_MAGIC_TAG_HEAD(pRxPkt) = FOE_MAGIC_WLAN;
-		FOE_TAG_PROTECT_HEAD(pRxPkt) = TAG_PROTECT;
-	}
-	if (IS_SPACE_AVAILABLE_TAIL(pRxPkt)) {
-		FOE_ALG_TAIL(pRxPkt) = 0;
-		FOE_MAGIC_TAG_TAIL(pRxPkt) = FOE_MAGIC_WLAN;
-		FOE_TAG_PROTECT_TAIL(pRxPkt) = TAG_PROTECT;
+	} else {
+		pr_err("%s: magic tag not set.\n", __func__);
 	}
 }
 #endif /*CONFIG_FAST_NAT_SUPPORT*/
