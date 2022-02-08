@@ -771,7 +771,7 @@ struct nvram_pair router_defaults[] = {
 	{ "ald_cache_size", "1000" },
 	{ "ald_cache_ttl", "600" },
 	{ "ald_host", "0.0.0.0" },
-	{ "ald_port", "8080" },
+	{ "ald_port", "8089" },
 	{ "ald_root", "/" },
 	{ "ald_domain_id", "0" },
 	{ "ald_no_trash", "0" },
@@ -787,6 +787,10 @@ struct nvram_pair router_defaults[] = {
 	{ "ss_watchcat", "1" },
 	{ "ss_update_chnroute", "0" },
 	{ "ss_update_gfwlist", "0" },
+	
+	/*autoreboot*/
+	{ "reboot_schedule_enable", "0" },
+	{ "reboot_schedule", "00000000000" },
 #endif
 
 

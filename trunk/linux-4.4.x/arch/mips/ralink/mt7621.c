@@ -169,6 +169,14 @@ void __init ralink_clk_init(void)
 		break;
 	case 1:
 		mc_cpll = rt_memc_r32(DRAMC_REG_MPLL18);
+		/* 此处为超频代码 1000Mhz=0x312 1100Mhz=0x362 1120Mhz=0x372 1200Mhz=0x3B2 
+		如需更改频率请修改下面代码的0x312为对应频率的十六进制即可
+		注意：启用此代码breed里设置的超频将会失效！*/
+		/*删除此行代码即可启用
+		mc_cpll &= ~(0x7ff);
+		mc_cpll |=  (0x312);
+		rt_memc_w32(mc_cpll,DRAMC_REG_MPLL18);
+		删除此行代码即可启用*/
 		mc_fb = (mc_cpll >> CPLL_FBDIV_SHIFT) & CPLL_FBDIV_MASK;
 		mc_prediv_sel = (mc_cpll >> CPLL_PREDIV_SHIFT)
 				& CPLL_PREDIV_MASK;
@@ -202,6 +210,8 @@ void __init ralink_clk_init(void)
 		pr_notice("Invalid CPU clock: %lluHz\n", cpu_clk);
 
 	cpu_rate = cpu_clk & 0xffffffff;
+
+	pr_info("CPU Clock: %ldMHz\n", cpu_rate / 1000000);
 
 	mips_hpt_frequency = cpu_rate / 2;
 }
@@ -307,7 +317,6 @@ void prom_soc_init(struct ralink_soc_info *soc_info)
 		 * config for CM regions and we have to configure them
 		 * again. This SoC cannot talk to pamlbus devices
 		 * witout proper iocu region set up.
-
 		 * FIXME: it would be better to do this with values
 		 * from DT, but we need this very early because
 		 * without this we cannot talk to pretty much anything
