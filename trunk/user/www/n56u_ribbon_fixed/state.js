@@ -462,7 +462,7 @@ if (found_app_aliddns()){
 }else if (found_app_ddnsto()){
 	ddnsto_array = new Array("","Advanced_ddnsto.asp");
 	tablink[16] = (ddnsto_array);
-}else{
+}else if (found_app_wireguard()){
 	wireguard_array = new Array("","Advanced_wireguard.asp");
 	tablink[16] = (wireguard_array);
 }
@@ -537,7 +537,9 @@ if (found_app_aliddns()){
 	menuL2_link.push(zerotier_array[1]);
 } else if (found_app_ddnsto()){
 	menuL2_link.push(ddnsto_array[1]);
-} else menuL2_link.push(wireguard_array[1]);
+} else if (found_app_wireguard()){
+	menuL2_link.push(wireguard_array[1]);
+} else menuL2_link.push("");
 if (found_app_aldriver()){
 	menuL2_link.push(aldriver_arry[1]);
 } else {

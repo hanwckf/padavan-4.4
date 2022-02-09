@@ -48,7 +48,7 @@ function initial(){
 function showmenu(){
 showhide_div('zelink', found_app_zerotier());
 showhide_div('ddlink', found_app_ddnsto());
-showhide_div('wilink', 1);
+showhide_div('wilink', found_app_wireguard());
 }
 
 function textarea_scripts_enabled(v){

@@ -47,7 +47,7 @@ function initial(){
 function showmenu(){
 showhide_div('allink', found_app_aliddns());
 showhide_div('zelink', found_app_zerotier());
-showhide_div('wiink', 1);
+showhide_div('wiink', found_app_wireguard());
 }
 
 function applyRule(){
