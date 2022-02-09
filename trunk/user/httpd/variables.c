@@ -964,6 +964,7 @@
 		};
 #endif
 
+#if defined(APP_WIREGUARD)
 	struct variable variables_WIREGUARD[] = {
 			{"wireguard_enable", "", NULL, EVM_RESTART_WIREGUARD},
 			{"wireguard_localip", "", NULL, EVM_RESTART_WIREGUARD},
@@ -973,6 +974,7 @@
 			{"wireguard_localip", "", NULL, EVM_RESTART_WIREGUARD},
 			{0,0,0,0}
 		};
+#endif
 
 #if defined(APP_SHADOWSOCKS)
 	struct variable variables_ShadowsocksConf[] = {
@@ -1232,7 +1234,9 @@
 #if defined(APP_ALDRIVER)
 		{"ALDRIVER",		variables_ALDRIVER},
 #endif
+#if defined(APP_WIREGUARD)
 		{"WIREGUARD",		variables_WIREGUARD},
+#endif
 #if defined(APP_ADBYBY)
 		{"AdbybyConf",		variables_AdbybyConf},
 #endif
@@ -1338,7 +1342,9 @@
 #if defined(APP_ALDRIVER)
 		{EVM_RESTART_ALDRIVER,		EVT_RESTART_ALDRIVER,		RCN_RESTART_ALDRIVER,	0},
 #endif
+#if defined(APP_WIREGUARD)
 		{EVM_RESTART_WIREGUARD,		EVT_RESTART_WIREGUARD,		RCN_RESTART_WIREGUARD,	0},
+#endif
 #if defined(APP_ADBYBY)
 		{EVM_RESTART_ADBYBY,		EVT_RESTART_ADBYBY,		RCN_RESTART_ADBYBY,	0},
 #endif
