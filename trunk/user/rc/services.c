@@ -765,9 +765,9 @@ stop_services(int stopall)
 #if defined(APP_ALDRIVER)
 	stop_aldriver();
 #endif
-
+#if defined(APP_WIREGUARD)
 	stop_wireguard();
-
+#endif
 #if defined(APP_ALIDDNS)
 	stop_aliddns();
 #endif
