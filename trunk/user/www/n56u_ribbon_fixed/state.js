@@ -378,8 +378,8 @@ function show_banner(L3){
 	show_top_status();
 }
 
-var tabtitle = new Array(18);
-var tablink = new Array(18);
+var tabtitle = new Array(19);
+var tablink = new Array(19);
 tabtitle[0] = new Array("", "<#menu5_1_1#>", "<#menu5_1_2#>", "<#menu5_1_3#>", "<#menu5_1_4#>", "<#menu5_1_5#>", "<#menu5_1_6#>");
 tabtitle[1] = new Array("", "<#menu5_1_1#>", "<#menu5_1_2#>", "<#menu5_1_3#>", "<#menu5_1_4#>", "<#menu5_1_5#>", "<#menu5_1_6#>");
 tabtitle[2] = new Array("", "<#menu5_2_1#>", "<#menu5_2_2#>", "<#menu5_2_3#>", "<#menu5_2_4#>", "<#menu5_2_5#>", "<#menu5_2_6#>");
@@ -415,6 +415,9 @@ if (found_app_aliddns()||found_app_zerotier()||found_app_ddnsto){
 }
 if (found_app_aldriver()){
 	tabtitle[17] = new Array("", "<#menu5_36#>");
+}
+if (found_app_sqm()){
+	tabtitle[18] = new Array("", "QoS限速");
 }
 
 //Level 3 Tab title
@@ -470,6 +473,10 @@ if (found_app_aldriver()){
 	aldriver_arry = new Array("","Advanced_aliyundrive.asp");
 	tablink[17] = (aldriver_arry);
 }
+if (found_app_sqm()){
+	sqm_array = new Array("","Advanced_SQM.asp");
+	tablink[18] = (sqm_array);
+}
 
 //Level 2 Menu
 menuL2_title = new Array(17)
@@ -505,7 +512,9 @@ if (found_app_aldriver()){
 } else {
 	menuL2_title.push("");
 }
-
+if (found_app_sqm()){
+	menuL2_title.push("QoS限速");
+} else menuL2_title.push("");
 
 
 menuL2_link  = new Array("", tablink[0][1], tablink[1][1], tablink[2][1], tablink[3][1], tablink[4][1], tablink[5][1], tablink[6][1], tablink[7][1], support_2g_radio() ? tablink[8][1] : "Main_EStatus_Content.asp", tablink[9][1]);
@@ -545,7 +554,9 @@ if (found_app_aldriver()){
 } else {
 	menuL2_link.push("");
 }
-
+if (found_app_sqm()){
+	menuL2_link.push(sqm_array[1]);
+} else menuL2_link.push("");
 
 //Level 1 Menu in Gateway, Router mode
 menuL1_title = new Array("", "<#menu1#>", "", "", "", "<#menu4#>", "<#menu5_8#>", "<#menu5#>");
