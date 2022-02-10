@@ -29,6 +29,10 @@ do
 	fi
 done
 
+if [ $(nvram get pppoemwan_enable) = 1 ] ; then
+sleep 20
+fi
+
 if [ $(nvram get adbyby_enable) = 1 ] ; then
 logger -t "自动启动" "正在启动adbyby plus+"
 /usr/bin/adbyby.sh start
@@ -68,3 +72,5 @@ if [ $(nvram get sqm_enable) = 1 ] ; then
 logger -t "自动启动" "正在启动SQM QOS"
 /usr/lib/sqm/run.sh
 fi
+
+
