@@ -1159,14 +1159,10 @@ handle_notifications(void)
 			restart_wireguard();
 		}
 #endif
-#if defined(APP_KOOLPROXY)
-		else if (strcmp(entry->d_name, RCN_RESTART_KOOLPROXY) == 0)
+#if defined(APP_SQM)
+		else if (strcmp(entry->d_name, RCN_RESTART_SQM) == 0)
 		{
-			restart_koolproxy();
-		}
-		else if (strcmp(entry->d_name, RCN_RESTART_KPUPDATE) == 0)
-		{
-			update_kp();
+			restart_sqm();
 		}
 #endif
 #if defined(APP_ADBYBY)

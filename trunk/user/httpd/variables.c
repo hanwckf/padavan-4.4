@@ -967,6 +967,20 @@
 		};
 #endif
 
+#if defined(APP_SQM)
+	struct variable variables_SqmConf[] = {
+			{"sqm_enable", "", NULL, EVM_RESTART_SQM},
+			{"sqm_active", "", NULL, EVM_RESTART_SQM},
+			{"sqm_down_speed", "", NULL, EVM_RESTART_SQM},
+			{"sqm_up_speed", "", NULL, EVM_RESTART_SQM},
+			{"sqm_debug_log", "", NULL, EVM_RESTART_SQM},
+			{"sqm_log_level", "", NULL, EVM_RESTART_SQM},
+			{"sqm_qdisc", "", NULL, EVM_RESTART_SQM},
+			{"sqm_script", "", NULL, EVM_RESTART_SQM},
+			{0,0,0,0}
+	};
+#endif
+
 #if defined(APP_WIREGUARD)
 	struct variable variables_WIREGUARD[] = {
 			{"wireguard_enable", "", NULL, EVM_RESTART_WIREGUARD},
@@ -1240,6 +1254,9 @@
 #if defined(APP_WIREGUARD)
 		{"WIREGUARD",		variables_WIREGUARD},
 #endif
+#if defined(APP_SQM)
+		{"SqmConf",		variables_SqmConf},
+#endif
 #if defined(APP_ADBYBY)
 		{"AdbybyConf",		variables_AdbybyConf},
 #endif
@@ -1344,6 +1361,9 @@
 #endif
 #if defined(APP_ALDRIVER)
 		{EVM_RESTART_ALDRIVER,		EVT_RESTART_ALDRIVER,		RCN_RESTART_ALDRIVER,	0},
+#endif
+#if defined(APP_SQM)
+		{EVM_RESTART_SQM,		EVT_RESTART_SQM,		RCN_RESTART_SQM,	0},
 #endif
 #if defined(APP_WIREGUARD)
 		{EVM_RESTART_WIREGUARD,		EVT_RESTART_WIREGUARD,		RCN_RESTART_WIREGUARD,	0},

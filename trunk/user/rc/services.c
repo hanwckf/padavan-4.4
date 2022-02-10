@@ -439,6 +439,23 @@ void restart_ddnsto(void){
 }
 #endif
 
+#if defined(APP_SQM)
+void stop_sqm(void){
+	eval("/usr/lib/sqm/run.sh","stop");
+}
+
+void start_sqm(void){
+	int sqm_mode = nvram_get_int("sqm_enable");
+	if ( sqm_mode == 1)
+		eval("/usr/lib/sqm/run.sh");
+}
+
+void restart_sqm(void){
+	stop_sqm();
+	start_sqm();
+}
+#endif
+
 #if defined(APP_ALDRIVER)
 void stop_aldriver(void){
 	eval("/usr/bin/aliyundrive-webdav.sh","stop");
@@ -760,6 +777,9 @@ stop_services(int stopall)
 #endif
 #if defined(APP_DDNSTO)
 	stop_ddnsto();
+#endif
+#if defined(APP_SQM)
+	stop_sqm();
 #endif
 
 #if defined(APP_ALDRIVER)

@@ -10,6 +10,6 @@ clean:
 
 romfs:
 	$(ROMFSINST) $(THISDIR)/$(SRC_NAME)/ip/ip /bin/ip
-ifeq ($(CONFIG_FIRMWARE_INCLUDE_QOS),y)
+ifeq ($(CONFIG_FIRMWARE_INCLUDE_SQM),y)
 	$(ROMFSINST) $(THISDIR)/$(SRC_NAME)/tc/tc /bin/tc
 endif

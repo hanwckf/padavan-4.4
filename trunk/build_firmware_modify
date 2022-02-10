@@ -40,8 +40,9 @@ echo "CONFIG_FIRMWARE_INCLUDE_ZEROTIER=n" >> .config #zerotier ~1.3M
 echo "CONFIG_FIRMWARE_INCLUDE_ALIDDNS=y" >> .config #aliddns
 echo "CONFIG_FIRMWARE_INCLUDE_DDNSTO=y" >> .config #ddnsto  ~0.5M
 ##内网穿透服务##
-echo "CONFIG_FIRMWARE_INCLUDE_ALDRIVER=y" >> .config  #ALDRIVER  ~3m
+echo "CONFIG_FIRMWARE_INCLUDE_ALDRIVER=n" >> .config  #ALDRIVER  ~3m
 echo "CONFIG_FIRMWARE_INCLUDE_MENTOHUST=n" >> .config #mentohust
+echo "CONFIG_FIRMWARE_INCLUDE_SQM=y" >> .config #SQM
 
 fi
 
@@ -60,8 +61,14 @@ paragon_hfsplus=0
 
 func_enable_kernel_param()
 {
+	if [ ! -n "$2" ];then
+		own="y"
+	else
+		own="m"
+	fi
+	
 	if [ -n "`grep \^\"\# $1 is not set\" $kernel_tf`" ] ; then
-		sed -i "s/\# $1 is not set/$1=y/" $kernel_tf
+		sed -i "s/\# $1 is not set/$1=$own/" $kernel_tf
 	fi
 }
 
@@ -167,6 +174,19 @@ fi
 # wireguard
 if [ "$CONFIG_FIRMWARE_INCLUDE_WIREGUARD" = "y" ]; then
 	func_enable_kernel_param "CONFIG_WIREGUARD"
+else
+	func_disable_kernel_param "CONFIG_WIREGUARD"
+fi
+# SQM QOS
+if [ "$CONFIG_FIRMWARE_INCLUDE_SQM" = "y" ]; then
+	func_enable_kernel_param "CONFIG_NF_CONNTRACK_EVENTS"
+	sed -i "/CONFIG_NF_CONNTRACK_EVENTS=y/a\CONFIG_NF_CONNTRACK_CHAIN_EVENTS=y" $kernel_tf
+	func_enable_kernel_param "CONFIG_NF_CONNTRACK_TIMEOUT"
+	func_enable_kernel_param "CONFIG_NET_SCH_SFQ" "m"
+	sed -i "/CONFIG_NET_SCH_SFQ=m/a\CONFIG_NET_SCH_CAKE=m" $kernel_tf
+	func_enable_kernel_param "CONFIG_NET_SCH_CODEL" "m"
+	func_enable_kernel_param "CONFIG_NET_ACT_IPT" "m"
+	func_enable_kernel_param "CONFIG_IFB"
 fi
 ############################# USB #####################################
 if [ "$CONFIG_FIRMWARE_ENABLE_USB" != "y" ] || [ -z "$CONFIG_USB_SUPPORT" ] ; then

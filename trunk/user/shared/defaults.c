@@ -798,6 +798,18 @@ struct nvram_pair router_defaults[] = {
 	{ "wireguard_peerkey", "" },
 #endif
 
+#if defined(APP_SQM)
+	/*SQM QoS*/
+	{ "sqm_enable", "0" },
+	{ "sqm_active", "eth3" },
+	{ "sqm_down_speed", "0" },
+	{ "sqm_up_speed", "0" },
+	{ "sqm_debug_log", "0" },
+	{ "sqm_log_level", "5" },
+	{ "sqm_qdisc", "fq_codel" },
+	{ "sqm_script", "simple" },
+#endif
+
 	/* DHCP server parameters */
 	{ "dhcp_start", DEF_LAN_DHCP_BEG },	/* First assignable DHCP address */
 	{ "dhcp_end", DEF_LAN_DHCP_END },	/* Last assignable DHCP address */

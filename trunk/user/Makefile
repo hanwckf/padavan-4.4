@@ -146,6 +146,7 @@ dir_$(CONFIG_FIRMWARE_INCLUDE_DDNSTO)	                       += ddnsto
 dir_$(CONFIG_FIRMWARE_INCLUDE_ALDRIVER)	                       += aliyundrive-webdav
 dir_$(CONFIG_FIRMWARE_INCLUDE_ADBYBY)		+= adbyby
 dir_$(CONFIG_FIRMWARE_INCLUDE_ALIDDNS)		+= aliddns
+dir_$(CONFIG_FIRMWARE_INCLUDE_SQM)				+= sqm-qos
 dir_$(CONFIG_FIRMWARE_INCLUDE_MENTOHUST)		+= mentohust
 dir_$(OPENSSH_ENABLED)				+= openssh
 dir_$(DROPBEAR_ENABLED)				+= dropbear

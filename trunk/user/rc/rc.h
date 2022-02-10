@@ -581,6 +581,11 @@ void stop_aldriver(void);
 void start_aldriver(void);
 void restart_aldriver(void);
 #endif
+#if defined(APP_SQM)
+void stop_sqm(void);
+void start_sqm(void);
+void restart_sqm(void);
+#endif
 #if defined(APP_WIREGUARD)
 void stop_wireguard(void);
 void start_wireguard(void);
