@@ -113,6 +113,9 @@ struct nvram_pair router_defaults[] = {
 	{ "viptv_gateway", "0.0.0.0" },
 
 	/* PPP VPN parameters */
+	{ "wan_pppoe_mwanenable", "0" },		/* MWAN support */
+	{ "wan_pppoe_sync", "1" },		/* PPP sync support */
+	{ "wan_pppoe_num", "1" },		/* PPP username */
 	{ "wan_pppoe_username", "" },		/* PPP username */
 	{ "wan_pppoe_passwd", "" },		/* PPP password */
 	{ "wan_pppoe_idletime", "0" },		/* PPP idle time */

@@ -28,6 +28,8 @@ $j(document).ready(function() {
 	init_itoggle('x_DHCPClient', change_wan_dhcp_auto);
 	init_itoggle('wan_dnsenable_x', change_wan_dns_auto);
 	init_itoggle('vlan_filter', change_stb_port_and_vlan);
+	init_itoggle('pppoemwan_enable');
+	init_itoggle('pppoesync_enable');
 });
 
 </script>
@@ -844,6 +846,42 @@ function simplyMAC(fullMAC){
                                             </td>
                                         </tr>
                                         <tr>
+					<th width="30%" style="border-top: 0 none;">启用多拨(兼容HWNAT)</th>
+												  						     <td style="border-top: 0 none;">
+													<div class="main_itoggle">
+													<div id="pppoemwan_enable_on_of">
+														<input type="checkbox" id="pppoemwan_enable_fake" <% nvram_match_x("", "pppoemwan_enable", "1", "value=1 checked"); %><% nvram_match_x("", "pppoemwan_enable", "0", "value=0"); %>  />
+													</div>
+												</div>
+												<div style="position: absolute; margin-left: -10000px;">
+													<input type="radio" value="1" name="pppoemwan_enable" id="pppoemwan_enable_1" class="input" value="1" <% nvram_match_x("", "pppoemwan_enable", "1", "checked"); %> /><#checkbox_Yes#>
+													<input type="radio" value="0" name="pppoemwan_enable" id="pppoemwan_enable_0" class="input" value="0" <% nvram_match_x("", "pppoemwan_enable", "0", "checked"); %> /><#checkbox_No#>
+												</div>
+											</td>
+
+					</tr>
+                                        <tr>
+					<th width="30%" style="border-top: 0 none;">并发多拨</th>
+												  						     <td style="border-top: 0 none;">
+													<div class="main_itoggle">
+													<div id="pppoesync_enable_on_of">
+														<input type="checkbox" id="pppoesync_enable_fake" <% nvram_match_x("", "pppoesync_enable", "1", "value=1 checked"); %><% nvram_match_x("", "pppoesync_enable", "0", "value=0"); %>  />
+													</div>
+												</div>
+												<div style="position: absolute; margin-left: -10000px;">
+													<input type="radio" value="1" name="pppoesync_enable" id="pppoesync_enable_1" class="input" value="1" <% nvram_match_x("", "pppoesync_enable", "1", "checked"); %> /><#checkbox_Yes#>
+													<input type="radio" value="0" name="pppoesync_enable" id="pppoesync_enable_0" class="input" value="0" <% nvram_match_x("", "pppoesync_enable", "0", "checked"); %> /><#checkbox_No#>
+												</div>
+											</td>
+
+					</tr>
+					<tr>
+										<th>多拨次数</th>
+				<td>
+					<input type="text" class="input" name="pppoe_num" id="pppoe_num" style="width: 200px" value="<% nvram_get_x("","pppoe_num"); %>" />
+				</td>   
+					</tr>
+					<tr>
                                             <th width="50%"><a class="help_tooltip" href="javascript:void(0);" onmouseover="openTooltip(this,7,4);"><#PPPConnection_UserName_itemname#></a></th>
                                             <td>
                                                <input type="text" maxlength="64" class="input" size="32" name="wan_pppoe_username" value="<% nvram_get_x("","wan_pppoe_username"); %>" onkeypress="return is_string(this,event);"/>

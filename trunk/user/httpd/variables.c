@@ -382,9 +382,9 @@
 	struct variable variables_IPConnection[] = {
 			{"sw_mode", "", NULL, EVM_RESTART_REBOOT},
 			{"gw_arp_ping", "", NULL, EVM_RESTART_WAN},
-			{"hw_nat_mode", "", NULL, EVM_RESTART_FIREWALL},
-			{"sw_nat_mode", "", NULL, EVM_RESTART_FIREWALL},
-			{"sfe_enable", "", NULL, EVM_RESTART_FIREWALL},
+			{"hw_nat_mode", "", NULL, EVM_RESTART_FIREWALL|EVM_RESTART_WAN},
+			{"sw_nat_mode", "", NULL, EVM_RESTART_FIREWALL|EVM_RESTART_WAN},
+			{"sfe_enable", "", NULL, EVM_RESTART_FIREWALL|EVM_RESTART_WAN},
 			{"wan_ipaddr", "", NULL, EVM_RESTART_WAN},
 			{"wan_netmask", "", NULL, EVM_RESTART_WAN},
 			{"wan_gateway", "", NULL, EVM_RESTART_WAN},
@@ -446,6 +446,9 @@
 		};
 
 	struct variable variables_PPPConnection[] = {
+			{"pppoemwan_enable", "", NULL, EVM_RESTART_WAN},
+			{"pppoesync_enable", "", NULL, EVM_RESTART_WAN},
+			{"pppoe_num", "", NULL, EVM_RESTART_WAN},
 			{"wan_pppoe_username", "", NULL, EVM_RESTART_WAN},
 			{"wan_pppoe_passwd", "", NULL, EVM_RESTART_WAN},
 			{"wan_pppoe_idletime", "", NULL, EVM_RESTART_WAN},

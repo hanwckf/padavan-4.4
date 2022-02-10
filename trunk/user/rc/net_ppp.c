@@ -436,7 +436,10 @@ launch_wan_pppd(int unit, int wan_proto)
 			safe_start_xl2tpd();
 		}
 	} else {
-		eval("/usr/sbin/pppd", "file", options);
+		if (nvram_match("pppoemwan_enable", "1"))
+			{doSystem("/usr/bin/mwan.sh");}
+		else
+		{eval("/usr/sbin/pppd", "file", options);}
 	}
 
 	return 0;
