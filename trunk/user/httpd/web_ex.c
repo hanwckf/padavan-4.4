@@ -2290,6 +2290,16 @@ static int sqm_status_hook(int eid, webs_t wp, int argc, char **argv)
 }
 #endif
 
+static int update_action_hook(int eid, webs_t wp, int argc, char **argv)
+{
+	char *up_action = websGetVar(wp, "connect_action", "");
+
+	if (!strcmp(up_action, "bigtmp")) {
+		system("mount -t tmpfs -o remount,rw,size=50M tmpfs /tmp");
+	}
+	return 0;
+}
+
 static int
 ej_detect_internet_hook(int eid, webs_t wp, int argc, char **argv)
 {
@@ -4436,6 +4446,7 @@ struct ej_handler ej_handlers[] =
 #if defined (APP_DNSFORWARDER)
 	{ "dnsforwarder_status", dnsforwarder_status_hook},
 #endif
+	{ "update_action", update_action_hook},
 	{ "openssl_util_hook", openssl_util_hook},
 	{ "openvpn_srv_cert_hook", openvpn_srv_cert_hook},
 	{ "openvpn_cli_cert_hook", openvpn_cli_cert_hook},
