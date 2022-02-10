@@ -1,5 +1,5 @@
 #/bin/sh
-logger -t "detect" "wan up,change the rules"
+logger -t "MWAN" "flush the rules"
 PPP_NUM="$(nvram get pppoe_num)"
 CMD="ip route replace default"
 lanip=$(ifconfig br0|grep inet|awk '{print $2}'|tr -d "addr:")

@@ -2208,6 +2208,9 @@ start_firewall_ex(void)
 	/* enable IPv4 forward */
 	set_ipv4_forward(1);
 
+	if (nvram_match("pppoemwan_enable", "1"))
+		{doSystem("/usr/bin/detect.sh");}
+		
 	/* try unload unused iptables modules */
 	module_smart_unload("xt_webstr", 0);
 	module_smart_unload("xt_HL", 0);
