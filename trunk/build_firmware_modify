@@ -46,6 +46,10 @@ echo "CONFIG_FIRMWARE_INCLUDE_ALDRIVER=n" >> .config  #ALDRIVER  ~3m
 echo "CONFIG_FIRMWARE_INCLUDE_MENTOHUST=n" >> .config #mentohust
 echo "CONFIG_FIRMWARE_INCLUDE_SQM=y" >> .config #SQM
 
+#CPU超频
+echo "CONFIG_FIRMWARE_INCLUDE_OC=n" >> .config #CPU超频开关
+echo 'CONFIG_FIRMWARE_MT7621_OC="0x312"' >> .config #此处填写对应频率的十六进制：1000Mhz=0x312 1100Mhz=0x362 1120Mhz=0x372 1200Mhz=0x3B2
+
 fi
 
 ROOTDIR=`pwd`
@@ -190,6 +194,12 @@ if [ "$CONFIG_FIRMWARE_INCLUDE_SQM" = "y" ]; then
 	func_enable_kernel_param "CONFIG_NET_ACT_IPT" "m"
 	func_enable_kernel_param "CONFIG_IFB"
 fi
+#cpu超频
+if [ "$CONFIG_FIRMWARE_INCLUDE_OC" = "y" ]; then	
+	sed -i "/CONFIG_RALINK_MT7621=y/a\CONFIG_MT7621_OC=y" $kernel_tf
+	sed -i '/CONFIG_MT7621_OC=y/a\CONFIG_MT7621_CPU_FREQ="'$CONFIG_FIRMWARE_MT7621_OC'"' $kernel_tf
+fi
+
 ############################# USB #####################################
 if [ "$CONFIG_FIRMWARE_ENABLE_USB" != "y" ] || [ -z "$CONFIG_USB_SUPPORT" ] ; then
 	func_disable_busybox_param "CONFIG_FDISK"

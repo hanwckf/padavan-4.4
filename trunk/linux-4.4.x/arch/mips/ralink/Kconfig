@@ -25,6 +25,13 @@ config IRQ_INTC
 config RALINK_MT7621
 	bool
 	default n
+	
+config MT7621_OC
+	bool "cpu oc"
+
+config MT7621_CPU_FREQ
+	string "Count/Compare Timer Frequency (MHz)"
+	default "0x312"
 
 choice
 	prompt "Ralink SoC selection"
