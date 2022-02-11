@@ -1,4 +1,4 @@
-SRC_NAME = smartdns-Release33
+SRC_NAME = smartdns-ba282c8
 THISDIR = $(shell pwd)
 
 all: extract_test config_test
@@ -6,7 +6,7 @@ all: extract_test config_test
 
 extract_test:
 	( if [ ! -d $(SRC_NAME) ]; then \
-		tar -xf $(SRC_NAME).tar.gz ; \
+		tar zxf $(SRC_NAME).tar.gz ; \
 	fi )
 
 config_test:
@@ -24,3 +24,8 @@ clean:
 
 romfs:
 	$(ROMFSINST) -p +x $(THISDIR)/$(SRC_NAME)/src/smartdns /usr/bin/smartdns
+	$(ROMFSINST) -p +x $(THISDIR)/smartdns.sh /usr/bin/smartdns.sh
+	$(ROMFSINST) /etc_ro/smartdns_address.conf
+	$(ROMFSINST) /etc_ro/smartdns_blacklist-ip.conf
+	$(ROMFSINST) /etc_ro/smartdns_custom.conf
+	$(ROMFSINST) /etc_ro/smartdns_whitelist-ip.conf

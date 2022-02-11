@@ -591,6 +591,11 @@ void stop_wireguard(void);
 void start_wireguard(void);
 void restart_wireguard(void);
 #endif
+#if defined(APP_SMARTDNS)
+void stop_smartdns(void);
+void start_smartdns(void);
+void restart_smartdns(void);
+#endif
 /* services_ex.c */
 int fill_dnsmasq_servers(void);
 int is_dns_dhcpd_run(void);

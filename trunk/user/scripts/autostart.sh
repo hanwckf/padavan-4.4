@@ -4,10 +4,23 @@
 mkdir -p /tmp/dnsmasq.dom
 logger -t "为防止dnsmasq启动失败，创建/tmp/dnsmasq.dom/"
 
+smartdns_conf="/etc/storage/smartdns_custom.conf"
+dnsmasq_Conf="/etc/storage/dnsmasq/dnsmasq.conf"
+smartdns_Ini="/etc/storage/smartdns_conf.ini"
+sdns_port=$(nvram get sdns_port)
 if [ $(nvram get sdns_enable) = 1 ] ; then
-logger -t "自动启动" "正在启动SmartDns"
+   if [ -f "$smartdns_conf" ] ; then
+       sed -i '/去广告/d' $smartdns_conf
+       sed -i '/adbyby/d' $smartdns_conf
+       sed -i '/no-resolv/d' "$dnsmasq_Conf"
+       sed -i '/server=127.0.0.1#'"$sdns_portd"'/d' "$dnsmasq_Conf"
+       sed -i '/port=0/d' "$dnsmasq_Conf"
+       rm  -f "$smartdns_Ini"
+   fi
+logger -t "自动启动" "正在启动SmartDNS"
 /usr/bin/smartdns.sh start
 fi
+
 
 logger -t "自动启动" "正在检查路由是否已连接互联网！"
 count=0
@@ -46,6 +59,11 @@ fi
 if [ $(nvram get ss_enable) = 1 ] ; then
 logger -t "自动启动" "正在启动科学上网"
 /usr/bin/shadowsocks.sh start
+fi
+
+if [ $(nvram get adg_enable) = 1 ] ; then
+logger -t "自动启动" "正在启动adguardhome"
+/usr/bin/adguardhome.sh start
 fi
 
 if [ $(nvram get zerotier_enable) = 1 ] ; then
