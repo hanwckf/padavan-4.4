@@ -2289,6 +2289,7 @@ static int sqm_status_hook(int eid, webs_t wp, int argc, char **argv)
 	return 0;
 }
 #endif
+
 #if defined (APP_SMARTDNS)
 static int smartdns_status_hook(int eid, webs_t wp, int argc, char **argv)
 {
@@ -2734,7 +2735,6 @@ ej_firmware_caps_hook(int eid, webs_t wp, int argc, char **argv)
 		found_app_dnsforwarder,
 		found_app_shadowsocks,
 		found_app_sqm,
-		found_app_smartdns,
 		found_app_wireguard,
 		found_app_xupnpd,
 		found_app_mentohust,
@@ -2743,6 +2743,7 @@ ej_firmware_caps_hook(int eid, webs_t wp, int argc, char **argv)
 		found_app_ddnsto,
 		found_app_aldriver,
 		found_app_aliddns,
+		found_app_smartdns,
 		found_app_adguardhome
 	);
 
