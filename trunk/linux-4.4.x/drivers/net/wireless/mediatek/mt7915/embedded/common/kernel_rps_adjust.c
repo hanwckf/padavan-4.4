@@ -9,7 +9,7 @@ char proc_rps_cfg[MAX_PROC_RPS_FILE][8];
 static const char proc_rps_default_cfg[MAX_PROC_RPS_FILE][8] = {
 	"5", "3", "3", "4", "1000", "60", "1"};
 static const char *proc_rps_path[MAX_PROC_RPS_FILE] = {
-"/sys/class/net/eth0/queues/rx-0/rps_cpus",
+"/sys/class/net/eth2/queues/rx-0/rps_cpus",
 "/sys/class/net/ra0/queues/rx-0/rps_cpus",
 "/sys/class/net/rax0/queues/rx-0/rps_cpus",
 "/proc/irq/31/smp_affinity",
@@ -22,7 +22,7 @@ static const char *proc_rps_path[MAX_PROC_RPS_FILE] = {
 static RTMP_OS_FD proc_srcf[MAX_PROC_RPS_FILE] = {NULL};
 static RTMP_OS_FS_INFO proc_osFSInfo;
 struct net_device *proc_net_dev[MAX_NET_DEV] = {0};
-static const char *proc_net_dev_name[MAX_NET_DEV] = {"eth0", "ra0", "rax0"};
+static const char *proc_net_dev_name[MAX_NET_DEV] = {"eth2", "ra0", "rax0"};
 static UINT32 tx_queue_cfg[MAX_NET_DEV] = {
 DEFAULT_NET_DEV_TX_QLEN, DEFAULT_NET_DEV_TX_QLEN, DEFAULT_NET_DEV_TX_QLEN};
 static UINT32 proc_rps_mode_cnt[MAX_PROC_RPS_MODE] = {0};
