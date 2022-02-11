@@ -1274,15 +1274,19 @@ void announce_802_3_packet(
 			RTMP_CHIP_CAP *cap = hc_get_chip_cap(pAd->hdev_ctrl);
 			BOOLEAN whnat_rx_en = pAd->CommonCfg.whnat_en &&
 									(cap->tkn_info.feature & TOKEN_RX);
-#else
-			BOOLEAN whnat_rx_en = FALSE;
 #endif
 #ifdef PKTLOSS_CHK
 			if (pAd->pktloss_chk.enable)
 				pAd->pktloss_chk.pktloss_chk_handler(pAd, GET_OS_PKT_DATAPTR(pRxPkt), MAT_ETHER_HDR_LEN, 3, FALSE);
 #endif
+
 			RtmpOsPktProtocolAssign(pRxPkt);
 
+#ifndef WHNAT_SUPPORT
+            RtmpOsPktNatMagicTag(pRxPkt);
+            if (ra_sw_nat_hook_rx(pRxPkt))
+                RtmpOsPktRcvHandle(pRxPkt, napi);
+#else
 			if (!whnat_rx_en) {
 				RtmpOsPktNatMagicTag(pRxPkt);
 				if (ra_sw_nat_hook_rx(pRxPkt))
@@ -1293,7 +1297,7 @@ void announce_802_3_packet(
 					ra_sw_nat_hook_rx(pRxPkt);
 				RtmpOsPktRcvHandle(pRxPkt, napi);
 			}
-
+#endif
 			return;
 		}
 #endif /* CONFIG_FAST_NAT_SUPPORT */
