@@ -984,11 +984,15 @@
 	struct variable variables_SqmConf[] = {
 			{"sqm_enable", "", NULL, EVM_RESTART_SQM},
 			{"sqm_active", "", NULL, EVM_RESTART_SQM},
+			{"sqm_flag", "", NULL, EVM_RESTART_SQM},
 			{"sqm_down_speed", "", NULL, EVM_RESTART_SQM},
 			{"sqm_up_speed", "", NULL, EVM_RESTART_SQM},
 			{"sqm_debug_log", "", NULL, EVM_RESTART_SQM},
 			{"sqm_log_level", "", NULL, EVM_RESTART_SQM},
 			{"sqm_qdisc", "", NULL, EVM_RESTART_SQM},
+			{"sqm_iqdisc_opts", "", NULL, EVM_RESTART_SQM},
+			{"sqm_eqdisc_opts", "", NULL, EVM_RESTART_SQM},
+			{"sqm_tcMPU", "", NULL, EVM_RESTART_SQM},
 			{"sqm_script", "", NULL, EVM_RESTART_SQM},
 			{0,0,0,0}
 	};

@@ -24,16 +24,53 @@ stop_statefile() {
                           OUTPUT_TARGET=$OUTPUT_TARGET ${SQM_LIB_DIR}/stop-sqm )
 }
 
+runmode_1(){
+export IFACE="eth2"
+nvram set hw_nat_mode=0
+nvram commit
+rmmod hw_nat
+}
+
+runmode_2(){
+export IFACE="br0"
+nvram set hw_nat_mode=2
+nvram commit
+rmmod hw_nat
+modprobe hw_nat
+iwpriv ra0 set hw_nat_register=0
+iwpriv rai0 set hw_nat_register=0
+iwpriv rax0 set hw_nat_register=0
+}
+
+runmode_3(){
+export IFACE="br0"
+nvram set hw_nat_mode=0
+nvram commit
+rmmod hw_nat
+}
+
+runmode_4(){
+export IFACE=$(nvram get sqm_active)
+nvram set hw_nat_mode=2
+nvram commit
+rmmod hw_nat
+modprobe hw_nat
+iwpriv ra0 set hw_nat_register=0
+iwpriv rai0 set hw_nat_register=0
+iwpriv rax0 set hw_nat_register=0
+}
+
+
 start_sqm_section() {
+    runmode="$(nvram get sqm_flag)"
     local section="sqm_"
-    export IFACE=$(nvram get sqm_active)
 
     [ -z "$RUN_IFACE" -o "$RUN_IFACE" = "$IFACE" ] || return
     [ "$(nvram get sqm_enable)" -eq 1 ] || return 0
     [ -f "${SQM_STATE_DIR}/${IFACE}.state" ] && return
 
-    export UPLINK=$(nvram get sqm_up_speed)
-    export DOWNLINK=$(nvram get sqm_down_speed)
+    export DOWNLINK=$(nvram get sqm_up_speed)
+    export UPLINK=$(nvram get sqm_down_speed)
     export LLAM=$(nvram get sqm_linklayer_adaptation_mechanism)
     export LINKLAYER=$(nvram get sqm_linklayer)
     export OVERHEAD=$(nvram get sqm_overhead)
@@ -66,6 +103,16 @@ start_sqm_section() {
     export SQM_DEBUG=${SQM_DEBUG:-$(nvram get sqm_debug_log)}
     export SQM_VERBOSITY_MAX=${SQM_VERBOSITY_MAX:-$(nvram get sqm_log_level)}
     export SQM_VERBOSITY_MIN
+    
+if [ "$runmode" = "1" ]; then
+	runmode_1
+elif [ "$runmode" = "2" ]; then
+	runmode_2
+elif [ "$runmode" = "3" ]; then
+	runmode_3
+else   
+	runmode_4
+fi
 
     "${SQM_LIB_DIR}/start-sqm"
 }

@@ -157,12 +157,10 @@ function getHash(){
                                     <div class="row-fluid">
                                         <div id="tabMenu" class="submenuBlock"></div>
                                         <div class="alert alert-info" style="margin: 10px;">
-                                            注意：使用之前请关闭HWNAT加速，不然SQM不会生效！！！</br>
-											因7621性能所限,大于500M宽带请勿开启QOS！</br>
-                                            通过 SQM_QoS 您可以：</br>
-                                            在一个网络接口上启用流量整形，
-                                            主动管理队列长度与划分优先级，
-                                            实现更好的流量体验。
+                          注意:SQM会自动设置相应的HWNAT规则，请勿自行调整WAN页面的HWNAT选项造成流控失效</br>
+				因7621性能所限,大于500M宽带谨慎开启QOS！</br>
+            通过SQM_QoS您可以：对指定接口流量整形,例如自定义5G访客网络。其他接口如5G主接口不会受到影响。</br>
+                                       启用流量整形，主动管理队列长度与划分优先级，实现更好的流量体验。
                                         </div>
                                    </div>
 
@@ -191,13 +189,24 @@ function getHash(){
                                                     </div>
                                                 </td>
                                             </tr>
+                                              <tr>
+                                            <th>流控对象</th>
+                                            <td>
+                                                <select name="sqm_flag" class="input">
+                                                    <option value="1" <% nvram_match_x("", "sqm_flag", "1", "selected"); %>>仅有线</option>
+                                                    <option value="2" <% nvram_match_x("", "sqm_flag", "2", "selected"); %>>仅无线</option>
+                                                    <option value="3" <% nvram_match_x("", "sqm_flag", "3", "selected"); %>>有线+无线</option>
+                                                    <option value="4" <% nvram_match_x("", "sqm_flag", "4", "selected"); %>>自定义接口</option>
+                                                </select>
+                                            </td>
+                                        </tr>
                                             <tr>
-                                                <th>网络接口</th>
+                                                <th>自定义接口</th>
                                                 <td>
                                                     <input type="text" maxlength="10" class="input" size="10" name="sqm_active" value="<% nvram_get_x("","sqm_active"); %>"/>
                                                 </td>
                                                 <td>
-                                                    &nbsp;<span style="color:#888;">WAN口名称</span>
+                                                    &nbsp;<span style="color:#888;">上项菜单需选择“自定义接口“ 可填写例如:ra0</span>
                                                 </td>
                                             </tr>
                                             <tr>
@@ -238,7 +247,7 @@ function getHash(){
                                                     <input type="text" maxlength="10" class="input" size="10" id="sqm_up_speed" name="sqm_up_speed" value="<% nvram_get_x("","sqm_up_speed"); %>"/>
                                                 </td>
                                                 <td>
-                                                    &nbsp;<span style="color:#888;">测速的80-95％，1 Mbps = 1024 kbit/s</span>
+                                                    &nbsp;<span style="color:#888;">测速的80-95％，1 Mbps = 1024 kbit/s 需填写小于下载速度的值</span>
                                                 </td>
                                             </tr>
                                             <tr>
