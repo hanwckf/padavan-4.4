@@ -22,11 +22,11 @@ jobs:
       matrix:
         include:
           - build_variant: "mt7621"
-            targets: "K2P_nano K2P DIR-878 CR660x JCG-Q20"
+            targets: "WR1200JS K2P DIR-878 CR660x JCG-Q20"
           - build_variant: "mt7621-usb-1"
             targets: "XY-C1 JCG-836PRO JCG-Y2"
           - build_variant: "mt7621-usb-2"
-            targets: "DIR-882 JCG-AC860M NETGEAR-BZV MI-R3P"
+            targets: "MI-R3G JCG-AC860M NETGEAR-BZV MI-R3P"
     steps:
       - uses: actions/checkout@v2
       - name: Prepare environment
