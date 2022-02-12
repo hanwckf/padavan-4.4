@@ -86,7 +86,6 @@ var isMenuopen = 0;
 function initial(){
 	show_banner(2);
 	show_menu(5,15);
-	showmenu();
 	show_footer();
 	fill_adbyby_status(adbyby_status());
 	//change_adbyby_enable();
@@ -98,10 +97,6 @@ function initial(){
 	if (!login_safe())
 		textarea_scripts_enabled(0);
 		//load_body();
-}
-
-function showmenu(){
-showhide_div('adlink', found_app_koolproxy());
 }
 
 function textarea_scripts_enabled(v){
