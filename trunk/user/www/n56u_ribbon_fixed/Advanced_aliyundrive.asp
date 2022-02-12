@@ -36,16 +36,28 @@ $j(document).ready(function() {
 
 </script>
 <script>
-
+<% aliyundrive_status(); %>
 <% login_state_hook(); %>
 
 
 function initial(){
 	show_banner(2);
 	show_menu(5,18,0);
+	fill_status(aliyundrive_status());
 	show_footer();
 
 }
+
+
+function fill_status(status_code){
+	var stext = "Unknown";
+	if (status_code == 0)
+		stext = "<#Stopped#>";
+	else if (status_code == 1)
+		stext = "<#Running#>";
+	$("aliyundrive_status").innerHTML = '<span class="label label-' + (status_code != 0 ? 'success' : 'warning') + '">' + stext + '</span>';
+}
+
 function applyRule(){
 //	if(validForm()){
 		showLoading();
@@ -140,7 +152,9 @@ function done_validating(action){
 				<input type="button" class="btn btn-success" value="点击查看获取 refresh token 的方法" onclick="window.open('https://github.com/messense/aliyundrive-webdav#%E8%8E%B7%E5%8F%96-refresh_token')" size="0">
 											</td>
 										</tr>
-
+										<tr> <th><#running_status#></th>
+                                            <td id="aliyundrive_status" colspan="3"></td>
+                                        </tr>
 										<tr>
 										<th width="30%" style="border-top: 0 none;">启用阿里云盘 WebDAV</th>
 											<td style="border-top: 0 none;">

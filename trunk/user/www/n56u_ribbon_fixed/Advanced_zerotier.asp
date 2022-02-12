@@ -35,7 +35,7 @@ $j(document).ready(function() {
 
 </script>
 <script>
-
+<% zerotier_status(); %>
 <% login_state_hook(); %>
 
 var m_list = [<% get_nvram_list("ZeroConf", "ZeroList"); %>];
@@ -51,6 +51,7 @@ function initial(){
 	show_banner(2);
 	show_menu(5,17,0);
 showmenu();
+fill_status(zerotier_status());
 showMRULESList();
 	show_footer();
 
@@ -58,7 +59,7 @@ showMRULESList();
 function showmenu(){
 showhide_div('allink', found_app_aliddns());
 showhide_div('ddlink', found_app_ddnsto());
-showhide_div('wilink', found_app_wireguard());
+showhide_div('wilink', 1);
 }
 
 function applyRule(){
@@ -75,6 +76,15 @@ function applyRule(){
 
 function done_validating(action){
 	refreshpage();
+}
+
+function fill_status(status_code){
+	var stext = "Unknown";
+	if (status_code == 0)
+		stext = "<#Stopped#>";
+	else if (status_code == 1)
+		stext = "<#Running#>";
+	$("zerotier_status").innerHTML = '<span class="label label-' + (status_code != 0 ? 'success' : 'warning') + '">' + stext + '</span>';
 }
 
 function markGroupRULES(o, c, b) {
@@ -216,6 +226,9 @@ function showMRULESList(){
 									</div>
 
 									<table width="100%" align="center" cellpadding="4" cellspacing="0" class="table">
+									<tr> <th><#running_status#></th>
+                                            <td id="zerotier_status" colspan="3"></td>
+                                        </tr>
 										<tr><th>ZeroTier 客户端 ID</th>
 				<td>
 					<input type="text" class="input" name="zerotier_id" id="zerotier_id" style="width: 200px" value="<% nvram_get_x("","zerotier_id"); %>" />

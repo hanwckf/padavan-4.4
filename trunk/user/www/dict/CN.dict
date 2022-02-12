@@ -916,6 +916,7 @@ menu5_34_1=DDNSTO
 menu5_35=WIREGUARD
 menu5_35_1=WIREGUAED
 menu5_36=阿里云盘
+menu5_37=QOS流控
 menu5_1_1=一般设置
 menu5_1_2=访客网络
 menu5_1_3=无线桥接

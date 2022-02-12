@@ -33,7 +33,7 @@ $j(document).ready(function() {
 
 </script>
 <script>
-
+<% ddnsto_status(); %>
 <% login_state_hook(); %>
 
 
@@ -41,13 +41,23 @@ function initial(){
 	show_banner(2);
 	show_menu(5,17,0);
 	showmenu();
+	fill_status(ddnsto_status());
 	show_footer();
 
 }
 function showmenu(){
 showhide_div('allink', found_app_aliddns());
 showhide_div('zelink', found_app_zerotier());
-showhide_div('wiink', found_app_wireguard());
+showhide_div('wiink', 1);
+}
+
+function fill_status(status_code){
+	var stext = "Unknown";
+	if (status_code == 0)
+		stext = "<#Stopped#>";
+	else if (status_code == 1)
+		stext = "<#Running#>";
+	$("ddnsto_status").innerHTML = '<span class="label label-' + (status_code != 0 ? 'success' : 'warning') + '">' + stext + '</span>';
 }
 
 function applyRule(){
@@ -154,7 +164,9 @@ function done_validating(action){
 				<br>点击跳转到DDNSTO官网管理平台,获取ID
 											</td>
 										</tr>
-
+										<tr> <th><#running_status#></th>
+                                            <td id="ddnsto_status" colspan="3"></td>
+                                        </tr>
 										<tr>
 										<th width="30%" style="border-top: 0 none;">启用DDNSTO客户端</th>
 											<td style="border-top: 0 none;">

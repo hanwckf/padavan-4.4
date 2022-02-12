@@ -28,7 +28,7 @@
 	<script>
 		var node_global_max = 0;
 		<% shadowsocks_status(); %>
-		<% pdnsd_status(); %>
+		<% dns2tcp_status(); %>
 		<% rules_count(); %>
 		node_global_max = 0;
 		editing_ss_id = 0;
@@ -118,6 +118,7 @@ setTimeout('document.getElementById("btn_ctime").style.display="none";',1000);
 			show_menu(13, 13, 0);
 			show_footer();
 			fill_ss_status(shadowsocks_status());
+			fill_dns2tcp_status(dns2tcp_status())
 			$("chnroute_count").innerHTML = '<#menu5_17_3#>' + chnroute_count();
 			$("gfwlist_count").innerHTML = '<#menu5_17_3#>' + gfwlist_count();
 			switch_ss_type();
@@ -368,6 +369,15 @@ setTimeout('document.getElementById("btn_ctime").style.display="none";',1000);
 			else if (status_code == 1)
 				stext = "<#Running#>";
 			$("ss_status").innerHTML = '<span class="label label-' + (status_code != 0 ? 'success' : 'warning') + '">' +
+				stext + '</span>';
+		}
+		function fill_dns2tcp_status(status_code) {
+			var stext = "Unknown";
+			if (status_code == 0)
+				stext = "<#Stopped#>";
+			else if (status_code == 1)
+				stext = "<#Running#>";
+			$("dns2tcp_status").innerHTML = '<span class="label label-' + (status_code != 0 ? 'success' : 'warning') + '">' +
 				stext + '</span>';
 		}
 		var arrHashes = ["cfg", "add", "ssl", "cli", "log", "help"];
@@ -1555,10 +1565,10 @@ setTimeout('document.getElementById("btn_ctime").style.display="none";',1000);
 													</tr>
 													</th>
 													</tr>
-													<tr id="row_pdnsd_run" style="display:none;">
-														<th>PDNSD<#running_status#>
+													<tr id="row_pdnsd_run">
+														<th>dns2tcp<#running_status#>
 														</th>
-														<td id="pdnsd_status"></td>
+														<td id="dns2tcp_status"></td>
 													</tr>
 													</th>
 													</tr>
