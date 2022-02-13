@@ -23,15 +23,13 @@
 		};
 
 		wlan5g {
-			label = "wlan5g";
+			label = "sw5g";
 			gpios = <&gpio0 8 GPIO_ACTIVE_LOW>;
-			linux,default-trigger = "phy1radio";
 		};
 
 		wlan2g {
-			label = "wlan2g";
+			label = "sw2g";
 			gpios = <&gpio0 10 GPIO_ACTIVE_LOW>;
-			linux,default-trigger = "phy0radio";
 		};
 	};
 
@@ -73,36 +71,36 @@
 			#size-cells = <1>;
 
 			
-		partition@0 {
-			label = "Bootloader";
-			reg = <0x0 0xe0000>;
-			read-only;
-		};
+			partition@0 {
+				label = "Bootloader";
+				reg = <0x0 0xe0000>;
+				read-only;
+			};
 
-		partition@e0000 {
-			label = "ubootenv";
-			reg = <0xe0000 0x100000>;
-			read-only;
-		};
+			partition@e0000 {
+				label = "ubootenv";
+				reg = <0xe0000 0x100000>;
+				read-only;
+			};
 
-		partition@1e0000 {
-			label = "Factory";
-			reg = <0x1e0000 0x100000>;
-			read-only;
-		};
+			partition@1e0000 {
+				label = "Factory";
+				reg = <0x1e0000 0x100000>;
+				read-only;
+			};
 
-		partition@2e0000 {
-			label = "factory2";
-			reg = <0x2e0000 0x100000>;
-			read-only;
-		};
+			partition@2e0000 {
+				label = "factory2";
+				reg = <0x2e0000 0x100000>;
+				read-only;
+			};
 
-		partition@3e0000 {
-			label = "firmware";
-			reg = <0x3e0000 0x1800000>;
-		};
-		
-		partition@1BE0000  {
+			partition@3e0000 {
+				label = "firmware";
+				reg = <0x3e0000 0x1800000>;
+			};
+
+			partition@1BE0000  {
 				label = "Config";
 				reg = <0x1BE0000 0x80000>;		/* 512k */
 			};
@@ -114,15 +112,14 @@
 
 			partition@2060000 {
 				label = "RWFS";
-				reg = <0x2060000 0x5F20000>;	/* 39m */
+				reg = <0x2060000 0x5F20000>;	
 			};
 
 			partition@all {
 				label = "ALL";
 				reg = <0x0 0x7f80000>;
 			};
-			
-		
+
 		};
 	};
 };
