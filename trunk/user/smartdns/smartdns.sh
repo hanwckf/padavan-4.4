@@ -445,7 +445,7 @@ Start_smartdns () {
     fi
     # 通过检测配置文件是否变化，确定是否重启 dnsmasq 进程
     if [ "$dnsmasq_md5" != $(md5sum  "$dnsmasq_Conf" | awk '{ print $1 }') ] ; then
-         /sbin/restart_dns >/dev/null 2>&1
+         /sbin/restart_dhcpd >/dev/null 2>&1
     fi
     # 启动 smartdns 进程
     "$smartdns_Bin" -f -c "$smartdns_Conf" "$args"  &>/dev/null &
@@ -471,7 +471,7 @@ Start_smartdns () {
         action="stop"
         Stop_smartdns
         if [ "$dnsmasq_md5" != $(md5sum  "$dnsmasq_Conf" | awk '{ print $1 }') ] ; then
-             /sbin/restart_dns >/dev/null 2>&1
+             /sbin/restart_dhcpd >/dev/null 2>&1
         fi
         exit
     else
@@ -488,7 +488,7 @@ Stop_smartdns () {
     Change_dnsmasq
     Change_iptable
     if [ "$dnsmasq_md5" != $(md5sum  "$dnsmasq_Conf" | awk '{ print $1 }') ] && [ "$sdns_enable" = 0 ] ; then
-         /sbin/restart_dns >/dev/null 2>&1
+         /sbin/restart_dhcpd >/dev/null 2>&1
     fi
     smartdns_process=$(pidof smartdns | awk '{ print $1 }')
     if [ "$smartdns_process"x = x ] && [ "$sdns_enable" = 0 ] ; then 
