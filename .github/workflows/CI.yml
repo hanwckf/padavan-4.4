@@ -26,7 +26,7 @@ jobs:
           - build_variant: "mt7621-usb-1"
             targets: "XY-C1 JCG-836PRO JCG-Y2"
           - build_variant: "mt7621-usb-2"
-            targets: "MI-R3G JCG-AC860M NETGEAR-BZV MI-R3P RM2100"
+            targets: "MI-R3G JCG-AC860M NETGEAR-BZV MI-R3P R2100 RM2100"
     steps:
       - uses: actions/checkout@v2
       - name: Prepare environment
