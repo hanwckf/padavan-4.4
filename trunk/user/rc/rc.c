@@ -1273,6 +1273,10 @@ handle_notifications(void)
 			stop_logger();
 			start_logger(0);
 		}
+		else if (strcmp(entry->d_name, RCN_RESTART_WDG) == 0)
+		{
+			restart_watchdog_cpu();
+		}
 		else if (strcmp(entry->d_name, RCN_RESTART_TWEAKS) == 0)
 		{
 			notify_leds_detect_link();

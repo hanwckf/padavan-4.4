@@ -72,6 +72,7 @@ typedef u_int8_t u8;
 #define EVM_RESTART_CROND		(1ULL << 27)
 #define EVM_RESTART_SYSCTL		(1ULL << 28)
 #define EVM_RESTART_TWEAKS		(1ULL << 29)
+#define EVM_RESTART_WDG			(1ULL << 30)
 #define EVM_RESTART_DI			(1ULL << 31)
 #define EVM_RESTART_SPOOLER		(1ULL << 32)
 #define EVM_RESTART_MODEM		(1ULL << 33)

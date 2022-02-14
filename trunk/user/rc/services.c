@@ -701,6 +701,22 @@ stop_logger(void)
 	kill_services(svcs, 3, 1);
 }
 
+void
+start_watchdog_cpu(void)
+{
+	if (nvram_get_int("watchdog_cpu") != 0)
+		module_smart_load("rt_timer_wdg", NULL);
+}
+
+void
+restart_watchdog_cpu(void)
+{
+	if (nvram_get_int("watchdog_cpu") == 0)
+		module_smart_unload("rt_timer_wdg", 0);
+	else
+		module_smart_load("rt_timer_wdg", NULL);
+}
+
 int
 start_services_once(int is_ap_mode)
 {
@@ -744,6 +760,7 @@ doSystem("/usr/sbin/skipd -d /etc/storage/db");
 	start_vlmcsd();
 #endif
 	start_lltd();
+	start_watchdog_cpu();
 	start_crond();
 	start_networkmap(1);
 	start_rstats();
