@@ -3,20 +3,18 @@ logger -t "MWAN" "flush the rules"
 PPP_NUM="$(nvram get pppoe_num)"
 CMD="ip route replace default"
 lanip=$(ifconfig br0|grep inet|awk '{print $2}'|tr -d "addr:")
-
 flush_iptables() {
 		ipt="iptables -t $1"
 		DAT=$(iptables-save -t $1)
 		TAG="$2"
 		eval $(echo "$DAT" | grep "$TAG" | sed -e 's/^-A/$ipt -D/' -e 's/$/;/')
-		for chain in $(echo "$DAT" | awk '/^:SS_SPEC/{print $1}'); do
-			$ipt -F ${chain:1} 2>/dev/null && $ipt -X ${chain:1}
-		done
+		
 	}
- 
+
 flush_iptables mangle nth
 flush_iptables mangle br0
-flush_iptables nat FULLCONENAT
+flush_iptables nat ppp
+
 
 for i in $(seq 1 $PPP_NUM)
 do
