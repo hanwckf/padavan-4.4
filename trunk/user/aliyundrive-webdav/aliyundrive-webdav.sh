@@ -36,9 +36,8 @@ start_ald() {
           *) ;;
         esac
       fi
-	  
-      /usr/bin/$NAME $extra_options --host $host --port $port --root $root  --refresh-token $refresh_token -S $read_buf_size --cache-size $cache_size --cache-ttl $cache_ttl --workdir /tmp/$NAME >/dev/null 2>&1 &
-	  ;;
+	/usr/bin/$NAME $extra_options --host $host --root $root -p $port  -r $refresh_token  -U $auth_user -W $auth_password -S $read_buf_size --cache-size $cache_size --cache-ttl $cache_ttl --workdir /tmp/$NAME >/dev/null 2>&1 &  
+        ;;
     *)
       kill_ald ;;
   esac
