@@ -133,11 +133,6 @@ static int slave_configure(struct scsi_device *sdev)
 		 * let the queue segment size sort out the real limit.
 		 */
 		blk_queue_max_hw_sectors(sdev->request_queue, 0x7FFFFF);
-	} else if (us->pusb_dev->speed >= USB_SPEED_SUPER) {
-		/* USB3 devices will be limited to 1024 sectors. This gives us
-		 * better throughput on most devices.
-		 */
-		blk_queue_max_hw_sectors(sdev->request_queue, 1024);
 	}
 
 	/* Some USB host controllers can't do DMA; they have to use PIO.
@@ -584,7 +579,7 @@ static const struct scsi_host_template usb_stor_host_template = {
 	.sg_tablesize =			SCSI_MAX_SG_CHAIN_SEGMENTS,
 
 	/* limit the total size of a transfer to 120 KB */
-	.max_sectors =                  512,
+	.max_sectors =                  240,
 
 	/* merge commands... this seems to help performance, but
 	 * periodically someone should test to see which setting is more
