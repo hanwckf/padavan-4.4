@@ -38,14 +38,14 @@ echo "CONFIG_FIRMWARE_INCLUDE_ADGUARDHOME=n" >> .config #adg DNS去AD
 
 
 ##内网穿透服务##
-echo "CONFIG_FIRMWARE_INCLUDE_ZEROTIER=n" >> .config #zerotier ~1.3M
+echo "CONFIG_FIRMWARE_INCLUDE_ZEROTIER=y" >> .config #zerotier ~1.3M
 echo "CONFIG_FIRMWARE_INCLUDE_ALIDDNS=y" >> .config #aliddns
 echo "CONFIG_FIRMWARE_INCLUDE_DDNSTO=y" >> .config #ddnsto  ~0.5M
 ##内网穿透服务##
 echo "CONFIG_FIRMWARE_INCLUDE_ALDRIVER=n" >> .config  #ALDRIVER  ~3m
 echo "CONFIG_FIRMWARE_INCLUDE_MENTOHUST=n" >> .config #mentohust
 echo "CONFIG_FIRMWARE_INCLUDE_SQM=y" >> .config #SQM
-
+echo "CONFIG_FIRMWARE_INCLUDE_WIREGUARD=y" >>.config #wireguard 10k
 #CPU超频
 echo "CONFIG_FIRMWARE_INCLUDE_OC=n" >> .config #CPU超频开关
 echo 'CONFIG_FIRMWARE_MT7621_OC="0x312"' >> .config #此处填写对应频率的十六进制：1000Mhz=0x312 1100Mhz=0x362 1120Mhz=0x372 1200Mhz=0x3B2
