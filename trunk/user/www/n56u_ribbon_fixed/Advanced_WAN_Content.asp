@@ -20,6 +20,7 @@
 <script type="text/javascript" src="/itoggle.js"></script>
 <script type="text/javascript" src="/popup.js"></script>
 <script type="text/javascript" src="/help.js"></script>
+<script type="text/javascript" src="/help_b.js"></script>
 <script>
 var $j = jQuery.noConflict();
 
@@ -28,8 +29,10 @@ $j(document).ready(function() {
 	init_itoggle('x_DHCPClient', change_wan_dhcp_auto);
 	init_itoggle('wan_dnsenable_x', change_wan_dns_auto);
 	init_itoggle('vlan_filter', change_stb_port_and_vlan);
-	init_itoggle('pppoemwan_enable');
 	init_itoggle('pppoesync_enable');
+	init_itoggle('pppoemwan_enable',change_pppoemwan_enabled);
+	init_itoggle('pppoemwan_rules_x', change_pppoemwan_rules_enabled);
+	init_itoggle('pppoemwan_443');
 });
 
 </script>
@@ -38,12 +41,23 @@ $j(document).ready(function() {
 <% login_state_hook(); %>
 
 var client_mac = login_mac_str();
-
+var ipmonitor = [<% get_static_client(); %>];
 var original_wan_type = wan_proto;
 var original_wan_dhcp_auto = parseInt('<% nvram_get_x("", "x_DHCPClient"); %>');
 var original_wan_dns_auto = parseInt('<% nvram_get_x("", "wan_dnsenable_x"); %>');
 var original_wan_src_phy = '<% nvram_get_x("", "wan_src_phy"); %>';
+var m_dhcp = [<% get_nvram_list("PPPConnection", "pppoemwanIPList"); %>];
+var mdhcp_ifield = 4;
+if(m_dhcp.length > 0){
+	var m_dhcp_ifield = m_dhcp[0].length;
+	for (var i = 0; i < m_dhcp.length; i++) {
+		m_dhcp[i][mdhcp_ifield] = i;
+	}
+}
 
+var isMenuopen = 0;
+var clients_info = getclient(1,0);
+var sort_mode = parseInt(localStorage.getItem('sortMode'));
 function initial(){
 	show_banner(1);
 	show_menu(5,4,1);
@@ -92,17 +106,98 @@ function initial(){
 	AuthSelection(document.form.wan_auth_mode.value);
 
 	change_stb_port_and_vlan();
+	showMDHCPList();
+	change_pppoemwan_enabled();
+	showLANIPList();
 }
 
+function getclient(flag_mac,flag_all){
+	var clients = new Array();
+	var j = 0;
+	for(var i = 0; i < ipmonitor.length; ++i){
+		if (flag_all != 1) {
+			if (ipmonitor[i][5] == "1")
+				continue;
+		}
+		
+		clients[j] = new Array(8);
+		
+		clients[j][0] = ipmonitor[i][2];	// Device name
+		clients[j][1] = ipmonitor[i][0];	// IP
+		clients[j][2] = ipmonitor[i][1];	// MAC
+		clients[j][3] = null;			// host is a wireless client
+		clients[j][4] = null;			// this is a wireless info
+		clients[j][5] = ipmonitor[i][3];	// TYPE
+		clients[j][6] = ipmonitor[i][4];	// host has a HTTP service
+		clients[j][7] = "u";
+		
+		if(clients[j][0] == null || clients[j][0].length < 1)
+			clients[j][0] = "*";
+		
+		if (flag_mac == 1)
+			clients[j][2] = simplyMAC(clients[j][2]);
+		++j;
+	}
+
+	clients.sort(function(a,b){
+		var ret;
+		if (sort_mode == 1 || sort_mode == -1) { // Name
+			ret = a[0].localeCompare(b[0]);
+		} else if (sort_mode == 3 || sort_mode == -3) { // MAC
+			ret = a[2].localeCompare(b[2]);
+		} else if (sort_mode == 4 || sort_mode == -4) { // RSSI
+			ret = (parseInt(a[4])||0) - (parseInt(b[4])||0);
+		} else if (sort_mode == 0) { // Type
+			ret = a[5].localeCompare(b[5]);
+		} else  { // IP
+			var aa = a[1].split(".");
+			var bb = b[1].split(".");
+			var resulta = aa[0]*0x1000000 + aa[1]*0x10000 + aa[2]*0x100 + aa[3]*1;
+			var resultb = bb[0]*0x1000000 + bb[1]*0x10000 + bb[2]*0x100 + bb[3]*1;
+			ret = resulta-resultb;
+		}
+		return (sort_mode < 0) ? (ret * -1) : ret;
+	});
+
+	return clients;
+}
+
+function simplyMAC(fullMAC){
+	var ptr;
+	var tempMAC;
+	var pos1, pos2;
+	
+	ptr = fullMAC;
+	tempMAC = "";
+	pos1 = pos2 = 0;
+	
+	for(var i = 0; i < 5; ++i){
+		pos2 = pos1+ptr.indexOf(":");
+		
+		tempMAC += fullMAC.substring(pos1, pos2);
+		
+		pos1 = pos2+1;
+		ptr = fullMAC.substring(pos1);
+	}
+	
+	tempMAC += fullMAC.substring(pos1);
+	
+	return tempMAC;
+}
 function applyRule(){
 	if(validForm()){
 		showLoading();
-		
-		document.form.next_page.value = "";
+		if (document.form.pppoemwan_rules_x[0].checked)
+		document.form.action_mode.value = " Restart ";
+	else
 		document.form.action_mode.value = " Apply ";
+		document.form.current_page.value = "/Advanced_WAN_Content.asp";
+		document.form.next_page.value = "";
+		
 		document.form.submit();
 	}
 }
+
 
 function validForm(){
 	var lan_addr = document.form.lan_ipaddr.value;
@@ -595,6 +690,189 @@ function showMAC(){
 	document.form.wan_hwaddr_x.value = simplyMAC(this.client_mac);
 }
 
+function sortbyIP(){
+	m_dhcp.sort(function(a,b){
+		var aa = a[1].split(".");
+		var bb = b[1].split(".");
+		var resulta = aa[0]*0x1000000 + aa[1]*0x10000 + aa[2]*0x100 + aa[3]*1;
+		var resultb = bb[0]*0x1000000 + bb[1]*0x10000 + bb[2]*0x100 + bb[3]*1;
+		return resulta-resultb;
+	});
+	showMDHCPList();
+}
+
+function sortbyMAC(){
+	m_dhcp.sort(function(a,b){
+		return parseInt(a[0])-parseInt(b[0]);
+	});
+	showMDHCPList();
+}
+
+function sortbyName(){
+	m_dhcp.sort(function(a,b){
+		var aa = a[2].toLowerCase();
+		var bb = b[2].toLowerCase();
+		if (aa < bb) return -1;
+		if (aa > bb) return 1;
+		return 0;
+	});
+	showMDHCPList();
+}
+
+function sortbyId(){
+	m_dhcp.sort(function(a,b){
+		return a[mdhcp_ifield] - b[mdhcp_ifield];
+	});
+	showMDHCPList();
+}
+
+function showLANIPList(){
+	var code = "";
+	var show_name = "";
+	
+	for(var i = 0; i < clients_info.length ; i++){
+		if(clients_info[i][0] && clients_info[i][0].length > 20)
+			show_name = clients_info[i][0].substring(0, 18) + "..";
+		else
+			show_name = clients_info[i][0];
+		
+		if(clients_info[i][2]){
+			code += '<a href="javascript:void(0)"><div onclick="setClientMAC('+i+');"><strong>'+clients_info[i][1]+'</strong>';
+			code += ' ['+clients_info[i][2]+']';
+			if(show_name && show_name.length > 0)
+				code += ' ('+show_name+')';
+			code += ' </div></a>';
+		}
+	}
+	if (code == "")
+		code = '<div style="text-align: center;" onclick="hideClients_Block();"><#Nodata#></div>';
+	code +='<!--[if lte IE 6.5]><iframe class="hackiframe2"></iframe><![endif]-->';	
+	$("ClientList_Block").innerHTML = code;
+}
+
+function hideClients_Block(){
+	$j("#chevron").children('i').removeClass('icon-chevron-up').addClass('icon-chevron-down');
+	$('ClientList_Block').style.display='none';
+	isMenuopen = 0;
+}
+
+function pullLANIPList(obj){
+	if(isMenuopen == 0){
+		$j(obj).children('i').removeClass('icon-chevron-down').addClass('icon-chevron-up');
+		$("ClientList_Block").style.display = 'block';
+		document.form.pppoemwan_mac_x_0.focus();
+		isMenuopen = 1;
+	}
+	else
+		hideClients_Block();
+}
+
+
+
+function setClientMAC(num){
+	document.form.pppoemwan_mac_x_0.value = clients_info[num][2];
+	document.form.pppoemwan_ip_x_0.value = clients_info[num][1];
+	document.form.pppoemwan_name_x_0.value = clients_info[num][0];
+	hideClients_Block();
+}
+
+function change_pppoemwan_rules_enabled(){
+	var v = document.form.pppoemwan_rules_x[0].checked;
+	showhide_div('row_static_caption', v);
+	showhide_div('row_static_header', v);
+	showhide_div('row_static_body', v);
+}
+
+function change_pppoemwan_enabled(){
+	var v = document.form.pppoemwan_enable[0].checked;
+	showhide_div('pppoemwan3', v);
+	showhide_div('pppoemwan2', v);
+	showhide_div('pppoemwan1', v);
+	showhide_div('pppoemwan0', v);
+	if (v == "0"){
+	showhide_div('row_static_caption', 0);
+	showhide_div('row_static_header', 0);
+	showhide_div('row_static_body', 0);}
+	else
+	{var v = document.form.pppoemwan_rules_x[0].checked;
+	showhide_div('row_static_caption', v);
+	showhide_div('row_static_header', v);
+	showhide_div('row_static_body', v);}
+}
+
+
+function markGroupMDHCP(o, c, b) {
+	document.form.group_id.value = "pppoemwanIPList";
+	if(b == " Add "){
+		if (document.form.pppoemwan_staticnum_x_0.value >= c){
+			alert("<#JS_itemlimit1#> " + c + " <#JS_itemlimit2#>");
+			return false;
+		}else if (document.form.pppoemwan_mac_x_0.value==""){
+			alert("<#JS_fieldblank#>");
+			document.form.pppoemwan_mac_x.focus();
+			document.form.pppoemwan_mac_x_0.select();
+			return false;
+		}else if(document.form.pppoemwan_ip_x_0.value==""){
+			alert("<#JS_fieldblank#>");
+			document.form.pppoemwan_ip_x_0.focus();
+			document.form.pppoemwan_ip_x_0.select();
+			return false;
+		}else if (!validate_hwaddr(document.form.pppoemwan_mac_x_0)){
+			return false;
+		}else if (!validate_ipaddr_final(document.form.pppoemwan_ip_x_0, 'staticip')){
+			return false;
+		}else{
+			for(i=0; i<m_dhcp.length; i++){
+				if(document.form.pppoemwan_mac_x_0.value==m_dhcp[i][0]) {
+					alert('<#JS_duplicate#>' + ' (' + m_dhcp[i][0] + ')' );
+					document.form.pppoemwan_mac_x_0.focus();
+					document.form.pppoemwan_mac_x_0.select();
+					return false;
+				}
+				if(document.form.pppoemwan_ip_x_0.value.value==m_dhcp[i][1]) {
+					alert('<#JS_duplicate#>' + ' (' + m_dhcp[i][1] + ')' );
+					document.form.pppoemwan_ip_x_0.focus();
+					document.form.pppoemwan_ip_x_0.select();
+					return false;
+				}
+			}
+		}
+	}
+	pageChanged = 0;
+	document.form.action_mode.value = b;
+	return true;
+}
+
+function showMDHCPList(){
+	var code = '<table width="100%" cellspacing="0" cellpadding="3" class="table table-list">';
+	if(m_dhcp.length == 0)
+		code +='<tr><td colspan="4" style="text-align: center;"><div class="alert alert-info"><#IPConnection_VSList_Norule#></div></td></tr>';
+	else{
+	    for(var i = 0; i < m_dhcp.length; i++){
+		code +='<tr id="row' + i + '">';
+		code +='<td width="25%">&nbsp;' + m_dhcp[i][0] + '</td>';
+		code +='<td width="25%">&nbsp;' + m_dhcp[i][1] + '</td>';
+		code +='<td width="25%">&nbsp;' + m_dhcp[i][2] + '</td>';
+		code +='<td width="20%">&nbsp;' + m_dhcp[i][3] + '</td>';
+		code +='<td width="5%" style="text-align: center;"><input type="checkbox" name="pppoemwanIPList_s" value="' + m_dhcp[i][mdhcp_ifield] + '" onClick="changeBgColor(this,' + i + ');" id="check' + m_dhcp[i][mdhcp_ifield] + '"></td>';
+		code +='</tr>';
+	    }
+		code += '<tr>';
+		code += '<td colspan="4">&nbsp;</td>'
+		code += '<td><button class="btn btn-danger" type="submit" onclick="markGroupMDHCP(this, 64, \' Del \');" name="pppoemwanIPList"><i class="icon icon-minus icon-white"></i></button></td>';
+		code += '</tr>'
+	}
+	code +='</table>';
+	$("MDHCPList_Block").innerHTML = code;
+}
+
+function changeBgColor(obj, num){
+	$("row" + num).style.background=(obj.checked)?'#D9EDF7':'whiteSmoke';
+}
+function changeBgColorrl(obj, num){
+	$("rowrl" + num).style.background=(obj.checked)?'#D9EDF7':'whiteSmoke';
+}
+
 function simplyMAC(fullMAC){
 	var ptr;
 	var tempMAC;
@@ -652,7 +930,7 @@ function simplyMAC(fullMAC){
     <input type="hidden" name="next_page" value="">
     <input type="hidden" name="next_host" value="">
     <input type="hidden" name="sid_list" value="Layer3Forwarding;LANHostConfig;IPConnection;PPPConnection;WLANConfig11b">
-    <input type="hidden" name="group_id" value="">
+    <input type="hidden" name="group_id" value="pppoemwanIPList">
     <input type="hidden" name="action_mode" value="">
     <input type="hidden" name="action_script" value="">
     <input type="hidden" name="lan_ipaddr" value="<% nvram_get_x("", "lan_ipaddr"); %>" readonly="1" />
@@ -661,7 +939,7 @@ function simplyMAC(fullMAC){
     <input type="hidden" name="vlan_tag_lan2" value="<% nvram_get_x("", "vlan_tag_lan2"); %>" />
     <input type="hidden" name="vlan_tag_lan3" value="<% nvram_get_x("", "vlan_tag_lan3"); %>" />
     <input type="hidden" name="vlan_tag_lan4" value="<% nvram_get_x("", "vlan_tag_lan4"); %>" />
-
+    <input type="hidden" name="pppoemwan_staticnum_x_0" value="<% nvram_get_x("ppoemwanIPList", "pppoemwan_staticnum_x"); %>" readonly="1" />
     <div class="container-fluid">
         <div class="row-fluid">
             <div class="span3">
@@ -846,7 +1124,7 @@ function simplyMAC(fullMAC){
                                                 <input type="text" name="wan_ppp_peer" class="input" maxlength="256" size="32" value="<% nvram_get_x("","wan_ppp_peer"); %>" onKeyPress="return is_string(this,event);"/>
                                             </td>
                                         </tr>
-                                        <tr>
+                                        <tr id="pppoemwan4">
 					<th width="30%" style="border-top: 0 none;">启用多拨(兼容HWNAT)</th>
 												  						     <td style="border-top: 0 none;">
 													<div class="main_itoggle">
@@ -855,13 +1133,13 @@ function simplyMAC(fullMAC){
 													</div>
 												</div>
 												<div style="position: absolute; margin-left: -10000px;">
-													<input type="radio" value="1" name="pppoemwan_enable" id="pppoemwan_enable_1" class="input" value="1" <% nvram_match_x("", "pppoemwan_enable", "1", "checked"); %> /><#checkbox_Yes#>
-													<input type="radio" value="0" name="pppoemwan_enable" id="pppoemwan_enable_0" class="input" value="0" <% nvram_match_x("", "pppoemwan_enable", "0", "checked"); %> /><#checkbox_No#>
+													<input type="radio" value="1" name="pppoemwan_enable" id="pppoemwan_enable_1" class="input"  onclick="change_pppoemwan_enabled()" value="1" <% nvram_match_x("", "pppoemwan_enable", "1", "checked"); %> /><#checkbox_Yes#>
+													<input type="radio" value="0" name="pppoemwan_enable" id="pppoemwan_enable_0" class="input"  onclick="change_pppoemwan_enabled()" value="0" <% nvram_match_x("", "pppoemwan_enable", "0", "checked"); %> /><#checkbox_No#>
 												</div>
 											</td>
 
 					</tr>
-                                        <tr>
+                                        <tr id="pppoemwan3">
 					<th width="30%" style="border-top: 0 none;">并发多拨</th>
 												  						     <td style="border-top: 0 none;">
 													<div class="main_itoggle">
@@ -876,11 +1154,84 @@ function simplyMAC(fullMAC){
 											</td>
 
 					</tr>
-					<tr>
+					<tr id="pppoemwan2" >
 										<th>多拨次数</th>
 				<td>
-					<input type="text" class="input" name="pppoe_num" id="pppoe_num" style="width: 200px" value="<% nvram_get_x("","pppoe_num"); %>" />
+					<input type="text" class="input" name="pppoe_num" id="pppoe_num" style="width: 100px" value="<% nvram_get_x("","pppoe_num"); %>" />
 				</td>   
+					</tr>
+					<tr id="pppoemwan1" >
+					 <th width="30%" style="border-top: 0 none;">内网IP分流控制</th>
+                                             <td style="border-top: 0 none;">
+                                                <div class="main_itoggle">
+                                                    <div id="pppoemwan_rules_x_on_of">
+                                                        <input type="checkbox" id="pppoemwan_rules_x_fake" <% nvram_match_x("", "pppoemwan_rules_x", "1", "value=1 checked"); %><% nvram_match_x("", "pppoemwan_rules_x", "0", "value=0"); %>>
+                                                    </div>
+                                                </div>
+
+                                                <div style="position: absolute; margin-left: -10000px;">
+                                                    <input type="radio" value="1" name="pppoemwan_rules_x" id="pppoemwan_rules_x_1" onclick="change_pppoemwan_rules_enabled()" <% nvram_match_x("", "pppoemwan_rules_x", "1", "checked"); %> /><#checkbox_Yes#>
+                                                    <input type="radio" value="0" name="pppoemwan_rules_x" id="pppoemwan_rules_x_0" onclick="change_pppoemwan_rules_enabled()" <% nvram_match_x("", "pppoemwan_rules_x", "0", "checked"); %> /><#checkbox_No#>
+                                                </div>
+                                            </td>
+                                       </tr>
+                                       <tr id="row_static_caption" style="display:none">
+                                            <th width="25%">
+                                                <#LANHostConfig_ManualMac_itemname#> <a href="javascript:sortbyMAC();" style="outline:0;"><i class="icon-circle-arrow-down"></i></a>
+                                            </th>
+                                            <th width="25%">
+                                                <#LANHostConfig_ManualIP_itemname#> <a href="javascript:sortbyIP();" style="outline:0;"><i class="icon-circle-arrow-down"></i></a>
+                                            </th>
+                                            <th width="25%">
+                                                <#LANHostConfig_ManualName_itemname#> <a href="javascript:sortbyName();" style="outline:0;"><i class="icon-circle-arrow-down"></i></a>
+                                            </th>
+					    <th width="20%">
+                                                出口序号(1开始) <a href="javascript:sortbyName();" style="outline:0;"><i class="icon-circle-arrow-down"></i></a>
+                                            </th>
+                                            <th width="5%">
+                                                <center><a href="javascript:sortbyId();" style="outline:0;"><i class="icon-th-list"></i></a></center>
+                                            </th>
+                                        </tr>
+                                        <tr id="row_static_header" style="display:none">
+                                            <td width="25%">
+                                                <div id="ClientList_Block" class="alert alert-info ddown-list" style="width: 400px;"></div>
+                                                <div class="input-append">
+                                                    <input type="text" maxlength="12" class="span12" size="12" name="pppoemwan_mac_x_0" value="<% nvram_get_x("", "pppoemwan_mac_x_0"); %>" onkeypress="return is_hwaddr(event);" style="float:left; width: 110px"/>
+                                                    <button class="btn btn-chevron" id="chevron" type="button" onclick="pullLANIPList(this);" title="Select the MAC of LAN clients."><i class="icon icon-chevron-down"></i></button>
+                                                </div>
+                                            </td>
+                                            <td width="25%">
+                                                <input type="text" maxlength="15" class="span12" size="15" name="pppoemwan_ip_x_0"  value="<% nvram_get_x("", "pppoemwan_ip_x_0"); %>" onkeypress="return is_ipaddr(this,event);"/>
+                                            </td>
+                                            <td width="25%">
+                                                <input type="text" maxlength="24" class="span12" size="20" name="pppoemwan_name_x_0"  value="<% nvram_get_x("", "pppoemwan_name_x_0"); %>" onKeyPress="return is_string(this,event);"/>
+                                            </td>
+					     <td width="20%">
+                                                <input type="text" maxlength="24" class="span12" size="20" name="pppoemwan_interface_x_0"   value="<% nvram_get_x("", "pppoemwan_interface_x_0"); %>" onKeyPress="return is_string(this,event);"/>
+                                            </td>
+                                            <td width="5%">
+                                                <button class="btn" style="max-width: 219px" type="submit" onclick="markGroupMDHCP(this, 64, ' Add ');" name="ManualDHCPList2" value="<#CTL_add#>" size="12"><i class="icon icon-plus"></i></button>
+                                            </td>
+                                        </tr>
+                                        <tr id="row_static_body" style="display:none">
+                                            <td colspan="5" style="border-top: 0 none; padding: 0px;">
+                                                <div id="MDHCPList_Block"></div>
+                                            </td>
+                                        </tr>
+                                        <tr id="pppoemwan0">
+					<th width="30%" style="border-top: 0 none;">禁用443负载均衡（避免影响网页浏览，可能影响测速）</th>
+												  						     <td style="border-top: 0 none;">
+													<div class="main_itoggle">
+													<div id="pppoemwan_443_on_of">
+														<input type="checkbox" id="pppoemwan_443_fake" <% nvram_match_x("", "pppoemwan_443", "1", "value=1 checked"); %><% nvram_match_x("", "pppoemwan_443", "0", "value=0"); %>  />
+													</div>
+												</div>
+												<div style="position: absolute; margin-left: -10000px;">
+													<input type="radio" value="1" name="pppoemwan_443" id="pppoemwan_443_1" class="input" value="1" <% nvram_match_x("", "pppoemwan_443", "1", "checked"); %> /><#checkbox_Yes#>
+													<input type="radio" value="0" name="pppoemwan_443" id="pppoemwan_443_0" class="input" value="0" <% nvram_match_x("", "pppoemwan_443", "0", "checked"); %> /><#checkbox_No#>
+												</div>
+											</td>
+
 					</tr>
 					<tr>
                                             <th width="50%"><a class="help_tooltip" href="javascript:void(0);" onmouseover="openTooltip(this,7,4);"><#PPPConnection_UserName_itemname#></a></th>
@@ -1206,7 +1557,7 @@ function simplyMAC(fullMAC){
                                             </td>
                                         </tr>
                                     </table>
-
+                                    <table width="100%" align="center" cellpadding="4" cellspacing="0" class="table">                       
                                     <table class="table">
                                         <tr>
                                             <td style="border: 0 none;"><center><input name="button" type="button" class="btn btn-primary" style="width: 219px" onclick="applyRule();" value="<#CTL_apply#>"/></center></td>
