@@ -1,0 +1,122 @@
+/dts-v1/;
+
+#include "mt7621.dtsi"
+#include <dt-bindings/input/input.h>
+#include "mt7621-raeth-gmac2.dtsi"
+#include "mt7621-pinctrl-default-gpio.dtsi"
+
+/ {
+	compatible = "mediatek,mt7621-soc";
+	model = "B70";
+
+	chosen {
+		bootargs = "console=ttyS0,115200";
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		sys_white {
+			label = "power";
+			gpios = <&gpio0 6 GPIO_ACTIVE_LOW>;
+      linux,default-trigger = "heartbeat";
+			default-state = "off";
+		};
+
+		sys_red {
+			label = "wan";
+			gpios = <&gpio0 7 GPIO_ACTIVE_HIGH>;
+      default-state = "off";
+		};
+	};
+
+	gpio-keys-polled {
+		compatible = "gpio-keys-polled";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		poll-interval = <20>;
+
+		reset {
+			label = "reset";
+			gpios = <&gpio0 18 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_RESTART>;
+		};
+	};
+
+	reg_usb_vbus: regulator {
+		compatible = "regulator-fixed";
+		regulator-name = "usb_vbus";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		gpio = <&gpio0 12 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+	};
+
+};
+
+&bch {
+	status = "okay";
+};
+
+&nand {
+	status = "okay";
+
+	flash@0 {
+		reg = <0>;
+		nand-ecc-mode = "hw";
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			partition@0 {
+				label = "Bootloader";
+				reg = <0x00000 0x0040000>;
+				read-only;
+			};
+
+			partition@40000 {
+				label = "BootEnv";
+				reg = <0x40000 0x0040000>;				
+			};
+      
+			partition@80000 {
+				label = "Config";
+				reg = <0x80000 0x0080000>;
+			};
+
+			partition@100000 {
+				label = "Factory";
+				reg = <0x100000 0x0040000>;
+			};
+
+	  	partition@140000 {
+			  label = "Firmware_Stub";
+			  reg = <0x140000 0x1800000>;
+		  };
+
+		  partition@1940000 {
+			  label = "Storage";
+			  reg = <0x1940000 0x400000>;
+		  };
+
+		  partition@1d40000 {
+			  label = "RWFS";
+			  reg = <0x1d40000 0x6240000>;
+		  };      
+		};
+	};
+};
+
+&pcie {
+	status = "okay";
+};
+
+&xhci {
+	#vbus-supply = <&reg_usb_vbus>;
+	status = "okay";
+};
+
+&u3phy1 {
+	status = "okay";
+};
