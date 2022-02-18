@@ -176,7 +176,7 @@ get_wired_mac_e2p_offset(int is_wan)
 	return 0x018E;
 #elif defined (BOARD_MZ_R13) || defined (BOARD_MZ_R13P) || defined (BOARD_MIR3G)
 	return 0xe000;
-#elif defined (BOARD_RM2100)
+#elif defined (BOARD_RM2100) || defined (BOARD_NEWIFI) 
 	return 0xe006;	
 #elif defined (BOARD_CR660x)  || defined (BOARD_Q20)  
 	return 0x3FFFA;

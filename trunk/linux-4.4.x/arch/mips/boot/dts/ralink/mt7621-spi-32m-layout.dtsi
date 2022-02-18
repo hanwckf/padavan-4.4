@@ -1,0 +1,42 @@
+&spi0 {
+	status = "okay";
+
+	m25p80@0 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "jedec,spi-nor";
+		reg = <0>;
+		spi-max-frequency = <25000000>;
+		m25p,fast-read;
+
+		partition@0 {
+			label = "Bootloader";
+			reg = <0x00000 0x30000>; /* 192K */
+		};
+
+		partition@30000 {
+			label = "Config";
+			reg = <0x30000 0x10000>; /* 64K */
+		};
+
+		partition@40000 {
+			label = "Factory";
+			reg = <0x40000 0x10000>; /* 64K */
+		};
+
+		partition@50000 {
+			label = "firmware";
+			reg = <0x50000 0x1f30000>;
+		};
+
+		partition@1f80000 {
+			label = "Storage";
+			reg = <0x1f80000 0x80000>; /* 512K */
+		};
+
+		partition@all {
+			label = "ALL";
+			reg = <0x0 0x2000000>;
+		};
+	};
+};
