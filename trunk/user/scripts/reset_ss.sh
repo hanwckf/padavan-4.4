@@ -39,12 +39,21 @@ echo 1        > /proc/sys/net/ipv4/conf/default/rp_filter
 echo 1        > /proc/sys/net/ipv4/conf/eth2/rp_filter
 
 # conntrack
-echo 0        > /proc/sys/net/netfilter/nf_conntrack_checksum
-echo 1        > /proc/sys/net/netfilter/nf_conntrack_tcp_be_liberal
-echo 300      > /proc/sys/net/netfilter/nf_conntrack_generic_timeout
-echo 1800     > /proc/sys/net/netfilter/nf_conntrack_tcp_timeout_established
-echo 30       > /proc/sys/net/netfilter/nf_conntrack_icmp_timeout
-echo 50       > /proc/sys/net/netfilter/nf_conntrack_udp_timeout
+echo 0 > /proc/sys/net/netfilter/nf_conntrack_checksum
+echo 1 > /proc/sys/net/netfilter/nf_conntrack_tcp_be_liberal
+echo 1 > /proc/sys/net/netfilter/nf_conntrack_tcp_loose
+echo 30 > /proc/sys/net/netfilter/nf_conntrack_tcp_timeout_syn_sent
+echo 15 > /proc/sys/net/netfilter/nf_conntrack_tcp_timeout_syn_recv
+echo 1800 > /proc/sys/net/netfilter/nf_conntrack_tcp_timeout_established
+echo 30 > /proc/sys/net/netfilter/nf_conntrack_tcp_timeout_fin_wait
+echo 15 > /proc/sys/net/netfilter/nf_conntrack_tcp_timeout_close_wait
+echo 10 > /proc/sys/net/netfilter/nf_conntrack_tcp_timeout_last_ack
+echo 30 > /proc/sys/net/netfilter/nf_conntrack_tcp_timeout_time_wait
+echo 10 > /proc/sys/net/netfilter/nf_conntrack_tcp_timeout_close
+echo 50 > /proc/sys/net/netfilter/nf_conntrack_udp_timeout
+echo 180 > /proc/sys/net/netfilter/nf_conntrack_udp_timeout_stream
+echo 30 > /proc/sys/net/netfilter/nf_conntrack_icmp_timeout
+echo 300 > /proc/sys/net/netfilter/nf_conntrack_generic_timeout
 
 # panic
 echo 1        > /proc/sys/kernel/panic
