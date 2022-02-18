@@ -1,23 +1,13 @@
-SRC_NAME=miniupnpd-2.x
+SRC_NAME = miniupnpd
+THISDIR = $(shell pwd)
 
-# reference to iptables package
-IPT_VERSION:=iptables-1.8.7
+all: 
 
-# disable support IPv6 yet, because no profit w/o IGDv2
-# e.g. Windows not supported IGDv2 and UPnP not worked
-ENABLE_IPV6:=0
+config_test:
 
-IPTABLESPATH=$(ROOTDIR)/user/iptables/$(IPT_VERSION)
-
-all:
-	cd $(SRC_NAME) && ./genconfig.sh --portinuse --leasefile
-	$(MAKE) -f Makefile.linux -C $(SRC_NAME) IPTABLESPATH=$(IPTABLESPATH) ENABLE_IPV6=$(ENABLE_IPV6)
+configure:
 
 clean:
-	$(MAKE) -f Makefile.linux -C $(SRC_NAME) clean
-	rm -f miniupnpd
 
 romfs:
-	cp $(SRC_NAME)/miniupnpd .
-	$(ROMFSINST) /usr/bin/miniupnpd
-
+	$(ROMFSINST) -p +x $(THISDIR)/miniupnpd /usr/bin/miniupnpd

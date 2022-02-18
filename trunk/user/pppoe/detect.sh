@@ -11,7 +11,7 @@ if [ -f ${LOCKFILE} ]
 fi
 done
 
-last=0
+last=1
 
 logger -t "MWAN" "flush the rules"
 PPP_NUM="$(nvram get pppoe_num)"
