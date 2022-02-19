@@ -22,7 +22,7 @@ jobs:
       matrix:
         include:
           - build_variant: "mt7621"
-            targets: "WR1200JS K2P DIR-878 CR660x JCG-Q20"
+            targets: "WR1200JS K2P-USB DIR-878 CR660x JCG-Q20"
           - build_variant: "mt7621-usb-1"
             targets: "XY-C1 JCG-836PRO JCG-Y2 NEWIFI"
           - build_variant: "mt7621-usb-2"
