@@ -657,9 +657,6 @@ struct nvram_pair router_defaults[] = {
 	{ "d_keyword_y", "" },
 	{ "d_update_link", "" },
 	{ "ss_keyword", "过期时间/剩余流量" },
-	{ "ss_watchcat", "1" },
-	{ "ss_update_chnroute", "0" },
-	{ "ss_update_gfwlist", "0" },
 #endif
 	
 	/*Adbyby PlUS+*/
