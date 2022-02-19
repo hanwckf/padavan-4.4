@@ -358,6 +358,9 @@
 
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SHARED 20 IRQ_TYPE_LEVEL_HIGH>;
+		
+		pinctrl-names = "default";
+		pinctrl-0 = <&sdhci_pins>;
 	};
 
 	pcie: pcie@1e140000 {
