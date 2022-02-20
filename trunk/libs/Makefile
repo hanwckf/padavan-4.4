@@ -196,8 +196,7 @@ dir_$(LIBS_INCLUDE_CURL)			+= libcurl
 dir_$(LIBS_INCLUDE_BOOST)			+= boost
 dir_y						+= libnfnetlink
 dir_y						+= libconfuse
-# ipset shared libs
-dir_$(CONFIG_FIRMWARE_INCLUDE_IPSET)		+= libmnl
+dir_y						+= libmnl
 dir_$(LIBS_INCLUDE_LIBPCAP)		+= libpcap
 
 # minidlna and firefly shared libs
