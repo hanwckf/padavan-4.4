@@ -598,6 +598,11 @@ void stop_smartdns(void);
 void start_smartdns(void);
 void restart_smartdns(void);
 #endif
+#if defined(APP_FRP)
+void stop_frp(void);
+void start_frp(void);
+void restart_frp(void);
+#endif
 /* services_ex.c */
 int fill_dnsmasq_servers(void);
 int is_dns_dhcpd_run(void);

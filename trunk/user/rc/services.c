@@ -545,6 +545,21 @@ void restart_aliddns(void){
 }
 #endif
 
+#if defined(APP_FRP)
+void stop_frp(void){
+	eval("/usr/bin/frp.sh","stop");
+}
+
+void start_frp(void){
+	eval("/usr/bin/frp.sh","start");
+}
+
+void restart_frp(void){
+	stop_frp();
+	start_frp();
+}
+#endif
+
 void
 start_httpd(int restart_fw)
 {
@@ -833,6 +848,9 @@ stop_services(int stopall)
 #endif
 #if defined(APP_WIREGUARD)
 	stop_wireguard();
+#endif
+#if defined(APP_FRP)
+	stop_frp();
 #endif
 	stop_networkmap();
 	stop_lltd();

@@ -2317,6 +2317,21 @@ static int smartdns_status_hook(int eid, webs_t wp, int argc, char **argv)
 }
 #endif
 
+#if defined (APP_FRP)
+static int frpc_status_hook(int eid, webs_t wp, int argc, char **argv)
+{
+	int frpc_status_code = pids("frpc");
+	websWrite(wp, "function frpc_status() { return %d;}\n", frpc_status_code);
+	return 0;
+}
+static int frps_status_hook(int eid, webs_t wp, int argc, char **argv)
+{
+	int frps_status_code = pids("frps");
+	websWrite(wp, "function frps_status() { return %d;}\n", frps_status_code);
+	return 0;
+}
+#endif
+
 static int update_action_hook(int eid, webs_t wp, int argc, char **argv)
 {
 	char *up_action = websGetVar(wp, "connect_action", "");
@@ -2561,6 +2576,11 @@ ej_firmware_caps_hook(int eid, webs_t wp, int argc, char **argv)
 #else
 	int found_app_wireguard = 0;
 #endif
+#if defined(APP_FRP)
+	int found_app_frp = 1;
+#else
+	int found_app_frp = 0;
+#endif
 #if defined(USE_IPV6)
 	int has_ipv6 = 1;
 #else
@@ -2731,6 +2751,7 @@ ej_firmware_caps_hook(int eid, webs_t wp, int argc, char **argv)
 		"function found_app_ddnsto() { return %d;}\n"
 		"function found_app_aldriver() { return %d;}\n"
 		"function found_app_aliddns() { return %d;}\n"
+		"function found_app_frp() { return %d;}\n"
 		"function found_app_smartdns() { return %d;}\n"
 		"function found_app_adguardhome() { return %d;}\n",
 		found_utl_hdparm,
@@ -2761,6 +2782,7 @@ ej_firmware_caps_hook(int eid, webs_t wp, int argc, char **argv)
 		found_app_ddnsto,
 		found_app_aldriver,
 		found_app_aliddns,
+		found_app_frp,
 		found_app_smartdns,
 		found_app_adguardhome
 	);
@@ -4485,6 +4507,10 @@ struct ej_handler ej_handlers[] =
 #endif
 #if defined (APP_SMARTDNS)
 	{ "smartdns_status", smartdns_status_hook},
+#endif
+#if defined (APP_FRP)
+	{ "frpc_status", frpc_status_hook},
+	{ "frps_status", frps_status_hook},
 #endif
 #if defined (APP_ADBYBY)
 	{ "adbyby_action", adbyby_action_hook},
