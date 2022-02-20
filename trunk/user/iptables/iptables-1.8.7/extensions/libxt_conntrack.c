@@ -1395,6 +1395,7 @@ static int conntrack3_mt6_xlate(struct xt_xlate *xl,
 }
 
 static struct xtables_match conntrack_mt_reg[] = {
+#ifndef NO_LEGACY
 	{
 		.version       = XTABLES_VERSION,
 		.name          = "conntrack",
@@ -1470,6 +1471,7 @@ static struct xtables_match conntrack_mt_reg[] = {
 		.alias	       = conntrack_print_name_alias,
 		.x6_options    = conntrack2_mt_opts,
 	},
+#endif
 	{
 		.version       = XTABLES_VERSION,
 		.name          = "conntrack",
@@ -1502,6 +1504,7 @@ static struct xtables_match conntrack_mt_reg[] = {
 		.x6_options    = conntrack3_mt_opts,
 		.xlate	       = conntrack3_mt6_xlate,
 	},
+#ifndef NO_LEGACY
 	{
 		.family        = NFPROTO_UNSPEC,
 		.name          = "state",
@@ -1532,6 +1535,8 @@ static struct xtables_match conntrack_mt_reg[] = {
 		.x6_parse      = state_ct23_parse,
 		.x6_options    = state_opts,
 	},
+#endif
+#ifndef NO_LEGACY
 	{
 		.family        = NFPROTO_UNSPEC,
 		.name          = "state",
@@ -1561,6 +1566,7 @@ static struct xtables_match conntrack_mt_reg[] = {
 		.x6_parse      = state_parse,
 		.x6_options    = state_opts,
 	},
+#endif
 };
 
 void _init(void)

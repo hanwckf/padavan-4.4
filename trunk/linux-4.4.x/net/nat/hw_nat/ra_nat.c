@@ -49,6 +49,11 @@
 #include "util.h"
 #include "hwnat_ioctl.h"
 #include "hwnat_define.h"
+
+unsigned short wan_vid __read_mostly = CONFIG_RA_HW_NAT_WAN_VLANID;
+module_param(wan_vid, ushort, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(wan_vid, "VLAN ID for WAN traffic");
+
 struct timer_list hwnat_clear_entry_timer;
 static void hwnat_clear_entry(unsigned long data)
 {

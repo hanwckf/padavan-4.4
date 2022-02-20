@@ -160,7 +160,7 @@ function getHash(){
                           注意:SQM会自动设置相应的HWNAT规则，请勿自行调整WAN页面的HWNAT选项造成流控失效</br>
 				因7621性能所限,大于500M宽带谨慎开启QOS！</br>
             通过SQM_QoS您可以：对指定接口流量整形,例如自定义5G访客网络。其他接口如5G主接口不会受到影响。</br>
-                                       启用流量整形，主动管理队列长度与划分优先级，实现更好的流量体验。
+                                       访客网络接口名称视机型而定，5G访客：ra1(或rai1） 2.4G访客rax1(或ra1)。
                                         </div>
                                    </div>
 
@@ -193,9 +193,9 @@ function getHash(){
                                             <th>流控对象</th>
                                             <td>
                                                 <select name="sqm_flag" class="input">
-                                                    <option value="1" <% nvram_match_x("", "sqm_flag", "1", "selected"); %>>仅有线</option>
-                                                    <option value="2" <% nvram_match_x("", "sqm_flag", "2", "selected"); %>>仅无线</option>
-                                                    <option value="3" <% nvram_match_x("", "sqm_flag", "3", "selected"); %>>有线+无线</option>
+                                                    <option value="1" <% nvram_match_x("", "sqm_flag", "1", "selected"); %>>仅有线到外网</option>
+                                                    <option value="2" <% nvram_match_x("", "sqm_flag", "2", "selected"); %>>仅无线到外网</option>
+                                                    <option value="3" <% nvram_match_x("", "sqm_flag", "3", "selected"); %>>有线到外网+无线到外网</option>
                                                     <option value="4" <% nvram_match_x("", "sqm_flag", "4", "selected"); %>>自定义接口</option>
                                                 </select>
                                             </td>
@@ -233,7 +233,7 @@ function getHash(){
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <th width="32%">下载速度 (<span class="label label-info">kbit/s</span>)</th>
+                                                <th width="32%">宽带下载速度 (<span class="label label-info">kbit/s</span>)</th>
                                                 <td>
                                                     <input type="text" maxlength="10" class="input" size="10" id="sqm_down_speed" name="sqm_down_speed" value="<% nvram_get_x("","sqm_down_speed"); %>"/>
                                                 </td>
@@ -242,7 +242,7 @@ function getHash(){
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <th width="32%">上传速度 (<span class="label label-info">kbit/s</span>)</th>
+                                                <th width="32%">宽带上传速度 (<span class="label label-info">kbit/s</span>)</th>
                                                 <td>
                                                     <input type="text" maxlength="10" class="input" size="10" id="sqm_up_speed" name="sqm_up_speed" value="<% nvram_get_x("","sqm_up_speed"); %>"/>
                                                 </td>

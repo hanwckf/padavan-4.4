@@ -32,8 +32,10 @@ static const struct subcommand multi_subcommands[] = {
 
 
 #endif
+#ifdef ENABLE_XML
 	{"iptables-xml",        iptables_xml_main},
 	{"xml",                 iptables_xml_main},
+#endif
 #ifdef ENABLE_IPV6
 	{"ip6tables",           ip6tables_main},
 	{"main6",               ip6tables_main},

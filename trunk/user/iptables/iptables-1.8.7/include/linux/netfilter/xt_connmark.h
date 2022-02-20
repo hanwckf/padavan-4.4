@@ -18,6 +18,11 @@ enum {
 	XT_CONNMARK_RESTORE
 };
 
+enum {
+	XT_CONNMARK_VALUE	= (1 << 0),
+	XT_CONNMARK_DSCP	= (1 << 1)
+};
+
 struct xt_connmark_tginfo1 {
 	__u32 ctmark, ctmask, nfmask;
 	__u8 mode;
@@ -26,6 +31,11 @@ struct xt_connmark_tginfo1 {
 struct xt_connmark_tginfo2 {
 	__u32 ctmark, ctmask, nfmask;
 	__u8 shift_dir, shift_bits, mode;
+};
+
+struct xt_connmark_tginfo3 {
+	__u32 ctmark, ctmask, nfmask;
+	__u8 shift_dir, shift_bits, mode, func;
 };
 
 struct xt_connmark_mtinfo1 {

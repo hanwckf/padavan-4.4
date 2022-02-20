@@ -11,7 +11,6 @@
 
 ACTION="${1:-start}"
 RUN_IFACE="$2"
-
 [ -d "${SQM_QDISC_STATE_DIR}" ] || ${SQM_LIB_DIR}/update-available-qdiscs
 
 stop_statefile() {
@@ -36,7 +35,13 @@ export IFACE="br0"
 nvram set hw_nat_mode=2
 nvram commit
 rmmod hw_nat
+vlanenable="$(nvram get vlan_filter )"
+if [ "$vlanenable" -ne 0 ]; then
+vlanid="$(nvram get vlan_vid_cpu )"
+modprobe -q hw_nat wan_vid="$vlanid"
+else
 modprobe hw_nat
+fi 
 iwpriv ra0 set hw_nat_register=0
 iwpriv rai0 set hw_nat_register=0
 iwpriv rax0 set hw_nat_register=0
