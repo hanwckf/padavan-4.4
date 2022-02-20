@@ -580,7 +580,7 @@ struct nvram_pair router_defaults[] = {
 	{ "socks5_s_username", "" },
 	{ "socks5_s_password", "" },
 	{ "ss_turn", "0" },
-	{ "ss_watchcat", "0" },
+	{ "ss_watchcat", "1" },
 	{ "ss_turn_s", "600" },
 	{ "ss_turn_ss", "5" },
 	{ "lan_con", "0" },
@@ -868,7 +868,7 @@ struct nvram_pair router_defaults[] = {
 	{ "dhcp_end", DEF_LAN_DHCP_END },	/* Last assignable DHCP address */
 	{ "dhcp_enable_x", "1" },
 	{ "dhcp_lease", "86400" },
-	{ "dhcp_gateway_x", "DEF_LAN_ADDR" },
+	{ "dhcp_gateway_x", DEF_LAN_ADDR },
 	{ "dhcp_dns1_x", "" },
 	{ "dhcp_dns2_x", "" },
 	{ "dhcp_dns3_x", "" },
