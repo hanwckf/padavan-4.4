@@ -25,9 +25,9 @@
 #include "mcast_tbl.h"
 #endif
 
-unsigned char bind_dir = BIDIRECTION;
-unsigned short lan_vid = CONFIG_RA_HW_NAT_LAN_VLANID;
-unsigned short wan_vid = CONFIG_RA_HW_NAT_WAN_VLANID;
+unsigned char bind_dir __read_mostly = BIDIRECTION;
+unsigned short lan_vid __read_mostly = CONFIG_RA_HW_NAT_LAN_VLANID;
+extern unsigned short wan_vid;
 int debug_level;
 
 #if defined (CONFIG_HW_NAT_IPI)
