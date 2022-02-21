@@ -144,6 +144,7 @@ dir_$(CONFIG_FIRMWARE_INCLUDE_SRELAY)	+= srelay
 dir_$(CONFIG_FIRMWARE_INCLUDE_TUNSAFE) += tunsafe
 ifeq ($(CONFIG_FIRMWARE_INCLUDE_WIREGUARD),y)
 dir_y += wireguard-tools
+dir_y += wg-quick
 endif
 dir_$(SAMBA_ENABLED)				+= samba36
 dir_$(SAMBA_ENABLED)				+= wsdd2
