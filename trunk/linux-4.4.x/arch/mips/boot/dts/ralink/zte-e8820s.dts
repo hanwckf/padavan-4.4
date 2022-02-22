@@ -16,7 +16,7 @@
 	leds {
 		compatible = "gpio-leds";
     
-		sys_white {
+    		sys_white {
 			label = "power";
 			gpios = <&gpio0 3 GPIO_ACTIVE_LOW>;
 		};
@@ -81,17 +81,17 @@
 
 			partition@140000 {
 				label = "firmware";
-				reg = <0x140000 0x1840000>; /* 24M */
-			};		
+				reg = <0x140000 0x2000000>; /* 32M */
+			};
 			
-			partition@1980000 {
+			partition@2140000 {
 				label = "Storage";
-				reg = <0x1980000 0x400000>; /* 4096K */
+				reg = <0x2140000 0x400000>; /* 4096K */
 			};
 
-			partition@1d80000 {
+			partition@2540000 {
 				label = "RWFS";
-				reg = <0x1d80000 0x6200000>;
+				reg = <0x2540000 0x5A40000>;
 			};
 
 			partition@all {
