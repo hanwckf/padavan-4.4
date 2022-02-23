@@ -696,7 +696,7 @@ setTimeout('document.getElementById("btn_ctime").style.display="none";',1000);
 			document.getElementById("ssp_insecure").checked = false;				
 			document.getElementById("v2_mux").value = 0;
 			document.getElementById("v2_mux").checked = false;
-			document.getElementById("v2_security").value = 'none';
+			document.getElementById("v2_security").value = 'zero';
 			document.getElementById("v2_vmess_id").value = '';
 			document.getElementById("v2_alter_id").value = '';
 			document.getElementById("v2_transport").value = 'tcp';
@@ -2135,6 +2135,7 @@ setTimeout('document.getElementById("btn_ctime").style.display="none";',1000);
 																	<option value="auto">AUTO</option>
 																	<option value="none">NONE</option>
 																	<option value="aes-128-gcm">AES-128-GCM</option>
+																															<option value="zero">ZERO</option>
 																	<option value="chacha20-poly1305">CHACHA20-POLY1305
 																	</option>
 																</select>
