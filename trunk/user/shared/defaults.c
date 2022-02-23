@@ -868,7 +868,7 @@ struct nvram_pair router_defaults[] = {
 	{ "dhcp_end", DEF_LAN_DHCP_END },	/* Last assignable DHCP address */
 	{ "dhcp_enable_x", "1" },
 	{ "dhcp_lease", "86400" },
-	{ "dhcp_gateway_x", DEF_LAN_ADDR },
+	{ "dhcp_gateway_x", "" },
 	{ "dhcp_dns1_x", "" },
 	{ "dhcp_dns2_x", "" },
 	{ "dhcp_dns3_x", "" },
