@@ -1,0 +1,247 @@
+#!/bin/bash
+
+if [ -z "$1" ] || [ "$EUID" != 0 ]; then
+	echo "Please run 'fakeroot $0 PRODUCT_NAME' to start build (see 'configs/templates/')"
+	echo "For Windows Subsystem for Linux(WSL), use 'fakeroot-tcp' instead of 'fakeroot', or run with sudo"
+	exit 1
+fi
+
+if [ -z "$2" ];then
+if [ ! -f configs/templates/$1.config ] ; then
+	echo "configs/templates/$1.config not found "
+	exit 1
+fi
+
+cp -f configs/templates/$1.config .config
+sed -i 's/CONFIG_FIRMWARE_INCLUDE_DNSFORWARDER=y/CONFIG_FIRMWARE_INCLUDE_DNSFORWARDER=n/g' .config
+sed -i 's/CONFIG_FIRMWARE_INCLUDE_MENTOHUST=y/CONFIG_FIRMWARE_INCLUDE_MENTOHUST=n/g' .config
+sed -i 's/CONFIG_FIRMWARE_INCLUDE_SCUTCLIENT=y/CONFIG_FIRMWARE_INCLUDE_SCUTCLIENT=n/g' .config
+sed -i 's/CONFIG_FIRMWARE_INCLUDE_SRELAY=y/CONFIG_FIRMWARE_INCLUDE_SRELAY=n/g' .config
+sed -i 's/CONFIG_FIRMWARE_INCLUDE_SHADOWSOCKS=y/CONFIG_FIRMWARE_INCLUDE_SHADOWSOCKS=n/g' .config
+
+##以下为插件增减选项,y为集成,n为不集成,请根据自己路由的FLASH大小选择,切勿超大小,不然固件刷入后会无法启动
+##此插件选项只在本地编译的时候才会生效
+##科学上网##
+echo "CONFIG_FIRMWARE_INCLUDE_SHADOWSOCKS=y" >> .config #科学上网插件，选择n后全部有关插件都不集成
+echo "CONFIG_FIRMWARE_INCLUDE_XRAY=y" >> .config #集成xray执行文件  ~4.5M
+echo "CONFIG_FIRMWARE_INCLUDE_V2RAY=n" >> .config #集成v2ray执行文件
+echo "CONFIG_FIRMWARE_INCLUDE_TROJAN=y" >> .config #集成trojan执行文件  ~1.2M
+echo "CONFIG_FIRMWARE_INCLUDE_SSOBFS=y" >> .config #simple-obfs混淆插件
+##科学上网##
+
+##广告管理##
+echo "CONFIG_FIRMWARE_INCLUDE_ADBYBY=y" >> .config #adbyby plus+
+
+##DNS服务##
+echo "CONFIG_FIRMWARE_INCLUDE_SMARTDNS=n" >> .config #smartdns
+echo "CONFIG_FIRMWARE_INCLUDE_ADGUARDHOME=n" >> .config #adg DNS去AD
+
+
+##内网穿透服务##
+echo "CONFIG_FIRMWARE_INCLUDE_ZEROTIER=y" >> .config #zerotier ~1.3M
+echo "CONFIG_FIRMWARE_INCLUDE_ALIDDNS=y" >> .config #aliddns
+echo "CONFIG_FIRMWARE_INCLUDE_DDNSTO=y" >> .config #ddnsto  ~0.5M
+##内网穿透服务##
+echo "CONFIG_FIRMWARE_INCLUDE_ALDRIVER=n" >> .config  #ALDRIVER  ~3m
+echo "CONFIG_FIRMWARE_INCLUDE_MENTOHUST=n" >> .config #mentohust
+echo "CONFIG_FIRMWARE_INCLUDE_SQM=y" >> .config #SQM
+echo "CONFIG_FIRMWARE_INCLUDE_WIREGUARD=y" >>.config #wireguard 10k
+echo "CONFIG_FIRMWARE_INCLUDE_FRPC=n" >> .config #frpc
+echo "CONFIG_FIRMWARE_INCLUDE_FRPS=n" >> .config #frps
+#CPU超频
+echo "CONFIG_FIRMWARE_INCLUDE_OC=n" >> .config #CPU超频开关
+echo 'CONFIG_FIRMWARE_MT7621_OC="0x312"' >> .config #此处填写对应频率的十六进制：1000Mhz=0x312 1100Mhz=0x362 1120Mhz=0x372 1200Mhz=0x3B2
+
+fi
+
+ROOTDIR=`pwd`
+export ROOTDIR=$ROOTDIR
+
+kernel_id="4.4.x"
+kernel_cf=""
+kernel_tf=""
+busybox_id="1.24.x"
+busybox_cf="$ROOTDIR/configs/boards/busybox.config"
+busybox_tf="$ROOTDIR/user/busybox/busybox-${busybox_id}/.config"
+board_h=""
+board_mk=""
+paragon_hfsplus=0
+
+func_enable_kernel_param()
+{
+	if [ ! -n "$2" ];then
+		own="y"
+	else
+		own="m"
+	fi
+	
+	if [ -n "`grep \^\"\# $1 is not set\" $kernel_tf`" ] ; then
+		sed -i "s/\# $1 is not set/$1=$own/" $kernel_tf
+	fi
+}
+
+func_disable_kernel_param()
+{
+	if [ -n "`grep \^$1=y $kernel_tf`" ] ; then
+		sed -i "s/$1=y/\# $1 is not set/" $kernel_tf
+	elif [ -n "`grep \^$1=m $kernel_tf`" ] ; then
+		sed -i "s/$1=m/\# $1 is not set/" $kernel_tf
+	fi
+}
+
+func_enable_busybox_param()
+{
+	if [ -n "`grep \^\"\# $1 is not set\" $busybox_tf`" ] ; then
+		sed -i "s/\# $1 is not set/$1=y/" $busybox_tf
+	fi
+}
+
+func_disable_busybox_param()
+{
+	if [ -n "`grep \^$1=y $busybox_tf`" ] ; then
+		sed -i "s/$1=y/\# $1 is not set/" $busybox_tf
+	fi
+}
+. $ROOTDIR/toolchain.inc
+echo "CONFIG_TOOLCHAIN_DIR=${CONFIG_TOOLCHAIN_DIR}" >> .config
+
+# load project root config
+. $ROOTDIR/.config
+
+if [ ! -f "$ROOTDIR/vendors/Ralink/config.arch" ] ; then
+	echo "Project product dir not found! Terminate."
+	exit 1
+fi
+
+if [ ! -d "$ROOTDIR/$CONFIG_LINUXDIR" ] ; then
+	echo "Project Linux Kernel dir ($CONFIG_LINUXDIR) not found! Terminate."
+	exit 1
+fi
+
+board_h="$ROOTDIR/configs/boards/$CONFIG_FIRMWARE_PRODUCT_ID/board.h"
+board_mk="$ROOTDIR/configs/boards/$CONFIG_FIRMWARE_PRODUCT_ID/board.mk"
+kernel_cd="$ROOTDIR/configs/boards/$CONFIG_FIRMWARE_PRODUCT_ID"
+kernel_tf="$ROOTDIR/$CONFIG_LINUXDIR/.config"
+
+if [ "$CONFIG_FIRMWARE_TYPE_ROOTFS_IN_RAM" = "y" ] ; then
+	kernel_cf="${kernel_cd}/kernel-${kernel_id}.ram.config"
+elif [ -n "$CONFIG_FIRMWARE_KERNEL_CONFIG" ]; then
+	kernel_cf="${kernel_cd}/$CONFIG_FIRMWARE_KERNEL_CONFIG"
+else
+	kernel_cf="${kernel_cd}/kernel-${kernel_id}.config"
+fi
+
+if [ ! -f "$kernel_cf" ] ; then
+	echo "Target kernel config ($kernel_cf) not found! Terminate."
+	exit 1
+fi
+
+if [ ! -f "$busybox_cf" ] ; then
+	echo "Target BusyBox config ($busybox_cf) not found! Terminate."
+	exit 1
+fi
+
+if [ ! -f "$board_h" ] ; then
+	echo "Target board header ($board_h) not found! Terminate."
+	exit 1
+fi
+
+if [ ! -f "$board_mk" ] ; then
+	echo "Target board descriptor ($board_mk) not found! Terminate."
+	exit 1
+fi
+
+rm -rf $ROOTDIR/romfs
+rm -rf $ROOTDIR/images
+mkdir -p $ROOTDIR/romfs
+mkdir -p $ROOTDIR/images
+
+# load source kernel config
+. "$kernel_cf"
+
+echo --------------------------COPY-CONFIG-----------------------------
+######################### FOR-ALL-DEVICES #############################
+ln -sf vendors/Ralink/config.arch config.arch
+cp -fL "$kernel_cf" "$kernel_tf"
+cp -fL "$busybox_cf" "$busybox_tf"
+cp -fL "$board_mk" "$ROOTDIR/user/shared/board.mk"
+cp -fL "$board_h" "$ROOTDIR/user/shared/include/ralink_board.h"
+############################# SMP #####################################
+if [ -n "$CONFIG_SMP" ] ; then
+	func_enable_busybox_param "CONFIG_FEATURE_TOP_SMP_CPU"
+	func_enable_busybox_param "CONFIG_FEATURE_TOP_SMP_PROCESS"
+fi
+############################# RTC #####################################
+if [ -n "$CONFIG_RTC_CLASS" ] ; then
+	func_enable_busybox_param "CONFIG_HWCLOCK"
+fi
+# SFE
+if [ "$CONFIG_FIRMWARE_INCLUDE_SFE" = "y" ] ; then
+	func_enable_kernel_param "CONFIG_SHORTCUT_FE"
+fi
+# wireguard
+if [ "$CONFIG_FIRMWARE_INCLUDE_WIREGUARD" = "y" ]; then
+	func_enable_kernel_param "CONFIG_WIREGUARD"
+else
+	func_disable_kernel_param "CONFIG_WIREGUARD"
+fi
+# SQM QOS
+if [ "$CONFIG_FIRMWARE_INCLUDE_SQM" = "y" ]; then
+	func_enable_kernel_param "CONFIG_NF_CONNTRACK_EVENTS"
+	sed -i "/CONFIG_NF_CONNTRACK_EVENTS=y/a\CONFIG_NF_CONNTRACK_CHAIN_EVENTS=y" $kernel_tf
+	func_enable_kernel_param "CONFIG_NF_CONNTRACK_TIMEOUT"
+	func_enable_kernel_param "CONFIG_NET_SCH_SFQ" "m"
+	sed -i "/CONFIG_NET_SCH_SFQ=m/a\CONFIG_NET_SCH_CAKE=m" $kernel_tf
+	func_enable_kernel_param "CONFIG_NET_SCH_CODEL" "m"
+	func_enable_kernel_param "CONFIG_NET_ACT_IPT" "m"
+	func_enable_kernel_param "CONFIG_IFB"
+fi
+#cpu超频
+if [ "$CONFIG_FIRMWARE_INCLUDE_OC" = "y" ]; then	
+	sed -i "/CONFIG_RALINK_MT7621=y/a\CONFIG_MT7621_OC=y" $kernel_tf
+	sed -i '/CONFIG_MT7621_OC=y/a\CONFIG_MT7621_CPU_FREQ="'$CONFIG_FIRMWARE_MT7621_OC'"' $kernel_tf
+fi
+
+############################# USB #####################################
+if [ "$CONFIG_FIRMWARE_ENABLE_USB" != "y" ] || [ -z "$CONFIG_USB_SUPPORT" ] ; then
+	func_disable_busybox_param "CONFIG_FDISK"
+	func_disable_busybox_param "CONFIG_FEATURE_FDISK_WRITABLE"
+	func_disable_busybox_param "CONFIG_FEATURE_FDISK_ADVANCED"
+	func_disable_busybox_param "CONFIG_MICROCOM"
+	func_disable_busybox_param "CONFIG_EJECT"
+	func_disable_busybox_param "CONFIG_FEATURE_EJECT_SCSI"
+	func_disable_busybox_param "CONFIG_MKSWAP"
+	func_disable_busybox_param "CONFIG_SWAPONOFF"
+	func_disable_busybox_param "CONFIG_FEATURE_VOLUMEID_FAT"
+	func_disable_busybox_param "CONFIG_FEATURE_VOLUMEID_EXFAT"
+	func_disable_busybox_param "CONFIG_FEATURE_VOLUMEID_NTFS"
+	func_disable_busybox_param "CONFIG_FEATURE_VOLUMEID_HFS"
+	func_disable_busybox_param "CONFIG_FEATURE_VOLUMEID_EXT"
+	func_disable_busybox_param "CONFIG_FEATURE_VOLUMEID_XFS"
+	func_disable_busybox_param "CONFIG_FEATURE_VOLUMEID_LINUXSWAP"
+else
+if [ "$CONFIG_FIRMWARE_ENABLE_UFSD" != "y" ] || [ $paragon_hfsplus -eq 0 ] ; then
+	func_disable_busybox_param "CONFIG_FEATURE_VOLUMEID_HFS"
+fi
+############################ exFAT ####################################
+if [ "$CONFIG_FIRMWARE_ENABLE_EXFAT" != "y" ] ; then
+	func_disable_busybox_param "CONFIG_FEATURE_VOLUMEID_EXFAT"
+fi
+############################# XFS #####################################
+if [ "$CONFIG_FIRMWARE_ENABLE_XFS" != "y" ] ; then
+	func_disable_busybox_param "CONFIG_FEATURE_VOLUMEID_XFS"
+fi
+############################# SWAP ####################################
+if [ "$CONFIG_FIRMWARE_ENABLE_SWAP" != "y" ] ; then
+	func_disable_busybox_param "CONFIG_MKSWAP"
+	func_disable_busybox_param "CONFIG_SWAPONOFF"
+fi
+fi
+############################# XFRM ####################################
+#if [ "$CONFIG_FIRMWARE_INCLUDE_SSWAN" = "y" ] ; then
+#	CONFIG_FIRMWARE_INCLUDE_XFRM=y
+#fi
+echo --------------------------MAKE-DEP--------------------------------
+make dep
+echo --------------------------MAKE-ALL--------------------------------
+make
