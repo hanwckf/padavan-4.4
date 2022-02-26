@@ -71,39 +71,44 @@
 
 			partition@0 {
 				label = "Bootloader";
-				reg = <0x00000 0x0040000>;
+				reg = <0x00000 0x0040000>;/* 256k */
 				read-only;
 			};
 
 			partition@40000 {
 				label = "BootEnv";
-				reg = <0x40000 0x0040000>;				
+				reg = <0x40000 0x0040000>;/* 256k */			
 			};
       
 			partition@80000 {
 				label = "Config";
-				reg = <0x80000 0x0080000>;
+				reg = <0x80000 0x0080000>;/* 512k */
 			};
 
 			partition@100000 {
 				label = "Factory";
-				reg = <0x100000 0x0040000>;
+				reg = <0x100000 0x0040000>;/* 256k */
 			};
 
-	  	partition@140000 {
-			  label = "Firmware_Stub";
-			  reg = <0x140000 0x1800000>;
-		  };
+	  	        partition@140000 {
+			        label = "Firmware_Stub";
+			        reg = <0x140000 0x2000000>; /* 32M */
+		        };
 
-		  partition@1940000 {
-			  label = "Storage";
-			  reg = <0x1940000 0x400000>;
-		  };
+		        partition@2140000 {
+			        label = "Storage";
+			        reg = <0x2140000 0x400000>; /* 4096K */
+		        };
 
-		  partition@1d40000 {
-			  label = "RWFS";
-			  reg = <0x1d40000 0x6240000>;
-		  };      
+		        partition@2540000 {
+			        label = "RWFS";
+			        reg = <0x2540000 0x5A40000>;
+		        }; 
+	    
+	                partition@all {
+				label = "ALL";
+				reg = <0x0 0x7f80000>;
+			};
 		};
 	};
 };
