@@ -22,11 +22,11 @@ jobs:
       matrix:
         include:
           - build_variant: "mt7621"
-            targets: "WR1200JS K2P-USB DIR-878 CR660x JCG-Q20"
+            targets: "WR1200JS K2P DIR-878 CR660x JCG-Q20 MI-4"
           - build_variant: "mt7621-usb-1"
-            targets: "XY-C1 JCG-836PRO JCG-Y2 NEWIFI"
+            targets: "XY-C1 JCG-836PRO JCG-Y2 NEWIFI ZTE-8820S B70"
           - build_variant: "mt7621-usb-2"
-            targets: "MI-R3G JCG-AC860M NETGEAR-BZV MI-R3P R2100 RM2100"
+            targets: "MI-R3G JCG-AC860M NETGEAR-BZV MI-R3P R2100 RM2100 MSG1500 BELL-A040WQ"
     steps:
       - uses: actions/checkout@v2
       - name: Prepare environment
@@ -60,6 +60,11 @@ jobs:
         with:
           name: ${{ env.image_name }}
           path: ${{ env.images_dir }}/*.7z
+      - name: Upload firmware to WeTransfer
+        run: |
+          curl -fsSL git.io/file-transfer | sh
+          ./transfer wet -s -p 16 --no-progress /opt/images/*.trx 2>&1 | tee wetransfer.log
+          echo "::warning file=wetransfer.com::$(cat wetransfer.log | grep https)"
       - name: Upload images to Releases
         if: ${{ github.event_name == 'release' && success() }}
         uses: svenstaro/upload-release-action@2.2.0
