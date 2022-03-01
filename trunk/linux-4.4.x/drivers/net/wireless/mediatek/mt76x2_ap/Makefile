@@ -1,3 +1,5 @@
+EXTRA_CFLAGS = -Idrivers/net/wireless/mediatek/mt76x2/include
+
 RT_DRV_DIR  := mt76x2
 RT_DRV_PATH := ../$(RT_DRV_DIR)
 RT_DRV_NAME := mt76x2_ap
