@@ -1,0 +1,84 @@
+/dts-v1/;
+
+#include "mt7621.dtsi"
+#include <dt-bindings/input/input.h>
+#include "mt7621-spi-32m-layout.dtsi"
+#include "mt7621-raeth-gmac2.dtsi"
+#include "mt7621-pinctrl-default-gpio.dtsi"
+
+/ {
+	compatible = "mediatek,mt7621-soc";
+	model = "Newifi";
+
+	chosen {
+		bootargs = "console=ttyS0,115200";
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		status-red {
+			label = "red:status";
+			gpios = <&gpio0 14 GPIO_ACTIVE_LOW>;
+		};
+
+		status-green {
+			label = "green:status";
+			gpios = <&gpio0 13 GPIO_ACTIVE_LOW>;
+		};
+
+		led_blue: status-blue {
+			label = "blue:status";
+			gpios = <&gpio0 16 GPIO_ACTIVE_LOW>;
+		};
+
+	};
+
+	gpio-keys-polled {
+		compatible = "gpio-keys-polled";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		poll-interval = <20>;
+
+		reset {
+			label = "reset";
+			gpios = <&gpio0 15 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_RESTART>;
+		};
+		
+		wps {
+			label = "wps";
+			gpios = <&gpio0 18 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_WPS_BUTTON>;
+		};
+	};
+	
+	gpio_export {
+		compatible = "gpio-export";
+		#size-cells = <0>;
+
+		usb2power {
+			gpio-export,name = "usb2power";
+			gpio-export,output = <1>;
+			gpios = <&gpio0 9 GPIO_ACTIVE_HIGH>;
+		};
+
+		usb3power {
+			gpio-export,name = "usb3power";
+			gpio-export,output = <1>;
+			gpios = <&gpio0 11 GPIO_ACTIVE_HIGH>;
+		};
+	};
+};
+
+&pcie {
+	status = "okay";
+};
+
+&xhci {
+	status = "okay";
+};
+
+&u3phy1 {
+	status = "okay";
+};
