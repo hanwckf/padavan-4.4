@@ -833,7 +833,7 @@ KBUILD_CFLAGS   += $(call cc-option,-Werror=implicit-int)
 KBUILD_CFLAGS   += $(call cc-option,-Werror=strict-prototypes)
 
 # Prohibit date/time macros, which would make the build non-deterministic
-KBUILD_CFLAGS   += $(call cc-option,-Werror=date-time)
+# KBUILD_CFLAGS   += $(call cc-option,-Werror=date-time)
 
 # disable new loop optimization mode in gcc-4.8.x (and later) and
 # incorrect code generation in some situations
