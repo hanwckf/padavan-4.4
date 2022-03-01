@@ -1,4 +1,4 @@
-ccflags-y = -Idrivers/net/wireless/mediatek/mt76x3/include \
+EXTRA_CFLAGS = -Idrivers/net/wireless/mediatek/mt76x3/include \
 		-Idrivers/net/wireless/mediate/mt76x3/ate/include
 
 DRV_NAME = mt76x3_ap
