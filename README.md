@@ -27,6 +27,7 @@ This project is based on original rt-n56u with latest mtk 4.4.198 kernel, which 
   - NETGEAR-BZV
   - MR2600
   - MI-4
+  - MI-R4A
   - MI-R3G
   - MI-R3P
   - R2100
