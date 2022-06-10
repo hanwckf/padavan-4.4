@@ -227,9 +227,11 @@ static int __init br_init(void)
 	br_fdb_test_addr_hook = br_fdb_test_addr;
 #endif
 
+#if IS_MODULE(CONFIG_BRIDGE_NETFILTER)
 	pr_info("bridge: automatic filtering via arp/ip/ip6tables has been "
 		"deprecated. Update your scripts to load br_netfilter if you "
 		"need this.\n");
+#endif
 
 	return 0;
 
