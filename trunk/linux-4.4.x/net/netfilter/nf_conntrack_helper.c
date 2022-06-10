@@ -464,7 +464,7 @@ static struct nf_ct_ext_type helper_extend __read_mostly = {
 
 int nf_conntrack_helper_pernet_init(struct net *net)
 {
-	net->ct.auto_assign_helper_warned = false;
+	net->ct.auto_assign_helper_warned = true;
 	net->ct.sysctl_auto_assign_helper = nf_ct_auto_assign_helper;
 	return nf_conntrack_helper_init_sysctl(net);
 }
