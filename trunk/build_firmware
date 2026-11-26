@@ -1,1 +1,125 @@
-build_firmware_modify
+build_firmware_modifyname: Build Padavan K2P (OpenVPN Lightweight)
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/build-k2p.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          repository: 'hanwckf/padavan-4.4'
+          path: 'padavan'
+
+      - name: Install Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git build-essential gawk libncurses5-dev libz-dev libssl-dev libxml2-dev unzip wget curl python3 fakeroot cpio
+
+      - name: Setup Toolchain
+        run: |
+          cd padavan/toolchain-mipsel
+          ./dl_toolchain.sh
+
+      - name: Configure K2P Board & Lightweight OpenVPN Template
+        run: |
+          cd padavan/trunk
+          mkdir -p configs/boards/K2P
+
+          cat << 'EOF' > configs/boards/K2P/board.mk
+          BOARD_NAME = K2P
+          FLASH_SIZE = 16
+          EOF
+
+          cat << 'EOF' > configs/boards/K2P/board.h
+          /* PHICOMM K2P (A1/A2) */
+          #define BOARD_PID               "K2P"
+          #define BOARD_NAME              "K2P"
+          #define BOARD_DESC              "PHICOMM K2P Wireless Router"
+          #define BOARD_VENDOR_NAME       "PHICOMM"
+          #define BOARD_VENDOR_URL        "http://phicomm.com"
+          #define BOARD_MODEL_URL         "http://phicomm.com"
+          #define BOARD_BOOT_TIME         30
+          #define BOARD_FLASH_TIME        120
+
+          #define BOARD_HAS_5G_11AC       1
+          #define BOARD_NUM_ANT_5G_TX     2
+          #define BOARD_NUM_ANT_5G_RX     2
+          #define BOARD_NUM_ANT_2G_TX     2
+          #define BOARD_NUM_ANT_2G_RX     2
+          #define BOARD_NUM_ETH_LEDS      0
+          #define BOARD_HAS_EPHY_L1000    1
+          #define BOARD_HAS_EPHY_W1000    1
+          #define BOARD_NUM_UPHY_USB3     0
+
+          #define BOARD_GPIO_BTN_RESET    3
+          #undef  BOARD_GPIO_BTN_WPS
+          #undef  BOARD_GPIO_BTN_FN1
+          #undef  BOARD_GPIO_BTN_FN2
+
+          #undef  BOARD_GPIO_LED_ALL
+          #undef  BOARD_GPIO_LED_WIFI
+          #define BOARD_GPIO_LED_SW2G     14
+          #undef  BOARD_GPIO_LED_SW5G
+          #define BOARD_GPIO_LED_POWER    13
+          #undef  BOARD_GPIO_LED_LAN
+          #define BOARD_GPIO_LED_WAN      15
+          #undef  BOARD_GPIO_LED_USB
+          #undef  BOARD_GPIO_LED_ROUTER
+          #undef  BOARD_GPIO_PWR_USB
+          EOF
+
+          cat << 'EOF' > configs/templates/K2P.config
+          CONFIG_VENDOR=Ralink
+          CONFIG_PRODUCT=MT7621
+          CONFIG_FIRMWARE_PRODUCT_ID="K2P"
+          CONFIG_LINUXDIR=linux-4.4.x
+          CONFIG_TOOLCHAIN_DIR=${{ github.workspace }}/padavan/toolchain-mipsel/toolchain-4.4.x
+          CONFIG_FIRMWARE_TYPE_ROOTFS_IN_RAM=y
+          CONFIG_FIRMWARE_ROOTFS_IN_RAM_SIZE=32768
+          CONFIG_FIRMWARE_ENABLE_SQUASHFS=y
+          CONFIG_FIRMWARE_TASKSET_CPU=y
+          CONFIG_FIRMWARE_WIFI2_DRIVER=3.0
+          CONFIG_FIRMWARE_WIFI5_DRIVER=5.0
+          CONFIG_FIRMWARE_MT7615_DBDC=y
+          CONFIG_FIRMWARE_ENABLE_HWNAT=y
+          CONFIG_FIRMWARE_ENABLE_SFE=y
+          CONFIG_RAETH_GMAC2=y
+          CONFIG_MAC_TO_GIGAPHY_MODE_ADDR2=0x1f
+          CONFIG_RAETH_ESW=y
+          CONFIG_FIRMWARE_INCLUDE_OPENVPN=y
+          CONFIG_FIRMWARE_INCLUDE_OPENSSL_EXE=y
+          CONFIG_FIRMWARE_INCLUDE_LZO=y
+          CONFIG_FIRMWARE_INCLUDE_LZ4=y
+          CONFIG_FIRMWARE_INCLUDE_IPSET=y
+          CONFIG_FIRMWARE_INCLUDE_IPT_MARK=y
+          CONFIG_FIRMWARE_INCLUDE_LANG_EN=y
+          CONFIG_FIRMWARE_INCLUDE_DDNS=y
+          CONFIG_FIRMWARE_INCLUDE_HTTPS=y
+          CONFIG_FIRMWARE_INCLUDE_SFTP=y
+          CONFIG_FIRMWARE_INCLUDE_WIREGUARD=y
+          CONFIG_FIRMWARE_INCLUDE_ADBYBY=n
+          CONFIG_FIRMWARE_INCLUDE_KOOLPROXY=n
+          CONFIG_FIRMWARE_INCLUDE_ALIDDNS=n
+          CONFIG_FIRMWARE_INCLUDE_SSWAN=n
+          CONFIG_FIRMWARE_INCLUDE_V2RAY=n
+          CONFIG_FIRMWARE_INCLUDE_TROJAN=n
+          CONFIG_FIRMWARE_INCLUDE_KMS=n
+          EOF
+
+      - name: Build Firmware
+        run: |
+          cd padavan/trunk
+          ./clear_tree
+          fakeroot ./build_firmware_modify K2P
+
+      - name: Upload Firmware Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PHICOMM-K2P-Padavan-OpenVPN
+          path: padavan/trunk/images/*.trx
